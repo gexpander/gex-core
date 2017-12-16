@@ -20,6 +20,11 @@ enum GEX_StatusIndicator {
 };
 
 /**
+ * Early init
+ */
+void StatusLed_PreInit(void);
+
+/**
  * Initialize the statis LED(s)
  */
 void StatusLed_Init(void);

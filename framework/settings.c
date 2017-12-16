@@ -14,8 +14,6 @@
 
 void settings_load(void)
 {
-    dbg("Loading settings");
-
     uint8_t *buffer = (uint8_t *) SETTINGS_FLASH_ADDR;
 
     PayloadParser pp = pp_start(buffer, SETTINGS_BLOCK_SIZE, NULL);
@@ -38,6 +36,8 @@ void settings_load(void)
         dbg("!! Unit settings failed to load");
         return;
     }
+
+    dbg("System settings loaded OK");
 }
 
 

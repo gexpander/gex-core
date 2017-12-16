@@ -18,13 +18,31 @@ void GEX_MsTick(void)
     TF_Tick(comm);
     StatusLed_Tick();
 }
-
+extern void HardFault_Handler(void);
 /**
  * Early init, even before RTOS starts
  */
 void GEX_PreInit(void)
 {
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
+#if PORTS_COUNT>4
+    __HAL_RCC_GPIOE_CLK_ENABLE();
+#endif
+#if PORTS_COUNT>5
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+#endif
+
+    // TODO remove this
+    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_7, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinOutputType(GPIOC, LL_GPIO_PIN_7, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetPinSpeed(GPIOC, LL_GPIO_PIN_7, LL_GPIO_SPEED_FREQ_LOW);
+
+    StatusLed_PreInit();
     DebugUart_PreInit();
+
     dbg("\r\n\033[37;1m*** GEX "GEX_VERSION" on "GEX_PLATFORM" ***\033[m");
     dbg("Build "__DATE__" "__TIME__"\r\n");
 

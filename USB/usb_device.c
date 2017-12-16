@@ -89,17 +89,26 @@ void MX_USB_DEVICE_Init(void)
 /**
 * @brief This function handles USB low priority or CAN RX0 interrupts.
 */
-void USB_LP_CAN1_RX0_IRQHandler(void)
+
+// Function from F103
+void USB_LP_CAN1_RX0_IRQHandler(void) __attribute__((alias("USB_IRQHandler")));
+
+/**
+* @brief This function handles USB global interrupt / USB wake-up interrupt through EXTI line 18.
+*/
+
+// Function from F072
+void USB_IRQHandler(void)
 {
-    /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 0 */
+    /* USER CODE BEGIN USB_IRQn 0 */
 
-    /* USER CODE END USB_LP_CAN1_RX0_IRQn 0 */
+    /* USER CODE END USB_IRQn 0 */
     HAL_PCD_IRQHandler(&hpcd_USB_FS);
-    /* USER CODE BEGIN USB_LP_CAN1_RX0_IRQn 1 */
+    /* USER CODE BEGIN USB_IRQn 1 */
 
-    /* USER CODE END USB_LP_CAN1_RX0_IRQn 1 */
+    /* USER CODE END USB_IRQn 1 */
 }
-/* USER CODE END USB_IRQ */
+
 
 /**
   * @}

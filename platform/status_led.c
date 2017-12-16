@@ -12,6 +12,22 @@ static uint32_t indicators[_INDICATOR_COUNT];
 static GPIO_TypeDef *led_periph;
 static uint32_t led_llpin;
 
+/** Early init */
+void StatusLed_PreInit(void)
+{
+    bool suc = true;
+    // Resolve pin
+    led_periph = plat_port2periph(STATUS_LED_PORT, &suc);
+    led_llpin = plat_pin2ll(STATUS_LED_PIN, &suc);
+
+    // Configure for output
+    LL_GPIO_SetPinMode(led_periph, led_llpin, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinOutputType(led_periph, led_llpin, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetPinSpeed(led_periph, led_llpin, LL_GPIO_SPEED_FREQ_LOW);
+
+    assert_param(suc);
+}
+
 /** Set up the LED */
 void StatusLed_Init(void)
 {
@@ -23,16 +39,6 @@ void StatusLed_Init(void)
 
     suc &= rsc_claim(&UNIT_SYSTEM, rsc);
     assert_param(suc);
-
-    // Resolve pin
-    led_periph = plat_port2periph(STATUS_LED_PORT, &suc);
-    led_llpin = plat_pin2ll(STATUS_LED_PIN, &suc);
-    assert_param(suc);
-
-    // Configure for output
-    LL_GPIO_SetPinMode(led_periph, led_llpin, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinOutputType(led_periph, led_llpin, LL_GPIO_OUTPUT_PUSHPULL);
-    LL_GPIO_SetPinSpeed(led_periph, led_llpin, LL_GPIO_SPEED_FREQ_LOW);
 }
 
 /** Set indicator ON */
@@ -42,7 +48,7 @@ void StatusLed_On(enum GEX_StatusIndicator indicator)
 
     if (indicator == STATUS_FAULT) {
         // Persistent light
-        GPIOC->ODR |= 1<<13;
+        LL_GPIO_SetOutputPin(led_periph, led_llpin);
     }
 }
 
@@ -86,5 +92,5 @@ void StatusLed_Tick(void)
 void StatusLed_Heartbeat(void)
 {
     // TODO fixme
-    GPIOC->ODR ^= 1<<13;
+    LL_GPIO_TogglePin(led_periph, led_llpin);
 }
