@@ -1,52 +1,71 @@
 GEX_SRC_DIR = \
-User \
-User/utils \
-User/USB \
-User/comm \
-User/framework \
-User/platform \
-User/units \
-User/units/system \
-User/units/neopixel \
-User/units/pin \
-User/TinyFrame \
-User/CWPack \
-User/USB/MSC_CDC \
-User/vfs
+    User \
+    User/utils \
+    User/USB \
+    User/comm \
+    User/framework \
+    User/platform \
+    User/units \
+    User/units/system \
+    User/units/neopixel \
+    User/units/pin \
+    User/TinyFrame \
+    User/CWPack \
+    User/vfs
+
+GEX_SOURCES = \
+    User/USB/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c \
+    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c \
+    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_bot.c \
+    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_data.c \
+    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_scsi.c \
+    User/USB/STM32_USB_Device_Library/Class/MSC_CDC/usbd_msc_cdc.c \
+    User/USB/STM32_USB_Device_Library/Core/Src/usbd_core.c \
+    User/USB/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
+    User/USB/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
 
 GEX_INCLUDES = \
--IUser \
--IUser/USB \
--IUser/USB/MSC_CDC \
--IUser/TinyFrame \
--IUser/vfs \
--IUser/utils \
--IUser/units \
--IUser/units/system \
--IUser/units/neopixel \
--IUser/units/pin \
--IUser/framework \
--IUser/platform
+    -IUser \
+    -IUser/USB \
+    -IUser/USB/MSC_CDC \
+    -IUser/TinyFrame \
+    -IUser/vfs \
+    -IUser/utils \
+    -IUser/units \
+    -IUser/units/system \
+    -IUser/units/neopixel \
+    -IUser/units/pin \
+    -IUser/framework \
+    -IUser/platform \
+    -IUser/USB/STM32_USB_Device_Library/Core/Inc \
+    -IUser/USB/STM32_USB_Device_Library/Class/AUDIO/Inc \
+    -IUser/USB/STM32_USB_Device_Library/Class/CDC/Inc \
+    -IUser/USB/STM32_USB_Device_Library/Class/CustomHID/Inc \
+    -IUser/USB/STM32_USB_Device_Library/Class/DFU/Inc \
+    -IUser/USB/STM32_USB_Device_Library/Class/HID/Inc \
+    -IUser/USB/STM32_USB_Device_Library/Class/MSC/Inc \
+    -IUser/USB/STM32_USB_Device_Library/Class/MSC_CDC
 
-GEX_CFLAGS      = -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))"
-GEX_CFLAGS      += -std=gnu99 -Wfatal-errors
-GEX_CFLAGS      += -Wall -Wextra -Wshadow
-GEX_CFLAGS      += -Wwrite-strings -Wold-style-definition -Winline -Wno-missing-noreturn -Wstrict-prototypes -Wreturn-type
-GEX_CFLAGS      += -Wredundant-decls -Wfloat-equal -Wsign-compare
-GEX_CFLAGS      += -fno-common -ffunction-sections -fdata-sections -Wno-unused-function
-GEX_CFLAGS      += -MD -Wno-format-zero-length -Wno-redundant-decls -Wno-unused-parameter
-GEX_CFLAGS      += -Wno-discarded-qualifiers -Wno-unused-variable -Wno-inline
-GEX_CFLAGS      += -Wno-float-equal -Wno-implicit-fallthrough -Wno-strict-aliasing
-GEX_CFLAGS      += -fmerge-constants -fmerge-all-constants
-GEX_CFLAGS      += -fno-exceptions -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -finline-small-functions -findirect-inlining
+GEX_CFLAGS = \
+    -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))"  \
+    -std=gnu99 -Wfatal-errors \
+    -Wall -Wextra -Wshadow \
+    -Wwrite-strings -Wold-style-definition -Winline -Wno-missing-noreturn -Wstrict-prototypes -Wreturn-type \
+    -Wredundant-decls -Wfloat-equal -Wsign-compare \
+    -fno-common -ffunction-sections -fdata-sections -Wno-unused-function \
+    -MD -Wno-format-zero-length -Wno-redundant-decls -Wno-unused-parameter \
+    -Wno-discarded-qualifiers -Wno-unused-variable -Wno-inline \
+    -Wno-float-equal -Wno-implicit-fallthrough -Wno-strict-aliasing \
+    -fmerge-constants -fmerge-all-constants \
+    -fno-exceptions -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -finline-small-functions -findirect-inlining \
 
 GEX_CDEFS = \
--D__weak="__attribute__((weak))" \
--D__packed="__attribute__((__packed__))" \
--DUSE_FULL_LL_DRIVER \
--DUSE_FULL_ASSERT=1 \
--DVERBOSE_ASSERT=1 \
--DDEBUG_VFS=0 \
--DVERBOSE_HARDFAULT=1 \
--DUSE_STACK_MONITOR=1 \
--DUSE_DEBUG_UART=1
+    -D__weak="__attribute__((weak))" \
+    -D__packed="__attribute__((__packed__))" \
+    -DUSE_FULL_LL_DRIVER \
+    -DUSE_FULL_ASSERT=1 \
+    -DVERBOSE_ASSERT=1 \
+    -DDEBUG_VFS=0 \
+    -DVERBOSE_HARDFAULT=1 \
+    -DUSE_STACK_MONITOR=1 \
+    -DUSE_DEBUG_UART=1

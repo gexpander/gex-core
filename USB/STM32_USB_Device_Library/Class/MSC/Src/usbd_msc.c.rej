@@ -1,0 +1,35 @@
+--- Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c	(date 1511202099000)
++++ Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c	(revision )
+@@ -116,7 +116,7 @@
+   * @{
+   */ 
+ 
+-
++#ifndef MSC_COMPOSITE
+ USBD_ClassTypeDef  USBD_MSC = 
+ {
+   USBD_MSC_Init,
+@@ -279,6 +279,7 @@
+   0x01,
+   0x00,
+ };
++#endif
+ /**
+   * @}
+   */ 
+@@ -530,6 +531,7 @@
+   return 0;
+ }
+ 
++#ifndef MSC_COMPOSITE
+ /**
+ * @brief  USBD_MSC_GetHSCfgDesc 
+ *         return configuration descriptor
+@@ -576,6 +578,7 @@
+   *length = sizeof (USBD_MSC_DeviceQualifierDesc);
+   return USBD_MSC_DeviceQualifierDesc;
+ }
++#endif
+ 
+ /**
+ * @brief  USBD_MSC_RegisterStorage
