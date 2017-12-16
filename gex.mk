@@ -11,7 +11,8 @@ GEX_SRC_DIR = \
     User/units/pin \
     User/TinyFrame \
     User/CWPack \
-    User/vfs
+    User/vfs \
+    User/tasks
 
 GEX_SOURCES = \
     User/USB/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c \
@@ -37,6 +38,7 @@ GEX_INCLUDES = \
     -IUser/units/pin \
     -IUser/framework \
     -IUser/platform \
+    -IUser/tasks \
     -IUser/USB/STM32_USB_Device_Library/Core/Inc \
     -IUser/USB/STM32_USB_Device_Library/Class/AUDIO/Inc \
     -IUser/USB/STM32_USB_Device_Library/Class/CDC/Inc \

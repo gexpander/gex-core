@@ -5,7 +5,7 @@
 #include "platform.h"
 #include "framework/system_settings.h"
 #include "usbd_desc.h"
-#include "task_main.h"
+#include "tasks/task_main.h"
 #include "usbd_msc.h"
 #include "usbd_cdc.h"
 #include "usbd_msc_cdc.h"
