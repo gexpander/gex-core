@@ -61,10 +61,7 @@
 
 /* USB Device Core handle declaration */
 USBD_HandleTypeDef hUsbDeviceFS;
-
-/* USER CODE BEGIN Includes */
-extern PCD_HandleTypeDef hpcd_USB_FS;
-/* USER CODE END Includes */
+PCD_HandleTypeDef hpcd_USB_FS;
 
 /* init function */                                        
 void MX_USB_DEVICE_Init(void)
