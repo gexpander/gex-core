@@ -38,19 +38,11 @@ void plat_init_resources(void)
 
     // Platform F103C8T6 - free all present resources
     {
-        rsc_free(NULL, R_ADC1);
-        rsc_free(NULL, R_ADC2);
-        rsc_free(NULL, R_I2C1);
-        rsc_free(NULL, R_I2C2);
-        rsc_free(NULL, R_SPI1);
-        rsc_free(NULL, R_SPI2);
-        rsc_free(NULL, R_TIM1);
-        rsc_free(NULL, R_TIM2);
-        rsc_free(NULL, R_TIM3);
-        rsc_free(NULL, R_TIM4);
-        rsc_free(NULL, R_USART1);
-        rsc_free(NULL, R_USART2);
-        rsc_free(NULL, R_USART3);
+        rsc_free_range(NULL, R_ADC1, R_ADC2);
+        rsc_free_range(NULL, R_I2C1, R_I2C2);
+        rsc_free_range(NULL, R_SPI1, R_SPI2);
+        rsc_free_range(NULL, R_TIM1, R_TIM4);
+        rsc_free_range(NULL, R_USART1, R_USART3);
         rsc_free_range(NULL, R_PA0, R_PA15);
         rsc_free_range(NULL, R_PB0, R_PB15);
         rsc_free_range(NULL, R_PC13, R_PC15);
@@ -84,29 +76,22 @@ void plat_init_resources(void)
     {
         rsc_free(NULL, R_ADC1);
         rsc_free(NULL, R_CAN);
-        rsc_free(NULL, R_COMP1);
-        rsc_free(NULL, R_COMP2);
+        rsc_free_range(NULL, R_COMP1, R_COMP2);
         rsc_free(NULL, R_DAC1);
         rsc_free(NULL, R_HDMI_CEC);
-        rsc_free(NULL, R_I2C1);
-        rsc_free(NULL, R_I2C2);
-        rsc_free(NULL, R_I2S1);
-        rsc_free(NULL, R_I2S2);
-        rsc_free(NULL, R_SPI1);
-        rsc_free(NULL, R_SPI2);
-        rsc_free(NULL, R_TIM1);
-        rsc_free(NULL, R_TIM2);
-        rsc_free(NULL, R_TIM3);
-        rsc_free(NULL, R_TIM6);
-        rsc_free(NULL, R_TIM7);
+        rsc_free(NULL, R_TSC);
+        rsc_free_range(NULL, R_I2C1, R_I2C2);
+        rsc_free_range(NULL, R_I2S1, R_I2S2);
+        rsc_free_range(NULL, R_SPI1, R_SPI2);
+        rsc_free_range(NULL, R_TIM1, R_TIM3);
+        rsc_free_range(NULL, R_TIM6, R_TIM7);
         rsc_free_range(NULL, R_TIM14, R_TIM17);
-        rsc_free(NULL, R_USART1);
-        rsc_free(NULL, R_USART2);
-        rsc_free(NULL, R_USART3);
-        rsc_free(NULL, R_USART4);
+        rsc_free_range(NULL, R_USART1, R_USART4);
+
         rsc_free_range(NULL, R_PA0, R_PA15);
         rsc_free_range(NULL, R_PB0, R_PB15);
         rsc_free_range(NULL, R_PC0, R_PC15);
+        rsc_free(NULL, R_PD2);
         rsc_free_range(NULL, R_PF0, R_PF1);
     }
 
@@ -118,7 +103,58 @@ void plat_init_resources(void)
         ok &= rsc_claim(&UNIT_SYSTEM, R_TIM1);
         // HSE crystal
         ok &= rsc_claim(&UNIT_SYSTEM, R_PF0);
-        //ok &= rsc_claim(&UNIT_SYSTEM, R_PD1); // - not used in BYPASS mode
+        //ok &= rsc_claim(&UNIT_SYSTEM, R_PF1); // - not used in BYPASS mode
+        // SWD
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA13);
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA14);
+        // USB
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA11);
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA12);
+        // BOOT pin(s)
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
+
+        assert_param(ok);
+    }
+#elif defined(GEX_PLAT_F303_DISCOVERY)
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+
+    // Platform F303VCT - free all present resources
+    {
+        rsc_free_range(NULL, R_ADC1, R_ADC4);
+        rsc_free(NULL, R_CAN);
+        rsc_free_range(NULL, R_COMP1, R_COMP7);
+        rsc_free(NULL, R_HDMI_CEC);
+        rsc_free(NULL, R_DAC1);
+        rsc_free_range(NULL, R_I2C1, R_I2C2);
+        rsc_free_range(NULL, R_I2S2, R_I2S3);
+        rsc_free_range(NULL, R_OPAMP1, R_OPAMP4);
+        rsc_free_range(NULL, R_SPI1, R_SPI3);
+        rsc_free_range(NULL, R_TIM1, R_TIM4);
+        rsc_free_range(NULL, R_TIM6, R_TIM8);
+        rsc_free_range(NULL, R_TIM15, R_TIM17);
+        rsc_free(NULL, R_TSC);
+        rsc_free_range(NULL, R_USART1, R_USART5);
+
+        rsc_free_range(NULL, R_PA0, R_PA15);
+        rsc_free_range(NULL, R_PB0, R_PB15);
+        rsc_free_range(NULL, R_PC0, R_PC15);
+        rsc_free_range(NULL, R_PD0, R_PD15);
+        rsc_free_range(NULL, R_PE0, R_PE15);
+
+        rsc_free_range(NULL, R_PF0, R_PF2);
+        rsc_free(NULL, R_PF4);
+        rsc_free_range(NULL, R_PF9, R_PF10);
+    }
+
+    // Claim resources not available due to board layout or internal usage
+    {
+        bool ok = true;
+
+        // HAL timebase
+        ok &= rsc_claim(&UNIT_SYSTEM, R_TIM1);
+        // HSE crystal
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PF0);
+        //ok &= rsc_claim(&UNIT_SYSTEM, R_PF1); // - not used in BYPASS mode
         // SWD
         ok &= rsc_claim(&UNIT_SYSTEM, R_PA13);
         ok &= rsc_claim(&UNIT_SYSTEM, R_PA14);

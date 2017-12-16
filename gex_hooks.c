@@ -35,11 +35,6 @@ void GEX_PreInit(void)
     __HAL_RCC_GPIOF_CLK_ENABLE();
 #endif
 
-    // TODO remove this
-    LL_GPIO_SetPinMode(GPIOC, LL_GPIO_PIN_7, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinOutputType(GPIOC, LL_GPIO_PIN_7, LL_GPIO_OUTPUT_PUSHPULL);
-    LL_GPIO_SetPinSpeed(GPIOC, LL_GPIO_PIN_7, LL_GPIO_SPEED_FREQ_LOW);
-
     StatusLed_PreInit();
     DebugUart_PreInit();
 

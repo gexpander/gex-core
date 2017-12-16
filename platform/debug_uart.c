@@ -42,6 +42,9 @@ void DebugUart_PreInit(void)
     LL_GPIO_SetAFPin_0_7(GPIOA, LL_GPIO_PIN_2, LL_GPIO_AF_1);
 #elif GEX_PLAT_F103_BLUEPILL
     LL_USART_SetBaudRate(USART2, SystemCoreClock/2, 115200); // This is not great, let's hope it's like this on all platforms...
+#elif GEX_PLAT_F303_DISCOVERY
+    LL_USART_SetBaudRate(USART2, SystemCoreClock/2, LL_USART_OVERSAMPLING_16, 115200); // FIXME better way to determine frequency?
+    LL_GPIO_SetAFPin_0_7(GPIOA, LL_GPIO_PIN_2, LL_GPIO_AF_7); // uart2 is AF7 here
 #else
     #error "BAD PLATFORM!"
 #endif

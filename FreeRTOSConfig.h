@@ -108,7 +108,6 @@
 #define configQUEUE_REGISTRY_SIZE                0
 #define configCHECK_FOR_STACK_OVERFLOW           2
 #define configENABLE_BACKWARD_COMPATIBILITY      0
-#define configUSE_PORT_OPTIMISED_TASK_SELECTION  (__CORTEX_M >= 3) // this fails on CM0+
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0
@@ -127,7 +126,7 @@ to exclude the API function. */
 
 ///* Cortex-M specific definitions. */
 
-#if (__CORTEX_M>=3)
+#if defined(GEX_PLAT_F103_BLUEPILL) || defined(GEX_PLAT_F303_DISCOVERY)
     // This is for F103+
 
     /* The lowest interrupt priority that can be used in a call to a "set priority"
@@ -141,12 +140,18 @@ to exclude the API function. */
     INTERRUPT SAFE FREERTOS API FUNCTIONS FROM ANY INTERRUPT THAT HAS A HIGHER
     PRIORITY THAN THIS! (higher priorities are lower numeric values. */
     #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 5
-#else
+
+    #define configUSE_PORT_OPTIMISED_TASK_SELECTION 1
+#elif defined(GEX_PLAT_F072_DISCOVERY)
     // This is for F072
     #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY   3
     #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 3
 
     #define configPRIO_BITS         2
+
+    #define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
+#else
+    #error "BAD PLATFORM!!"
 #endif
 
 /* Interrupt priorities used by the kernel port layer itself.  These are generic

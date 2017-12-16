@@ -93,6 +93,9 @@ void MX_USB_DEVICE_Init(void)
 // Function from F103
 void USB_LP_CAN1_RX0_IRQHandler(void) __attribute__((alias("USB_IRQHandler")));
 
+// Function for F303
+void USB_LP_CAN_RX0_IRQHandler(void) __attribute__((alias("USB_IRQHandler")));
+
 /**
 * @brief This function handles USB global interrupt / USB wake-up interrupt through EXTI line 18.
 */

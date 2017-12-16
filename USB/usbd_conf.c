@@ -88,6 +88,20 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
 #elif defined(GEX_PLAT_F072_DISCOVERY)
     HAL_NVIC_SetPriority(USB_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(USB_IRQn);
+#elif defined(GEX_PLAT_F303_DISCOVERY)
+    // Pins need to be configured here
+
+    /**USB GPIO Configuration
+    PA11     ------> USB_DM
+    PA12     ------> USB_DP
+    */
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    LL_GPIO_SetAFPin_8_15(GPIOA, LL_GPIO_PIN_11, LL_GPIO_AF_14);
+    LL_GPIO_SetAFPin_8_15(GPIOA, LL_GPIO_PIN_12, LL_GPIO_AF_14);
+    HAL_NVIC_SetPriority(USB_LP_CAN_RX0_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(USB_LP_CAN_RX0_IRQn);
+#else
+  #error "BAD PLATFORM"
 #endif
   /* USER CODE BEGIN USB_MspInit 1 */
 
@@ -110,6 +124,10 @@ void HAL_PCD_MspDeInit(PCD_HandleTypeDef* pcdHandle)
     HAL_NVIC_DisableIRQ(USB_LP_CAN1_RX0_IRQn);
 #elif defined(GEX_PLAT_F072_DISCOVERY)
     HAL_NVIC_DisableIRQ(USB_IRQn);
+#elif defined(GEX_PLAT_F303_DISCOVERY)
+    HAL_NVIC_DisableIRQ(USB_LP_CAN_RX0_IRQn);
+#else
+  #error "BAD PLATFORM"
 #endif
 
   /* USER CODE BEGIN USB_MspDeInit 1 */
