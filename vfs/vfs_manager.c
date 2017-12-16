@@ -38,6 +38,8 @@
 // TRANSFER_NOT_STARTED || TRASNFER_FINISHED
 #define DISCONNECT_DELAY_MS 500
 
+bool vfs_is_windows = false;
+
 // Make sure none of the delays exceed the max time
 COMPILER_ASSERT(CONNECT_DELAY_MS < MAX_EVENT_TIME_MS);
 COMPILER_ASSERT(RECONNECT_DELAY_MS < MAX_EVENT_TIME_MS);

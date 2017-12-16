@@ -5,14 +5,16 @@
 #include "platform.h"
 #include "utils/str_utils.h"
 #include "system_settings.h"
+#include "platform/lock_jumper.h"
 
 struct system_settings SystemSettings;
 
 void systemsettings_init(void)
 {
     SystemSettings.visible_vcom = true;
-    SystemSettings.editable = false; // This will be loaded in platform init based on the LOCK pin
     SystemSettings.modified = false;
+
+    LockJumper_ReadHardware();
 }
 
 // to binary

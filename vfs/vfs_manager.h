@@ -29,6 +29,8 @@
 extern "C" {
 #endif
 
+extern bool vfs_is_windows;
+
 /* Callable from anywhere */
 
 // Enable or disable the virtual filesystem

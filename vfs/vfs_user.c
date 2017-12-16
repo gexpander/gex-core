@@ -23,6 +23,7 @@
 #include "framework/settings.h"
 #include "platform.h"
 #include "vfs_manager.h"
+#include "str_utils.h"
 
 const vfs_filename_t daplink_drive_name = "VIRTUALFS";
 
@@ -67,6 +68,13 @@ void vfs_user_file_change_handler(const vfs_filename_t filename,
                                   vfs_file_change_t change,
                                   vfs_file_t file, vfs_file_t new_file_data)
 {
+    if (strstarts(filename, "SYSTEM~1")) {
+        vfs_printf("ATENTION - we are dealing with windows! Careful or it will crash!");
+        // TODO take precautions
+        vfs_is_windows = true;
+        return;
+    }
+
     if (VFS_FILE_CHANGED == change) {
         // Unused
         vfs_printf(">>> CHANGED %s", filename);

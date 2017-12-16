@@ -75,7 +75,7 @@ void LockJumper_Check(void)
 
     // Read the pin state
     bool old = SystemSettings.editable;
-    SystemSettings.editable = (bool) LL_GPIO_IsInputPinSet(lock_periph, lock_llpin);
+    LockJumper_ReadHardware();
 
     if (old != SystemSettings.editable) {
         // --- State changed ---
@@ -83,4 +83,9 @@ void LockJumper_Check(void)
 
         jumper_changed();
     }
+}
+
+void LockJumper_ReadHardware(void)
+{
+    SystemSettings.editable = (bool) LL_GPIO_IsInputPinSet(lock_periph, lock_llpin);
 }

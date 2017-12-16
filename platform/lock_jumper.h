@@ -17,4 +17,10 @@ void LockJumper_Init(void);
  */
 void LockJumper_Check(void);
 
+/**
+ * Check hardware jumper and load it's value into the settings struct.
+ * Does NOT trigger MSC changes or anything else.
+ */
+void LockJumper_ReadHardware(void);
+
 #endif //GEX_LOCK_JUMPER_H
