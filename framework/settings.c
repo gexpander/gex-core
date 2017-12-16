@@ -140,7 +140,11 @@ void settings_save(void)
         fls_printf("ERASE flash pages for settings storage...\r\n");
         // We have to first erase the pages
         FLASH_EraseInitTypeDef erase;
+
+#if PLAT_FLASHBANKS
         erase.Banks = FLASH_BANK_1; // TODO ?????
+#endif
+
         erase.NbPages = SETTINGS_BLOCK_SIZE/FLASH_PAGE_SIZE;
         erase.PageAddress = SETTINGS_FLASH_ADDR;
         erase.TypeErase = FLASH_TYPEERASE_PAGES;

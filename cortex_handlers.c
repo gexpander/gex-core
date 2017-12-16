@@ -32,7 +32,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
     while (1);
 }
 
-#if VERBOSE_HARDFAULT
+#if VERBOSE_HARDFAULT && (__CORTEX_M >= 3)
 void prvGetRegistersFromStack( uint32_t *origStack, uint32_t lr_value)
 {
 /* These are volatile to try and prevent the compiler/linker optimising them
@@ -70,7 +70,6 @@ of this function. */
 #define BS(reg, pos, str) (((reg)&(1<<(pos)))?(str" "):"")
 #define REDPTR(val)  (((val)&0xFF000000) != 0x08000000?"\033[31m":"\033[32m")
 
-    /* USER CODE BEGIN HardFault_IRQn 0 */
     PRINTF(tFAULT" HARD FAULT\r\n\r\n");
     PRINTF("- Stack frame:\r\n");
     PRINTF(" R0  = \033[35m%"PRIX32"h\033[m\r\n", stacked_r0);
@@ -160,7 +159,7 @@ of this function. */
 */
 void  __attribute__((naked)) HardFault_Handler(void)
 {
-#if VERBOSE_HARDFAULT
+#if VERBOSE_HARDFAULT && (__CORTEX_M >= 3)
     __asm volatile
     (
     " tst lr, #4                                                \n"

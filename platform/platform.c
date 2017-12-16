@@ -34,7 +34,7 @@ void plat_init_resources(void)
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOE_CLK_ENABLE();
 
-#ifdef GEX_PLAT_F103_BLUEPILL
+#if defined(GEX_PLAT_F103_BLUEPILL)
 
     // Platform F103C8T6 - free all present resources
     {
@@ -77,6 +77,61 @@ void plat_init_resources(void)
 
         assert_param(ok);
     }
+#elif defined(GEX_PLAT_F072_DISCOVERY)
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+
+    // Platform F073RBT - free all present resources
+    {
+        rsc_free(NULL, R_ADC1);
+        rsc_free(NULL, R_CAN);
+        rsc_free(NULL, R_COMP1);
+        rsc_free(NULL, R_COMP2);
+        rsc_free(NULL, R_DAC1);
+        rsc_free(NULL, R_HDMI_CEC);
+        rsc_free(NULL, R_I2C1);
+        rsc_free(NULL, R_I2C2);
+        rsc_free(NULL, R_I2S1);
+        rsc_free(NULL, R_I2S2);
+        rsc_free(NULL, R_SPI1);
+        rsc_free(NULL, R_SPI2);
+        rsc_free(NULL, R_TIM1);
+        rsc_free(NULL, R_TIM2);
+        rsc_free(NULL, R_TIM3);
+        rsc_free(NULL, R_TIM6);
+        rsc_free(NULL, R_TIM7);
+        rsc_free_range(NULL, R_TIM14, R_TIM17);
+        rsc_free(NULL, R_USART1);
+        rsc_free(NULL, R_USART2);
+        rsc_free(NULL, R_USART3);
+        rsc_free(NULL, R_USART4);
+        rsc_free_range(NULL, R_PA0, R_PA15);
+        rsc_free_range(NULL, R_PB0, R_PB15);
+        rsc_free_range(NULL, R_PC0, R_PC15);
+        rsc_free_range(NULL, R_PF0, R_PF1);
+    }
+
+    // Claim resources not available due to board layout or internal usage
+    {
+        bool ok = true;
+
+        // HAL timebase
+        ok &= rsc_claim(&UNIT_SYSTEM, R_TIM1);
+        // HSE crystal
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PF0);
+        //ok &= rsc_claim(&UNIT_SYSTEM, R_PD1); // - not used in BYPASS mode
+        // SWD
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA13);
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA14);
+        // USB
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA11);
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA12);
+        // BOOT pin(s)
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
+
+        assert_param(ok);
+    }
+#else
+    #error "BAD PLATFORM!"
 #endif
 }
 

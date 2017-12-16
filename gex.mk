@@ -1,7 +1,6 @@
 GEX_SRC_DIR = \
     User \
     User/utils \
-    User/USB \
     User/comm \
     User/framework \
     User/platform \
@@ -15,6 +14,11 @@ GEX_SRC_DIR = \
     User/tasks
 
 GEX_SOURCES = \
+    User/USB/usb_device.c \
+    User/USB/usbd_cdc_if.c \
+    User/USB/usbd_conf.c \
+    User/USB/usbd_desc.c \
+    User/USB/usbd_storage_if.c \
     User/USB/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c \
     User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c \
     User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_bot.c \

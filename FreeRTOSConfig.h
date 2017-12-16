@@ -108,7 +108,7 @@
 #define configQUEUE_REGISTRY_SIZE                0
 #define configCHECK_FOR_STACK_OVERFLOW           2
 #define configENABLE_BACKWARD_COMPATIBILITY      0
-#define configUSE_PORT_OPTIMISED_TASK_SELECTION  1
+#define configUSE_PORT_OPTIMISED_TASK_SELECTION  (__CORTEX_M >= 3) // this fails on CM0+
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0
@@ -125,14 +125,16 @@ to exclude the API function. */
 #define INCLUDE_vTaskDelay                  1
 #define INCLUDE_xTaskGetSchedulerState      1
 
-/* Cortex-M specific definitions. */
-#ifdef __NVIC_PRIO_BITS
- /* __BVIC_PRIO_BITS will be specified when CMSIS is being used. */
- #define configPRIO_BITS         __NVIC_PRIO_BITS
-#else
- #define configPRIO_BITS         4
-#endif
+///* Cortex-M specific definitions. */
+//#ifdef __NVIC_PRIO_BITS
+// /* __BVIC_PRIO_BITS will be specified when CMSIS is being used. */
+// #define configPRIO_BITS         __NVIC_PRIO_BITS
+//#else
+// #define configPRIO_BITS         4
+//#endif
+#define configPRIO_BITS         __NVIC_PRIO_BITS
 
+#if (__CORTEX_M>=3)
 /* The lowest interrupt priority that can be used in a call to a "set priority"
 function. */
 #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY   15
@@ -142,6 +144,10 @@ routine that makes calls to interrupt safe FreeRTOS API functions.  DO NOT CALL
 INTERRUPT SAFE FREERTOS API FUNCTIONS FROM ANY INTERRUPT THAT HAS A HIGHER
 PRIORITY THAN THIS! (higher priorities are lower numeric values. */
 #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 5
+#else
+#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY   3
+#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 3
+#endif
 
 /* Interrupt priorities used by the kernel port layer itself.  These are generic
 to all Cortex-M ports, and do not rely on any particular library functions. */

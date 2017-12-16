@@ -36,7 +36,15 @@ void DebugUart_PreInit(void)
 //    LL_USART_SetStopBitsLength(USART2, LL_USART_STOPBITS_1);
 //    LL_USART_SetHWFlowCtrl(USART2, LL_USART_HWCONTROL_NONE);
     LL_USART_EnableDirectionTx(USART2);
+
+#if GEX_PLAT_F072_DISCOVERY
+    LL_USART_SetBaudRate(USART2, SystemCoreClock, LL_USART_OVERSAMPLING_16, 115200); // This is not great, let's hope it's like this on all platforms...
+#elif GEX_PLAT_F103_BLUEPILL
     LL_USART_SetBaudRate(USART2, SystemCoreClock/2, 115200); // This is not great, let's hope it's like this on all platforms...
+#else
+    #error "BAD PLATFORM!"
+#endif
+
     LL_USART_Enable(USART2);
 }
 
