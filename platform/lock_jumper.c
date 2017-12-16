@@ -2,10 +2,10 @@
 // Created by MightyPork on 2017/12/15.
 //
 
-#include <sched_queue.h>
-#include <task_sched.h>
+#include "sched_queue.h"
+#include "task_sched.h"
 #include "usbd_core.h"
-#include "USB/usb_device.h"
+#include "usb_device.h"
 
 #include "framework/settings.h"
 #include "framework/resources.h"
