@@ -3,6 +3,7 @@
 //
 
 #include "pin_utils.h"
+#include "macro.h"
 
 #define PINS_COUNT 16
 
@@ -25,15 +26,23 @@ static const uint32_t ll_pins[PINS_COUNT] = {
     LL_GPIO_PIN_14,
     LL_GPIO_PIN_15,
 };
+COMPILER_ASSERT(16 == ELEMENTS_IN_ARRAY(ll_pins));
 
 /** Port number (A=0) to config struct pointer mapping */
-static GPIO_TypeDef * const port_periphs[PORTS_COUNT] = {
+static GPIO_TypeDef * const port_periphs[] = {
     GPIOA,
     GPIOB,
     GPIOC,
     GPIOD,
     GPIOE,
+#if PORTS_COUNT>5
+    GPIOF,
+#endif
+#if PORTS_COUNT>6
+    GPIOG,
+#endif
 };
+COMPILER_ASSERT(PORTS_COUNT == ELEMENTS_IN_ARRAY(port_periphs));
 
 /** Convert pin number to LL bitfield */
 uint32_t plat_pin2ll(uint8_t pin_number, bool *suc)
