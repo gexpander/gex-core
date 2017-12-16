@@ -82,8 +82,13 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
     __HAL_RCC_USB_CLK_ENABLE();
 
     /* Peripheral interrupt init */
+#if defined(GEX_PLAT_F103_BLUEPILL)
+    HAL_NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+#elif defined(GEX_PLAT_F072_DISCOVERY)
     HAL_NVIC_SetPriority(USB_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(USB_IRQn);
+#endif
   /* USER CODE BEGIN USB_MspInit 1 */
 
   /* USER CODE END USB_MspInit 1 */
@@ -101,7 +106,11 @@ void HAL_PCD_MspDeInit(PCD_HandleTypeDef* pcdHandle)
     __HAL_RCC_USB_CLK_DISABLE();
 
     /* Peripheral interrupt Deinit*/
+#if defined(GEX_PLAT_F103_BLUEPILL)
+    HAL_NVIC_DisableIRQ(USB_LP_CAN1_RX0_IRQn);
+#elif defined(GEX_PLAT_F072_DISCOVERY)
     HAL_NVIC_DisableIRQ(USB_IRQn);
+#endif
 
   /* USER CODE BEGIN USB_MspDeInit 1 */
 
