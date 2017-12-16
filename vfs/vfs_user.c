@@ -19,9 +19,9 @@
  * limitations under the License.
  */
 
+#include "platform.h"
 #include "utils/ini_writer.h"
 #include "framework/settings.h"
-#include "platform.h"
 #include "vfs_manager.h"
 #include "str_utils.h"
 
@@ -68,9 +68,10 @@ void vfs_user_file_change_handler(const vfs_filename_t filename,
                                   vfs_file_change_t change,
                                   vfs_file_t file, vfs_file_t new_file_data)
 {
+    // Check for "System Volume Information"
     if (strstarts(filename, "SYSTEM~1")) {
-        vfs_printf("ATENTION - we are dealing with windows! Careful or it will crash!");
-        // TODO take precautions
+        vfs_printf("ATTN! Windows host detected.");
+        // TODO take precautions if needed
         vfs_is_windows = true;
         return;
     }

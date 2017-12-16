@@ -238,6 +238,7 @@ static error_t close_conf(void *state)
     ini_parse_end();
     settings_read_ini_end();
 
+    // force a full remount to have the changes be visible
     vfs_mngr_fs_remount(true);
 
     return E_SUCCESS;
