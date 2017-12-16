@@ -7,18 +7,20 @@
 #include "USB/usb_device.h"
 #include "framework/resources.h"
 
-
-// ----- SUPPORTED UNITS -----
-
 #include "framework/unit_registry.h"
 
 #include "units/pin/unit_pin.h"
 #include "units/neopixel/unit_neopixel.h"
 
+
+// ----- SUPPORTED UNITS -----
+
 void plat_register_units(void)
 {
     ureg_add_type(&UNIT_PIN);
     ureg_add_type(&UNIT_NEOPIXEL);
+
+    // Platform-specific units could be added here
 }
 
 
@@ -31,6 +33,8 @@ void plat_init_resources(void)
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOE_CLK_ENABLE();
+
+#ifdef GEX_PLAT_F103_BLUEPILL
 
     // Platform F103C8T6 - free all present resources
     {
@@ -73,15 +77,21 @@ void plat_init_resources(void)
 
         assert_param(ok);
     }
+#endif
 }
 
 
 // ---- USB reconnect ----
 
-/** USB re-connect */
+/**
+ * USB re-connect (to apply change of the LOCK jumper)
+ */
 void plat_usb_reconnect(void)
 {
+#ifdef GEX_PLAT_F103_BLUEPILL
     // F103 doesn't have pull-up control, this is probably the best we can do
+    // This does not seem to trigger descriptors reload.
     USBD_LL_Reset(&hUsbDeviceFS);
+#endif
 }
 
