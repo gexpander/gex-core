@@ -19,7 +19,6 @@
  * limitations under the License.
  */
 
-#include <task_main.h>
 #include "platform.h"
 #include "task_main.h"
 #include "virtual_fs.h"
@@ -632,7 +631,7 @@ static bool ready_for_state_change(void)
                 break;
 
             default:
-                assert_param(0);
+                trap("Bad xfer state");
                 timeout_ms = DISCONNECT_DELAY_MS;
                 break;
         }
@@ -648,7 +647,7 @@ static bool ready_for_state_change(void)
     }
 
     if (INVALID_TIMEOUT_MS == timeout_ms) {
-        assert_param(0);
+        trap("invalid timeout");
         timeout_ms = 0;
     }
 
@@ -674,7 +673,7 @@ static void transfer_update_file_info(vfs_file_t file, uint32_t start_sector, ui
     vfs_printf("\033[33m@transfer_update_file_info\033[0m (file=%p, start_sector=%i, size=%i)\r\n", file, start_sector, size);
 
     if (TRASNFER_FINISHED == file_transfer_state.transfer_state) {
-        assert_param(0);
+        trap("xfer already finished");
         return;
     }
 
@@ -718,7 +717,7 @@ static void transfer_update_file_info(vfs_file_t file, uint32_t start_sector, ui
         vfs_printf("    error: starting sector changed from %i to %i\r\n", file_transfer_state.start_sector, start_sector);
         // this is probably a new file
 
-        trap("Changed start offset");//XXX
+        trap("Changed start offset");//FIXME this sometimes happens, need to find how to reproduce
         switch_to_new_file(stream, start_sector, true);
     }
 
@@ -813,7 +812,7 @@ static void transfer_stream_data(uint32_t sector, const uint8_t *data, uint32_t 
                file_transfer_state.size_processed, data[0], data[1], data[2], data[3]);
 
     if (file_transfer_state.stream_finished) {
-        assert_param(0);
+        trap("Stream already closed");
         return;
     }
 
@@ -854,7 +853,7 @@ static void transfer_update_state(error_t status)
                  (status != E_SUCCESS_DONE_OR_CONTINUE));
 
     if (TRASNFER_FINISHED == file_transfer_state.transfer_state) {
-        assert_param(0);
+        trap("Xfer already closed");
         return;
     }
 
