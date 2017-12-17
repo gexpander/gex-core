@@ -86,32 +86,33 @@ void MX_USB_DEVICE_Init(void)
 }
 
 /* USER CODE BEGIN USB_IRQ */
+
+/**
+ * Common USB handler
+ */
+static void __attribute__((used)) BASE_USB_IRQHandler(void)
+{
+    HAL_PCD_IRQHandler(&hpcd_USB_FS);
+}
+
+
+// Function from F103
 /**
 * @brief This function handles USB low priority or CAN RX0 interrupts.
 */
-
-// Function from F103
-void USB_LP_CAN1_RX0_IRQHandler(void) __attribute__((alias("USB_IRQHandler")));
+void USB_LP_CAN1_RX0_IRQHandler(void) __attribute__((alias("BASE_USB_IRQHandler")));
 
 // Function for F303
-void USB_LP_CAN_RX0_IRQHandler(void) __attribute__((alias("USB_IRQHandler")));
+/**
+* @brief This function handles USB low priority or CAN_RX0 interrupts.
+*/
+void USB_LP_CAN_RX0_IRQHandler(void) __attribute__((alias("BASE_USB_IRQHandler")));
 
+// Function for F072
 /**
 * @brief This function handles USB global interrupt / USB wake-up interrupt through EXTI line 18.
 */
-
-// Function from F072
-void USB_IRQHandler(void)
-{
-    /* USER CODE BEGIN USB_IRQn 0 */
-
-    /* USER CODE END USB_IRQn 0 */
-    HAL_PCD_IRQHandler(&hpcd_USB_FS);
-    /* USER CODE BEGIN USB_IRQn 1 */
-
-    /* USER CODE END USB_IRQn 1 */
-}
-
+void USB_IRQHandler(void) __attribute__((alias("BASE_USB_IRQHandler")));
 
 /**
   * @}
