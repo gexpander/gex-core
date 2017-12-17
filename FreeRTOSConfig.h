@@ -126,7 +126,8 @@ to exclude the API function. */
 
 ///* Cortex-M specific definitions. */
 
-#if defined(GEX_PLAT_F103_BLUEPILL) || defined(GEX_PLAT_F303_DISCOVERY)
+#if defined(GEX_PLAT_F103_BLUEPILL) || defined(GEX_PLAT_F303_DISCOVERY) \
+    || defined(GEX_PLAT_F407_DISCOVERY)
     // This is for F103+
 
     /* The lowest interrupt priority that can be used in a call to a "set priority"

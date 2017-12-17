@@ -18,7 +18,7 @@ void GEX_MsTick(void)
     TF_Tick(comm);
     StatusLed_Tick();
 }
-extern void HardFault_Handler(void);
+
 /**
  * Early init, even before RTOS starts
  */
