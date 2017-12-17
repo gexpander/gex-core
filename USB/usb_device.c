@@ -95,8 +95,7 @@ static void __attribute__((used)) BASE_USB_IRQHandler(void)
     HAL_PCD_IRQHandler(&hpcd_USB_FS);
 }
 
-
-// Function from F103
+// Function for F103
 /**
 * @brief This function handles USB low priority or CAN RX0 interrupts.
 */
@@ -113,6 +112,12 @@ void USB_LP_CAN_RX0_IRQHandler(void) __attribute__((alias("BASE_USB_IRQHandler")
 * @brief This function handles USB global interrupt / USB wake-up interrupt through EXTI line 18.
 */
 void USB_IRQHandler(void) __attribute__((alias("BASE_USB_IRQHandler")));
+
+// Function for F407
+/**
+* @brief This function handles USB On The Go FS global interrupt.
+*/
+void OTG_FS_IRQHandler(void) __attribute__((alias("BASE_USB_IRQHandler")));
 
 /**
   * @}

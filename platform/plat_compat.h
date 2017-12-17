@@ -150,6 +150,9 @@
 // platform name for the version string
     #define GEX_PLATFORM "STM32F407-Discovery"
 
+    #define PLAT_USB_PHYCLOCK 1
+    #define PLAT_USB_OTGFS 1
+
     #include <stm32f4xx.h>
     #include <stm32f4xx_hal.h>
     #include <stm32f4xx_ll_adc.h>
@@ -175,9 +178,11 @@
     #include <stm32f4xx_ll_utils.h>
 
     // size, determines position of the flash storage
-    #define FLASH_SIZE (1024*1024)
-    #define SETTINGS_BLOCK_SIZE (1024*2) // this must be a multiple of FLASH pages
-    #define SETTINGS_FLASH_ADDR (0x08000000 + FLASH_SIZE - SETTINGS_BLOCK_SIZE)
+
+    // we use the first 128kB sector. Unfortunately the whole sector must be erased before writing.
+    #define SETTINGS_FLASH_SECTOR 6
+    #define SETTINGS_BLOCK_SIZE (1024*2)
+    #define SETTINGS_FLASH_ADDR (0x08000000 + (16*4+64)*1024)
 
     // Number of GPIO ports A,B,C...
     #define PORTS_COUNT 6

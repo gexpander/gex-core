@@ -145,9 +145,18 @@ void settings_save(void)
         erase.Banks = FLASH_BANK_1; // TODO ?????
 #endif
 
+#if defined(GEX_PLAT_F407_DISCOVERY)
+        // specialty for F4 with too much flash
+        erase.NbSectors = 1;
+        erase.Sector = SETTINGS_FLASH_SECTOR;
+        erase.TypeErase = FLASH_TYPEERASE_SECTORS;
+        erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+        erase.Banks = FLASH_BANK_1; // unused for sector erase
+#else
         erase.NbPages = SETTINGS_BLOCK_SIZE/FLASH_PAGE_SIZE;
         erase.PageAddress = SETTINGS_FLASH_ADDR;
         erase.TypeErase = FLASH_TYPEERASE_PAGES;
+#endif
         uint32_t pgerror = 0;
         hst = HAL_FLASHEx_Erase(&erase, &pgerror);
         assert_param(pgerror == 0xFFFFFFFFU);

@@ -31,8 +31,12 @@
     X(ADC1) X(ADC2) X(ADC3) X(ADC4) \
     X(OPAMP1) X(OPAMP2) X(OPAMP3) X(OPAMP4) \
     X(DAC1) X(DAC2) \
-    X(CAN) \
+    X(CAN1) X(CAN2) \
     X(TSC) \
+    X(DCMI) \
+    X(ETH) \
+    X(FSMC) \
+    X(SDIO) \
     X(COMP1) X(COMP2) X(COMP3) X(COMP4) X(COMP5) X(COMP6) X(COMP7) \
     X(HDMI_CEC) \
     X(USART1) X(USART2) X(USART3) X(USART4) X(USART5) X(USART6) \
