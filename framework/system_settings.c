@@ -9,11 +9,19 @@
 
 struct system_settings SystemSettings;
 
-void systemsettings_init(void)
+/** Load defaults only */
+void systemsettings_loadDefaults(void)
 {
     SystemSettings.visible_vcom = true;
-    SystemSettings.modified = false;
+}
 
+/** Load defaults and init flags */
+void systemsettings_init(void)
+{
+    systemsettings_loadDefaults();
+
+    // Flags
+    SystemSettings.modified = false;
     LockJumper_ReadHardware();
 }
 
@@ -40,7 +48,7 @@ bool systemsettings_load(PayloadParser *pp)
 void systemsettings_write_ini(IniWriter *iw)
 {
     iw_section(iw, "SYSTEM");
-    iw_comment(iw, "Expose the comm. channel as a virtual comport (Y, N)");
+    iw_comment(iw, "Data link accessible as virtual comport (Y, N)");
     iw_entry(iw, "expose_vcom", str_yn(SystemSettings.visible_vcom));
 }
 

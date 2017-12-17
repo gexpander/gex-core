@@ -52,10 +52,13 @@ static void jumper_changed(void)
         dbg("LOCK jumper removed, enabling MSC!");
     } else {
         // Lock
-        dbg("LOCK jumper replaced, saving to Flash & disabling MSC!");
+        dbg("LOCK jumper replaced, disabling MSC!");
 
         if (SystemSettings.modified) {
+            dbg("Saving settings to Flash...");
             settings_save();
+        } else {
+            dbg("No changes to save.");
         }
     }
 

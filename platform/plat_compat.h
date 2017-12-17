@@ -180,7 +180,7 @@
     // size, determines position of the flash storage
 
     // we use the first 128kB sector. Unfortunately the whole sector must be erased before writing.
-    #define SETTINGS_FLASH_SECTOR 6
+    #define SETTINGS_FLASH_SECTOR FLASH_SECTOR_5
     #define SETTINGS_BLOCK_SIZE (1024*2)
     #define SETTINGS_FLASH_ADDR (0x08000000 + (16*4+64)*1024)
 
