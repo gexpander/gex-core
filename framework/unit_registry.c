@@ -131,8 +131,6 @@ Unit *ureg_instantiate(const char *driver_name)
 {
     bool suc = true;
 
-    dbg("Creating unit of type %s", driver_name);
-
     // Find type in the repository
     UregEntry *re = ureg_head;
     while (re != NULL) {
@@ -157,7 +155,7 @@ Unit *ureg_instantiate(const char *driver_name)
                 // in which case the data structure is not populated and keeping the
                 // broken unit doesn't serve any purpose. Just ditch it...
 
-                dbg("!! Unit failed to pre-init!");
+                dbg("!! Unit type %s failed to pre-init!", driver_name);
                 clean_failed_unit(pUnit);
                 free(le);
                 return NULL;
@@ -176,7 +174,7 @@ Unit *ureg_instantiate(const char *driver_name)
 // remove before init()
 void ureg_clean_failed(Unit *unit)
 {
-    dbg("Cleaning failed unit from registry");
+    dbg("Removing failed unit from registry...");
 
     UlistEntry *le;
     UlistEntry *parent;
@@ -193,7 +191,7 @@ void ureg_clean_failed(Unit *unit)
 // remove after successful init()
 void ureg_remove_unit(Unit *unit)
 {
-    dbg("Cleaning & removing unit from registry");
+    dbg("Cleaning & removing unit from registry...");
 
     UlistEntry *le;
     UlistEntry *parent;
@@ -239,6 +237,7 @@ bool ureg_load_units(PayloadParser *pp)
 
     if (pp_char(pp) != 'U') return false;
     uint16_t unit_count = pp_u16(pp);
+    dbg("Units to load: %d", (int)unit_count);
 
     for (uint32_t j = 0; j < unit_count; j++) {
         // We're now unpacking a single unit
@@ -256,7 +255,7 @@ bool ureg_load_units(PayloadParser *pp)
         pUnit->name = strdup(typebuf);
         assert_param(pUnit->name);
 
-        // CALLSIGN
+        // callsign
         pUnit->callsign = pp_u8(pp);
         assert_param(pUnit->callsign != 0);
 
@@ -264,16 +263,12 @@ bool ureg_load_units(PayloadParser *pp)
         pUnit->driver->cfgLoadBinary(pUnit, pp);
         assert_param(pp->ok);
 
+        dbg("Adding unit \"%s\" of type %s", pUnit->name, pUnit->driver->name);
+
         suc = pUnit->driver->init(pUnit); // finalize the load and init the unit
         if (pUnit->status == E_LOADING) {
             pUnit->status = suc ? E_SUCCESS : E_BAD_CONFIG;
         }
-
-        // XXX we want to keep the failed unit to preserve settings and for error reporting
-//        if (!suc) {
-//            // Discard, remove from registry
-//            ureg_clean_failed(unit);
-//        }
     }
 
     return pp->ok;
@@ -284,6 +279,9 @@ void ureg_remove_all_units(void)
 {
     UlistEntry *le = ulist_head;
     UlistEntry *next;
+
+    dbg("Removing all units");
+
     while (le != NULL) {
         next = le->next;
 
@@ -349,7 +347,7 @@ bool ureg_read_unit_ini(const char *restrict name,
         if (streq(li->unit.name, name)) {
             Unit *const pUnit = &li->unit;
 
-            if (streq(key, "CALLSIGN")) {
+            if (streq(key, "callsign")) {
                 // handled separately from unit data
                 pUnit->callsign = (uint8_t) avr_atoi(value);
                 return true;
@@ -403,10 +401,13 @@ static void export_unit_do(UlistEntry *li, IniWriter *iw)
     Unit *const pUnit = &li->unit;
 
     iw_section(iw, "%s:%s", pUnit->driver->name, pUnit->name);
-    iw_comment(iw, ">> Status: %s", error_get_string(pUnit->status));
+    if (pUnit->status != E_SUCCESS) {
+        iw_comment(iw, "!!! %s", error_get_string(pUnit->status));
+    }
     iw_newline(iw);
-    iw_comment(iw, "Address for control messages (1-255)");
-    iw_entry(iw, "CALLSIGN", "%d", pUnit->callsign);
+
+    iw_comment(iw, "Unit address 1-255");
+    iw_entry(iw, "callsign", "%d", pUnit->callsign);
 
     pUnit->driver->cfgWriteIni(pUnit, iw);
     iw_newline(iw);
@@ -436,10 +437,8 @@ void ureg_export_combined(IniWriter *iw)
 
     // Unit list
     iw_section(iw, "UNITS");
-    iw_comment(iw, "Here is a list of all unit types supported by the current firmware.");
-    iw_comment(iw, "To manage units, simply add/remove their comma-separated names next to");
-    iw_comment(iw, "the desired unit type. Reload the file and the corresponding unit");
-    iw_comment(iw, "sections should appear below, ready to configure.");
+    iw_comment(iw, "Create units by adding their names next to a type (e.g. PIN=A,B),");
+    iw_comment(iw, "remove the same way. Reload to update the unit sections below.");
 
     // This could certainly be done in some more efficient way ...
     re = ureg_head;

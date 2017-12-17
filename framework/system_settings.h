@@ -21,9 +21,14 @@ struct system_settings {
 extern struct system_settings SystemSettings;
 
 /**
- * Load defaults
+ * Init the store
  */
 void systemsettings_init(void);
+
+/**
+ * Load defaults
+ */
+void systemsettings_loadDefaults(void);
 
 /**
  * Write system settings to the pack context

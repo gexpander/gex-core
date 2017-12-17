@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/26.
 //
 
+#include "utils/hexdump.h"
 #include "platform.h"
 #include "settings.h"
 #include "unit_registry.h"
@@ -15,6 +16,11 @@
 void settings_load(void)
 {
     uint8_t *buffer = (uint8_t *) SETTINGS_FLASH_ADDR;
+
+#if DEBUG_FLASH_WRITE
+    dbg("reading @ %p", (void*)SETTINGS_FLASH_ADDR);
+    hexDump("Flash", buffer, 64);
+#endif
 
     PayloadParser pp = pp_start(buffer, SETTINGS_BLOCK_SIZE, NULL);
 
@@ -46,7 +52,7 @@ static uint8_t save_buffer[SAVE_BUF_SIZE];
 static uint32_t save_addr;
 
 #if DEBUG_FLASH_WRITE
-#define fls_printf(fmt, ...) dbg(fmt, ##__VA_ARGS__)
+#define fls_printf(fmt, ...) PRINTF(fmt, ##__VA_ARGS__)
 #else
 #define fls_printf(fmt, ...) do {} while (0)
 #endif
@@ -180,6 +186,11 @@ void settings_save(void)
     hst = HAL_FLASH_Lock();
     assert_param(hst == HAL_OK);
     fls_printf("--- Flash done ---\r\n");
+
+#if DEBUG_FLASH_WRITE
+    dbg("written @ %p", (void*)SETTINGS_FLASH_ADDR);
+    hexDump("Flash", (void*)SETTINGS_FLASH_ADDR, 64);
+#endif
 }
 
 /**
@@ -189,8 +200,8 @@ void settings_write_ini(IniWriter *iw)
 {
     // File header
     iw_comment(iw, "CONFIG.INI");
-    iw_comment(iw, "Changes are applied on file save and can be immediately tested and verified.");
-    iw_comment(iw, "To persist to flash, replace the LOCK jumper before disconnecting from USB."); // TODO the jumper...
+    iw_comment(iw, "Overwrite this file to change settings.");
+    iw_comment(iw, "Close the LOCK jumper to save them to Flash.");
 
     systemsettings_write_ini(iw);
     iw_newline(iw);
@@ -204,7 +215,7 @@ void settings_read_ini_begin(void)
     SystemSettings.modified = true;
 
     // load defaults
-    systemsettings_init();
+    systemsettings_loadDefaults();
     ureg_remove_all_units();
 }
 
