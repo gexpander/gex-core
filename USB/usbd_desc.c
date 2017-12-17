@@ -247,7 +247,7 @@ uint8_t *  USBD_FS_ManufacturerStrDescriptor( USBD_SpeedTypeDef speed , uint16_t
 uint8_t *  USBD_FS_SerialStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
   char buff[25];
-  fixup_sprintf(buff, "%08"PRIX32"%08"PRIX32"%08"PRIX32,
+  fixup_sprintf(buff, "%08"PRIX32"-%08"PRIX32"-%08"PRIX32,
           LL_GetUID_Word0(),
           LL_GetUID_Word1(),
           LL_GetUID_Word2()

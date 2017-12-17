@@ -48,6 +48,12 @@ void DebugUart_PreInit(void)
                          LL_USART_OVERSAMPLING_16,
                          115200);
     LL_GPIO_SetAFPin_0_7(GPIOA, LL_GPIO_PIN_2, LL_GPIO_AF_7); // uart2 is AF7 here
+#elif GEX_PLAT_F407_DISCOVERY
+    LL_USART_SetBaudRate(USART2,
+                         SystemCoreClock/4, // if core is at 168 MHz, this is 48 MHz
+                         LL_USART_OVERSAMPLING_16,
+                         115200);
+    LL_GPIO_SetAFPin_0_7(GPIOA, LL_GPIO_PIN_2, LL_GPIO_AF_7); // uart2 is AF7 here (same like 303)
 #else
     #error "BAD PLATFORM!"
 #endif
@@ -74,6 +80,8 @@ ssize_t _write_r(struct _reent *rptr, int fd, const void *buf, size_t len)
 
 // No-uart variant
 void DebugUart_Init(void) {}
-ssize_t _write_r(struct _reent *rptr, int fd, const void *buf, size_t len) {}
+ssize_t _write_r(struct _reent *rptr, int fd, const void *buf, size_t len) {
+    return len;
+}
 
 #endif //USE_DEBUG_UART

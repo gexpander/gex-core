@@ -75,7 +75,7 @@ void plat_init_resources(void)
     // Platform F073RBT - free all present resources
     {
         rsc_free(NULL, R_ADC1);
-        rsc_free(NULL, R_CAN);
+        rsc_free(NULL, R_CAN1);
         rsc_free_range(NULL, R_COMP1, R_COMP2);
         rsc_free(NULL, R_DAC1);
         rsc_free(NULL, R_HDMI_CEC);
@@ -121,7 +121,7 @@ void plat_init_resources(void)
     // Platform F303VCT - free all present resources
     {
         rsc_free_range(NULL, R_ADC1, R_ADC4);
-        rsc_free(NULL, R_CAN);
+        rsc_free(NULL, R_CAN1);
         rsc_free_range(NULL, R_COMP1, R_COMP7);
         rsc_free(NULL, R_HDMI_CEC);
         rsc_free(NULL, R_DAC1);
@@ -166,6 +166,55 @@ void plat_init_resources(void)
 
         assert_param(ok);
     }
+#elif defined(GEX_PLAT_F407_DISCOVERY)
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+
+    // Platform F407VGT - free all present resources
+    {
+        rsc_free_range(NULL, R_ADC1, R_ADC3);
+        rsc_free_range(NULL, R_CAN1, R_CAN2);
+        rsc_free_range(NULL, R_COMP1, R_COMP7);
+        rsc_free(NULL, R_DAC1);
+        rsc_free(NULL, R_DCMI);
+        rsc_free(NULL, R_ETH);
+        rsc_free(NULL, R_FSMC);
+        rsc_free_range(NULL, R_I2C1, R_I2C3);
+        rsc_free_range(NULL, R_I2S2, R_I2S3);
+        rsc_free(NULL, R_SDIO);
+        rsc_free_range(NULL, R_SPI1, R_SPI3);
+        rsc_free_range(NULL, R_TIM1, R_TIM14);
+        rsc_free_range(NULL, R_USART1, R_USART3);
+        rsc_free(NULL, R_USART6);
+
+        rsc_free_range(NULL, R_PA0, R_PA15);
+        rsc_free_range(NULL, R_PB0, R_PB15);
+        rsc_free_range(NULL, R_PC0, R_PC15);
+        rsc_free_range(NULL, R_PD0, R_PD15);
+        rsc_free_range(NULL, R_PE0, R_PE15);
+        // also has 2 PH pins
+
+        // F407 appears to have fewer GPIOs than F303?
+    }
+
+    // Claim resources not available due to board layout or internal usage
+    {
+        bool ok = true;
+
+        // HAL timebase
+        ok &= rsc_claim(&UNIT_SYSTEM, R_TIM1);
+        // HSE crystal
+        // H0 and H1
+        // SWD
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA13);
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA14);
+        // USB
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA11);
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PA12);
+        // BOOT pin(s)
+        ok &= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
+
+        assert_param(ok);
+    }
 #else
     #error "BAD PLATFORM!"
 #endif
@@ -179,10 +228,10 @@ void plat_init_resources(void)
  */
 void plat_usb_reconnect(void)
 {
-#ifdef GEX_PLAT_F103_BLUEPILL
+    // TODO add better reset methods available on different chips
+
     // F103 doesn't have pull-up control, this is probably the best we can do
     // This does not seem to trigger descriptors reload.
     USBD_LL_Reset(&hUsbDeviceFS);
-#endif
 }
 
