@@ -105,7 +105,7 @@ const char *longtext = "The history of all hitherto existing societies is the hi
 
 static void job_bulkread_chunk(Job *job)
 {
-    dbg("Tx a chunk");
+    dbg("Tx a chunk of size %d", (int)job->len);
     tf_respond_buf(MSG_BULK_DATA, job->frame_id, job->buf, job->len);
 }
 
@@ -121,7 +121,7 @@ static void job_bulkread_offer(Job *job)
     PayloadBuilder pb = pb_start(buf, 10, NULL);
     pb_u32(&pb, job->d32);
 
-    dbg("Offer bulk xfer of %d bytes", job->d32);
+    dbg("Offer bulk xfer of %d bytes", (int)job->d32);
 
     tf_respond_buf(MSG_BULK_READ_OFFER, job->frame_id, buf, (uint32_t) pb_length(&pb));
 }
@@ -137,7 +137,7 @@ static TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
         uint32_t pos = (uint32_t) msg->userdata2;
         uint32_t total = (uint32_t) strlen(longtext); // normally we'd not calculate it here
 
-        dbg("BR poll, at %d", pos);
+        dbg("BR poll, at %d", (int)pos);
 
         // Say we're done and close if it's over
         if (pos >= total) {
@@ -171,7 +171,7 @@ static TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
         return TF_CLOSE;
     }
 
-    return TF_STAY;
+    return TF_RENEW;
 }
 
 /** Handle a request message */
@@ -196,7 +196,7 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
                 .buf = cpy,
                 .len = len,
             };
-            dbg("Rx len %d, %.*s\r\n", len, len, cpy);
+            dbg("Rx len %d, %.*s\r\n", (int)len, (int)len, cpy);
             scheduleJob(&job, TSK_SCHED_HIGH);
             break;
 
@@ -207,7 +207,7 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
                 .userdata2 = 0 // and current position here.
             };
             // in a real scenario, we'd put a malloc'd struct here.
-            TF_AddIdListener(comm, &msg, bulkread_lst, 200);
+            TF_AddIdListener(comm, &msg, bulkread_lst, 500);
 
             Job job2 = {
                 .cb = job_bulkread_offer,
