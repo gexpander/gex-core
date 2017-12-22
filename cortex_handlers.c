@@ -4,6 +4,7 @@
 #include <TinyFrame.h>
 #include "platform/debug_uart.h"
 #include "platform/status_led.h"
+#include "utils/stacksmon.h"
 
 /* External variables --------------------------------------------------------*/
 
@@ -29,6 +30,8 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
     called if a stack overflow is detected. */
     PRINTF(tFAULT" RTOS stack overflow! tsk: %s\r\n", (char *) pcTaskName);
     StatusLed_On(STATUS_FAULT);
+
+    stackmon_dump();
     while (1);
 }
 

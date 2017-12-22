@@ -48,6 +48,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "platform.h"
+#include "tasks/task_msg.h"
 #include "usbd_cdc_if.h"
 /* USER CODE BEGIN INCLUDE */
 #include "task_main.h"
@@ -265,6 +266,7 @@ static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
   */
 static int8_t CDC_Receive_FS (uint8_t* Buf, uint32_t *Len)
 {
+  static struct rx_que_item rxitem;
   /* USER CODE BEGIN 6 */
 // this does nothing?!
 // the buffer was already assigned in the init function and we got it as argument here?!
@@ -272,7 +274,11 @@ static int8_t CDC_Receive_FS (uint8_t* Buf, uint32_t *Len)
 
   assert_param(*Len <= APP_RX_DATA_SIZE);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
-  TF_Accept(comm, Buf, *Len);
+
+  // Post the data chunk on the RX queue to be handled asynchronously.
+  rxitem.len = *Len;
+  memcpy(rxitem.data, Buf, rxitem.len);
+  assert_param(pdPASS == xQueueSend(queRxDataHandle, &rxitem, 100));
 
   return (USBD_OK);
   /* USER CODE END 6 */

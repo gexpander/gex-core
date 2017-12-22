@@ -196,7 +196,11 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
                 .buf = cpy,
                 .len = len,
             };
-            dbg("Rx len %d, %.*s\r\n", (int)len, (int)len, cpy);
+
+            PRINTF("Rx len %d: ", (int)len);
+            PUTSN((char *) cpy, len);
+            PUTS("\r\n");
+
             scheduleJob(&job, TSK_SCHED_HIGH);
             break;
 
