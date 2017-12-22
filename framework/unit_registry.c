@@ -543,24 +543,24 @@ void ureg_deliver_unit_request(TF_Msg *msg)
 void ureg_report_active_units(TF_ID frame_id)
 {
     // count bytes needed
-    uint32_t needed = 1; //
+    uint32_t msglen = 1; // for the count byte
 
     UlistEntry *li = ulist_head;
     uint32_t count = 0;
     while (li != NULL) {
         count++;
-        needed += strlen(li->unit.name)+1;
+        msglen += strlen(li->unit.name)+1;
         li = li->next;
     }
-    needed += count;
+    msglen += count;
 
     bool suc = true;
-    uint8_t *buff = malloc_ck(needed, &suc);
+    uint8_t *buff = malloc_ck(msglen, &suc);
     if (!suc) { tf_respond_str(MSG_ERROR, frame_id, "OUT OF MEMORY"); return; }
 
     {
-        PayloadBuilder pb = pb_start(buff, needed, NULL);
-        pb_u8(&pb, (uint8_t) count); // assume we don't have more than 255
+        PayloadBuilder pb = pb_start(buff, msglen, NULL);
+        pb_u8(&pb, (uint8_t) count); // assume we don't have more than 255 units
 
         li = ulist_head;
         while (li != NULL) {
@@ -571,7 +571,7 @@ void ureg_report_active_units(TF_ID frame_id)
 
         assert_param(pb.ok);
 
-        tf_respond_buf(MSG_SUCCESS, frame_id, buff, needed);
+        tf_respond_buf(MSG_SUCCESS, frame_id, buff, msglen);
     }
 
     free(buff);
