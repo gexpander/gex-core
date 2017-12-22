@@ -79,6 +79,7 @@ ssize_t _write_r(struct _reent *rptr, int fd, const void *buf, size_t len)
 #else
 
 // No-uart variant
+void DebugUart_PreInit(void) {}
 void DebugUart_Init(void) {}
 ssize_t _write_r(struct _reent *rptr, int fd, const void *buf, size_t len) {
     return len;

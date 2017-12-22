@@ -62,10 +62,14 @@ GEX_CFLAGS = \
     -fmerge-constants -fmerge-all-constants \
     -fno-exceptions -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -finline-small-functions -findirect-inlining \
 
-GEX_CDEFS = \
+GEX_CDEFS_BASE =  \
     -D__weak="__attribute__((weak))" \
     -D__packed="__attribute__((__packed__))" \
     -DUSE_FULL_LL_DRIVER \
+
+# TODO implement debug build choice
+ifeq '1' '1'
+GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DUSE_FULL_ASSERT=1 \
     -DVERBOSE_ASSERT=1 \
     -DDEBUG_VFS=0 \
@@ -73,3 +77,13 @@ GEX_CDEFS = \
     -DVERBOSE_HARDFAULT=1 \
     -DUSE_STACK_MONITOR=1 \
     -DUSE_DEBUG_UART=1
+else
+GEX_CDEFS = $(GEX_CDEFS_BASE) \
+    -DUSE_FULL_ASSERT=0 \
+    -DVERBOSE_ASSERT=0 \
+    -DDEBUG_VFS=0 \
+    -DDEBUG_FLASH_WRITE=0 \
+    -DVERBOSE_HARDFAULT=0 \
+    -DUSE_STACK_MONITOR=0 \
+    -DUSE_DEBUG_UART=0
+endif
