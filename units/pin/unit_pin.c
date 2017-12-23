@@ -194,23 +194,23 @@ static bool Pin_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
 
         case CMD_READ:
             if (!priv->output) {
-                sched_respond_u8(frame_id, (bool) LL_GPIO_IsInputPinSet(priv->port, priv->ll_pin));
+                tf_respond_u8(frame_id, (bool) LL_GPIO_IsInputPinSet(priv->port, priv->ll_pin));
             } else goto must_be_input;
             break;
 
         default:
-            sched_respond_bad_cmd(frame_id);
+            tf_respond_bad_cmd(frame_id);
             return false;
     }
 
     return true;
 
 must_be_output:
-    sched_respond_err(frame_id, "NOT OUTPUT PIN");
+    tf_respond_err(frame_id, "NOT OUTPUT PIN");
     return false;
 
 must_be_input:
-    sched_respond_err(frame_id, "NOT INPUT PIN");
+    tf_respond_err(frame_id, "NOT INPUT PIN");
     return false;
 }
 

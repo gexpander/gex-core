@@ -138,7 +138,7 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
             break;
 
         default:
-            sched_respond_bad_cmd(frame_id);
+            tf_respond_bad_cmd(frame_id);
             return false;
     }
 

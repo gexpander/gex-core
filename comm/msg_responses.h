@@ -38,10 +38,7 @@ void tf_respond_buf(TF_TYPE type, TF_ID frame_id, const uint8_t *buf, uint32_t l
  *
  * @param frame_id  - ID of the original msg
  */
-static inline void tf_respond_ok(TF_ID frame_id)
-{
-    tf_respond_buf(MSG_SUCCESS, frame_id, NULL, 0);
-}
+void tf_respond_ok(TF_ID frame_id);
 
 /**
  * Same like tf_respond_buf(), but used for sending spontaneous reports.
@@ -62,10 +59,7 @@ void tf_send_buf(TF_TYPE type, const uint8_t *buf, uint32_t len);
  * @param frame_id - ID of the original msg
  * @param str - character buffer, zero terminated
  */
-static inline void tf_respond_str(TF_TYPE type, TF_ID frame_id, const char *str)
-{
-    tf_respond_buf(type, frame_id, (const uint8_t *) str, (uint32_t) strlen(str));
-}
+void tf_respond_str(TF_TYPE type, TF_ID frame_id, const char *str);
 
 /**
  * Schedule sending an ASCII string error response.
@@ -74,29 +68,21 @@ static inline void tf_respond_str(TF_TYPE type, TF_ID frame_id, const char *str)
  * @param frame_id - ID of the original msg
  * @param str - character buffer, zero terminated
  */
-void sched_respond_err(TF_ID frame_id, const char *str);
+void tf_respond_err(TF_ID frame_id, const char *str);
 
 /**
  * Variant of sched_respond_err() for reporting bad received command code
  *
  * @param msg_id - ID of the original msg
  */
-void sched_respond_bad_cmd(TF_ID frame_id);
+void tf_respond_bad_cmd(TF_ID frame_id);
 
 /**
  * Variant of sched_respond_err() for reporting malformed commands (e.g. too short payload)
  *
  * @param msg_id - ID of the original msg
  */
-void sched_respond_malformed_cmd(TF_ID frame_id);
-
-/**
- * Schedule sending an empty response with MSG_SUCCESS type.
- * Schedules a low priority job.
- *
- * @param frame_id - ID of the original msg
- */
-void sched_respond_suc(TF_ID frame_id);
+void tf_respond_malformed_cmd(TF_ID frame_id);
 
 /**
  * Schedule sending a one-byte response with MSG_SUCCESS type.
@@ -105,7 +91,7 @@ void sched_respond_suc(TF_ID frame_id);
  * @param frame_id - ID of the original msg
  * @param d - data
  */
-void sched_respond_u8(TF_ID frame_id, uint8_t d);
+void tf_respond_u8(TF_ID frame_id, uint8_t d);
 
 /**
  * Schedule sending a two-byte response with MSG_SUCCESS type.
@@ -114,7 +100,7 @@ void sched_respond_u8(TF_ID frame_id, uint8_t d);
  * @param frame_id - ID of the original msg
  * @param d - data
  */
-void sched_respond_u16(TF_ID frame_id, uint16_t d);
+void tf_respond_u16(TF_ID frame_id, uint16_t d);
 
 /**
  * Schedule sending a 4-byte response with MSG_SUCCESS type.
@@ -123,6 +109,6 @@ void sched_respond_u16(TF_ID frame_id, uint16_t d);
  * @param frame_id - ID of the original msg
  * @param d - data
  */
-void sched_respond_u32(TF_ID frame_id, uint32_t d);
+void tf_respond_u32(TF_ID frame_id, uint32_t d);
 
 #endif //GEX_F072_MSG_RESPONSES_H

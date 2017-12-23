@@ -32,39 +32,19 @@ void comm_init(void)
 
 // ---------------------------------------------------------------------------
 
-static void job_ping_reply(Job *job)
-{
-    tf_respond_snprintf(MSG_SUCCESS, job->frame_id, "%s/%s", GEX_VERSION, GEX_PLATFORM);
-}
-
 static TF_Result lst_ping(TinyFrame *tf, TF_Msg *msg)
 {
-    Job job = {
-        .cb = job_ping_reply,
-        .frame_id = msg->frame_id
-    };
-    scheduleJob(&job, TSK_SCHED_LOW);
-
+    tf_respond_snprintf(MSG_SUCCESS, msg->frame_id, "%s/%s", GEX_VERSION, GEX_PLATFORM);
     return TF_STAY;
 }
 
 // ----------------------------------------------------------------------------
 
-static void job_unhandled_resp(Job *job)
-{
-    tf_respond_snprintf(MSG_ERROR, job->frame_id, "UNKNOWN MSG %"PRIu32, job->d32);
-}
-
 static TF_Result lst_default(TinyFrame *tf, TF_Msg *msg)
 {
     dbg("!! Unhandled msg type %02"PRIx8", frame_id 0x%04"PRIx16, msg->type, msg->frame_id);
-    Job job = {
-        .cb = job_unhandled_resp,
-        .frame_id = msg->frame_id,
-        .d32 = msg->type
-    };
-    scheduleJob(&job, TSK_SCHED_LOW);
 
+    tf_respond_snprintf(MSG_ERROR, msg->frame_id, "UNKNOWN MSG %"PRIu8, msg->type);
     return TF_STAY;
 }
 
@@ -78,18 +58,8 @@ static TF_Result lst_unit(TinyFrame *tf, TF_Msg *msg)
 
 // ----------------------------------------------------------------------------
 
-static void job_list_units(Job *job)
-{
-    ureg_report_active_units(job->frame_id);
-}
-
 static TF_Result lst_list_units(TinyFrame *tf, TF_Msg *msg)
 {
-    Job job = {
-        .cb = job_list_units,
-        .frame_id = msg->frame_id,
-    };
-    scheduleJob(&job, TSK_SCHED_LOW);
-
+    ureg_report_active_units(msg->frame_id);
     return TF_STAY;
 }

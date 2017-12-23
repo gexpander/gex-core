@@ -495,11 +495,6 @@ uint32_t ureg_get_num_units(void)
     return count;
 }
 
-static void job_nosuch_unit(Job *job)
-{
-    tf_respond_snprintf(MSG_ERROR, job->frame_id, "NO UNIT @ %"PRIu32, job->d32);
-}
-
 /** Deliver message to it's destination unit */
 void ureg_deliver_unit_request(TF_Msg *msg)
 {
@@ -514,7 +509,7 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     if (!pp.ok) { dbg("!! pp not OK!"); }
 
     if (callsign == 0 || !pp.ok) {
-        sched_respond_malformed_cmd(msg->frame_id);
+        tf_respond_malformed_cmd(msg->frame_id);
         return;
     }
 
@@ -524,7 +519,7 @@ void ureg_deliver_unit_request(TF_Msg *msg)
         if (pUnit->callsign == callsign) {
             bool ok = pUnit->driver->handleRequest(pUnit, msg->frame_id, command, &pp);
             if (ok && confirmed) {
-                sched_respond_suc(msg->frame_id);
+                tf_respond_ok(msg->frame_id);
             }
             return;
         }
@@ -532,12 +527,7 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     }
 
     // Not found
-    Job job = {
-        .cb = job_nosuch_unit,
-        .frame_id = msg->frame_id,
-        .d32 = callsign
-    };
-    scheduleJob(&job, TSK_SCHED_LOW);
+    tf_respond_snprintf(MSG_ERROR, msg->frame_id, "NO UNIT @ %"PRIu8, callsign);
 }
 
 
