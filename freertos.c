@@ -60,8 +60,7 @@
 
 #define STACK_MAIN 160
 #define STACK_MSG 230
-#define STACK_LP 180
-#define STACK_HP 150
+#define STACK_JOBRUNNER 150
 
 osThreadId tskMainHandle;
 uint32_t mainTaskBuffer[ STACK_MAIN ];
@@ -71,19 +70,11 @@ osThreadId tskMsgHandle;
 uint32_t msgTaskBuffer[ STACK_MSG ];
 osStaticThreadDef_t msgTaskControlBlock;
 
-osThreadId tskSchedLPHandle;
-uint32_t schedLowBuffer[ STACK_LP ];
-osStaticThreadDef_t schedLowControlBlock;
+osThreadId tskJobRunnerHandle;
+uint32_t jobRunnerBuffer[ STACK_JOBRUNNER ];
+osStaticThreadDef_t jobRunnerControlBlock;
 
-osThreadId tskSchedHPHandle;
-uint32_t schedHighBuffer[ STACK_HP ];
-osStaticThreadDef_t schedHighControlBlock;
-
-osMessageQId queSchedLPHandle;
-uint8_t myQueue01Buffer[ LP_SCHED_CAPACITY * sizeof( struct sched_que_item ) ];
-osStaticMessageQDef_t myQueue01ControlBlock;
-
-osMessageQId queSchedHPHandle;
+osMessageQId queSchedHandle;
 uint8_t myQueue02Buffer[ HP_SCHED_CAPACITY * sizeof( struct sched_que_item ) ];
 osStaticMessageQDef_t myQueue02ControlBlock;
 
@@ -104,7 +95,7 @@ osStaticSemaphoreDef_t myBinarySem01ControlBlock;
 /* Function prototypes -------------------------------------------------------*/
 void TaskMain(void const * argument);
 extern void TaskSchedLP(void const * argument);
-extern void TaskSchedHP(void const * argument);
+extern void TaskJobQueue(void const *argument);
 extern void TaskMessaging(void const * argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -146,8 +137,7 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackTy
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
   stackmon_register("Main", mainTaskBuffer, sizeof(mainTaskBuffer));
-  stackmon_register("Job Queue Low", schedLowBuffer, sizeof(schedLowBuffer));
-  stackmon_register("Job Queue High", schedHighBuffer, sizeof(schedHighBuffer));
+  stackmon_register("JobRunner", jobRunnerBuffer, sizeof(jobRunnerBuffer));
   stackmon_register("Messaging", msgTaskBuffer, sizeof(msgTaskBuffer));
   /* USER CODE END Init */
 
@@ -179,13 +169,9 @@ void MX_FREERTOS_Init(void) {
   osThreadStaticDef(tskMain, TaskMain, osPriorityHigh, 0, STACK_MAIN, mainTaskBuffer, &mainTaskControlBlock);
   tskMainHandle = osThreadCreate(osThread(tskMain), NULL);
 
-  /* definition and creation of tskSchedLP */
-  osThreadStaticDef(tskSchedLP, TaskSchedLP, osPriorityLow, 0, STACK_LP, schedLowBuffer, &schedLowControlBlock);
-  tskSchedLPHandle = osThreadCreate(osThread(tskSchedLP), NULL);
-
-  /* definition and creation of tskSchedHP */
-  osThreadStaticDef(tskSchedHP, TaskSchedHP, osPriorityAboveNormal, 0, STACK_HP, schedHighBuffer, &schedHighControlBlock);
-  tskSchedHPHandle = osThreadCreate(osThread(tskSchedHP), NULL);
+  /* definition and creation of tskJobRunner */
+  osThreadStaticDef(tskJobRunner, TaskJobQueue, osPriorityAboveNormal, 0, STACK_JOBRUNNER, jobRunnerBuffer, &jobRunnerControlBlock);
+  tskJobRunnerHandle = osThreadCreate(osThread(tskJobRunner), NULL);
 
   /* definition and creation of TaskMessaging */
   osThreadStaticDef(tskMsg, TaskMessaging, osPriorityNormal, 0, STACK_MSG, msgTaskBuffer, &msgTaskControlBlock);
@@ -196,13 +182,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_THREADS */
 
   /* Create the queue(s) */
-  /* definition and creation of queSchedLP */
-  osMessageQStaticDef(queSchedLP, LP_SCHED_CAPACITY, struct sched_que_item, myQueue01Buffer, &myQueue01ControlBlock);
-  queSchedLPHandle = osMessageCreate(osMessageQ(queSchedLP), NULL);
 
   /* definition and creation of queSchedHP */
   osMessageQStaticDef(queSchedHP, HP_SCHED_CAPACITY, struct sched_que_item, myQueue02Buffer, &myQueue02ControlBlock);
-  queSchedHPHandle = osMessageCreate(osMessageQ(queSchedHP), NULL);
+  queSchedHandle = osMessageCreate(osMessageQ(queSchedHP), NULL);
 
   /* definition and creation of queRxData */
   osMessageQStaticDef(queRxData, RX_QUE_CAPACITY, struct rx_que_item, myQueue03Buffer, &myQueue03ControlBlock);

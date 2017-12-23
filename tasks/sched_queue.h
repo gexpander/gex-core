@@ -5,7 +5,7 @@
 #ifndef GEX_SCHED_QUEUE_H
 #define GEX_SCHED_QUEUE_H
 
-#include <TinyFrame/TinyFrame.h>
+#include <TinyFrame.h>
 
 typedef struct sched_que_item Job;
 typedef void (*ScheduledJobCb) (Job *job);
@@ -35,7 +35,6 @@ struct rx_que_item {
     uint8_t data[64];
 };
 
-#define LP_SCHED_CAPACITY 5
 #define HP_SCHED_CAPACITY 5
 #define RX_QUE_CAPACITY 16
 

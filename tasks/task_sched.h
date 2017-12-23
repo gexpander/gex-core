@@ -8,22 +8,13 @@
 #include "platform.h"
 #include "sched_queue.h"
 
-enum task_sched_prio {
-    TSK_SCHED_LOW = 0,
-    TSK_SCHED_HIGH = 1,
-};
-
 #if USE_STACK_MONITOR
-extern volatile uint32_t jobQueHighWaterMarkHP;
-extern volatile uint32_t jobQueHighWaterMarkLP;
+extern volatile uint32_t jobQueHighWaterMark;
 #endif
 
-extern osThreadId tskSchedLPHandle;
-void TaskSchedLP (const void * argument);
+extern osThreadId tskJobRunnerHandle;
+void TaskJobQueue(const void *argument);
 
-extern osThreadId tskSchedHPHandle;
-void TaskSchedHP (const void * argument);
-
-void scheduleJob(Job *job, enum task_sched_prio prio);
+void scheduleJob(Job *job);
 
 #endif //GEX_TASK_SCHED_H
