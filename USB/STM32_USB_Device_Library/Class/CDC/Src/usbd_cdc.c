@@ -646,9 +646,12 @@ uint8_t  USBD_CDC_DataIn (USBD_HandleTypeDef *pdev, uint8_t epnum)
   
   if(pdev->pClassData2 != NULL)
   {
-    
-    hcdc->TxState = 0;
-    USBD_CDC_TransmitDone(pdev);
+    if (epnum == CDC_IN_EP) {
+      hcdc->TxState = 0;
+      USBD_CDC_TransmitDone(pdev);
+    } else if (epnum == CDC_CMD_EP) {
+      // command EP send done
+    }
 
     return USBD_OK;
   }

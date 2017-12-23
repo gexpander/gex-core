@@ -14,7 +14,7 @@ struct stackhandle {
     uint32_t len;
 };
 
-#define STACK_NUM 16
+#define STACK_NUM 8
 static uint32_t nextidx = 0;
 static struct stackhandle stacks[STACK_NUM];
 
@@ -64,9 +64,9 @@ void stackmon_dump(void)
         );
     }
 
-    PUTS("\033[36m>> QUEUES\033[m\r\n");
-    PRINTF("   Used slots: \033[33mHP %"PRIu32", LP %"PRIu32"\033[m\r\n",
-           jobQueHighWaterMarkHP, jobQueHighWaterMarkLP);
+    PUTS("\033[36m>> JOB QUEUE\033[m\r\n");
+    PRINTF("   Used slots: \033[33m%"PRIu32"\033[m\r\n",
+           jobQueHighWaterMark);
 
     PRINTF("\033[1m---------------------------\033[m\r\n\r\n");
 }

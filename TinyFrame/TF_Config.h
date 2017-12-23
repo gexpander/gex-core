@@ -5,6 +5,7 @@
 #ifndef TF_CONFIG_H
 #define TF_CONFIG_H
 
+#include "platform.h"
 #include <stdint.h>
 //#include <esp8266.h> // when using with esphttpd
 
@@ -65,7 +66,7 @@ typedef uint8_t TF_COUNT;
 
 // Timeout for receiving & parsing a frame
 // ticks = number of calls to TF_Tick()
-#define TF_PARSER_TIMEOUT_TICKS 10
+#define TF_PARSER_TIMEOUT_TICKS 250
 
 //------------------------- End of user config ------------------------------
 

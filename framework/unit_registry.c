@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/26.
 //
 
+#include <utils/hexdump.h>
 #include "platform.h"
 #include "utils/avrlibc.h"
 #include "comm/messages.h"
@@ -494,11 +495,6 @@ uint32_t ureg_get_num_units(void)
     return count;
 }
 
-static void job_nosuch_unit(Job *job)
-{
-    tf_respond_snprintf(MSG_ERROR, job->frame_id, "NO UNIT @ %"PRIu32, job->d32);
-}
-
 /** Deliver message to it's destination unit */
 void ureg_deliver_unit_request(TF_Msg *msg)
 {
@@ -513,17 +509,20 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     if (!pp.ok) { dbg("!! pp not OK!"); }
 
     if (callsign == 0 || !pp.ok) {
-        sched_respond_malformed_cmd(msg->frame_id);
+        com_respond_malformed_cmd(msg->frame_id);
         return;
     }
 
     UlistEntry *li = ulist_head;
     while (li != NULL) {
         Unit *const pUnit = &li->unit;
-        if (pUnit->callsign == callsign) {
+        if (pUnit->callsign == callsign && pUnit->status == E_SUCCESS) {
             bool ok = pUnit->driver->handleRequest(pUnit, msg->frame_id, command, &pp);
+
+            // send extra SUCCESS confirmation message.
+            // error is expected to have already been reported.
             if (ok && confirmed) {
-                sched_respond_suc(msg->frame_id);
+                com_respond_ok(msg->frame_id);
             }
             return;
         }
@@ -531,48 +530,47 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     }
 
     // Not found
-    Job job = {
-        .cb = job_nosuch_unit,
-        .frame_id = msg->frame_id,
-        .d32 = callsign
-    };
-    scheduleJob(&job, TSK_SCHED_LOW);
+    com_respond_snprintf(msg->frame_id, MSG_ERROR, "NO UNIT @ %"PRIu8, callsign);
 }
 
-
+/** Send a response for a unit-list request */
 void ureg_report_active_units(TF_ID frame_id)
 {
     // count bytes needed
-    uint32_t needed = 1; //
+    uint32_t msglen = 1; // for the count byte
 
     UlistEntry *li = ulist_head;
     uint32_t count = 0;
     while (li != NULL) {
-        count++;
-        needed += strlen(li->unit.name)+1;
+        if (li->unit.status == E_SUCCESS) {
+            count++;
+            msglen += strlen(li->unit.name) + 1;
+            msglen += strlen(li->unit.driver->name) + 1;
+        }
         li = li->next;
     }
-    needed += count;
+    msglen += count; // one byte per message for the callsign
 
     bool suc = true;
-    uint8_t *buff = malloc_ck(needed, &suc);
-    if (!suc) { tf_respond_str(MSG_ERROR, frame_id, "OUT OF MEMORY"); return; }
-
+    uint8_t *buff = malloc_ck(msglen, &suc);
+    if (!suc) { com_respond_str(MSG_ERROR, frame_id, "OUT OF MEMORY"); return; }
     {
-        PayloadBuilder pb = pb_start(buff, needed, NULL);
-        pb_u8(&pb, (uint8_t) count); // assume we don't have more than 255
+        PayloadBuilder pb = pb_start(buff, msglen, NULL);
+        pb_u8(&pb, (uint8_t) count); // assume we don't have more than 255 units
 
         li = ulist_head;
         while (li != NULL) {
-            pb_u8(&pb, li->unit.callsign);
-            pb_string(&pb, li->unit.name);
+            if (li->unit.status == E_SUCCESS) {
+                pb_u8(&pb, li->unit.callsign);
+                pb_string(&pb, li->unit.name);
+                pb_string(&pb, li->unit.driver->name);
+            }
             li = li->next;
         }
 
         assert_param(pb.ok);
 
-        tf_respond_buf(MSG_SUCCESS, frame_id, buff, needed);
+        com_respond_buf(frame_id, MSG_SUCCESS, buff, msglen);
     }
-
     free(buff);
 }

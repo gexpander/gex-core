@@ -5,23 +5,18 @@
 #include "platform.h"
 #include "task_sched.h"
 
-extern osMessageQId queSchedLPHandle;
-extern osMessageQId queSchedHPHandle;
+extern osMessageQId queSchedHandle;
 
-volatile uint32_t jobQueHighWaterMarkHP = 0;
-volatile uint32_t jobQueHighWaterMarkLP = 0;
+volatile uint32_t jobQueHighWaterMark = 0;
 
 /**
  * Schedule a function for later execution in the jobs thread
  *
  * @param callback - the callback function
- * @param prio - priority, selects which job queue to use
- * @param data1 - first data object, NULL if not needed; usually context/handle
- * @param data2 - second data object, NULL if not needed; usually data/argument
  */
-void scheduleJob(Job *job, enum task_sched_prio prio)
+void scheduleJob(Job *job)
 {
-    QueueHandle_t que = (prio == TSK_SCHED_LOW ? queSchedLPHandle : queSchedHPHandle);
+    QueueHandle_t que = queSchedHandle;
 
     assert_param(que != NULL);
     assert_param(job->cb != NULL);
@@ -44,44 +39,22 @@ void scheduleJob(Job *job, enum task_sched_prio prio)
     }
 
 #if USE_STACK_MONITOR
-    if (prio == TSK_SCHED_LOW) {
-        jobQueHighWaterMarkLP = MAX(jobQueHighWaterMarkLP, count);
-    } else {
-        jobQueHighWaterMarkHP = MAX(jobQueHighWaterMarkHP, count);
-    }
+    jobQueHighWaterMark = MAX(jobQueHighWaterMark, count);
 #endif
 }
 
 /**
- * Low priority task queue handler
+ * job queue handler (for use in interrupts to do longer stuff on a thread)
  *
  * @param argument
  */
-void TaskSchedLP (const void * argument)
-{
-    dbg("> Low priority queue task started!");
-
-    struct sched_que_item job;
-    while (1) {
-        xQueueReceive(queSchedLPHandle, &job, osWaitForever);
-
-        assert_param(job.cb != NULL);
-        job.cb(&job);
-    }
-}
-
-/**
- * High priority task queue handler
- *
- * @param argument
- */
-void TaskSchedHP (const void * argument)
+void TaskJobQueue(const void *argument)
 {
     dbg("> High priority queue task started!");
 
     struct sched_que_item job;
     while (1) {
-        xQueueReceive(queSchedHPHandle, &job, osWaitForever);
+        xQueueReceive(queSchedHandle, &job, osWaitForever);
 
         assert_param(job.cb != NULL);
         job.cb(&job);

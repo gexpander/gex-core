@@ -173,14 +173,14 @@ static bool Npx_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
             break;
 
         default:
-            sched_respond_bad_cmd(frame_id);
+            com_respond_bad_cmd(frame_id);
             return false;
     }
 
     return true;
 
 bad_count:
-    sched_respond_err(frame_id, "BAD PIXEL COUNT");
+    com_respond_err(frame_id, "BAD PIXEL COUNT");
     return false;
 }
 

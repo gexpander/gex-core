@@ -6,11 +6,11 @@
 #include "usbd_core.h"
 #include "USB/usb_device.h"
 #include "framework/resources.h"
-
 #include "framework/unit_registry.h"
 
 #include "units/pin/unit_pin.h"
 #include "units/neopixel/unit_neopixel.h"
+#include "units/test/unit_test.h"
 
 
 // ----- SUPPORTED UNITS -----
@@ -19,6 +19,8 @@ void plat_register_units(void)
 {
     ureg_add_type(&UNIT_PIN);
     ureg_add_type(&UNIT_NEOPIXEL);
+
+    ureg_add_type(&UNIT_TEST);
 
     // Platform-specific units could be added here
 }

@@ -7,6 +7,7 @@
 #include "platform.h"
 #include "task_main.h"
 
+#include "utils/hexdump.h"
 #include "USB/usbd_cdc_if.h"
 #include "TinyFrame.h"
 
@@ -20,9 +21,11 @@ void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, size_t len)
     int32_t total = (int32_t) len;
     while (total > 0) {
         assert_param(osOK == osSemaphoreWait(semVcomTxReadyHandle, 5000));
-        assert_param(USBD_OK == CDC_Transmit_FS((uint8_t *) buff, (uint16_t) MIN(total, CHUNK)));
-        buff += CHUNK;
-        total -= CHUNK;
+        uint16_t chunksize = (uint16_t) MIN(total, CHUNK);
+        assert_param(USBD_OK == CDC_Transmit_FS((uint8_t *) buff, chunksize));
+
+        buff += chunksize;
+        total -= chunksize;
     }
 }
 
