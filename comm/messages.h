@@ -33,11 +33,11 @@ enum TF_Types_ {
     MSG_LIST_UNITS = 0x20,    //!< Get all unit call-signs and names
 };
 
+extern TinyFrame *comm;
+
 // Must be after the enum because it's used in the header file.
 #include "msg_responses.h"
-
-
-extern TinyFrame *comm;
+#include "msg_bulkread.h"
 
 /**
  * Initialize TinyFrame and set up listeners

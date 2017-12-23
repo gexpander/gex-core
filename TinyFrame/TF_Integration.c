@@ -24,12 +24,6 @@ void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, size_t len)
         uint16_t chunksize = (uint16_t) MIN(total, CHUNK);
         assert_param(USBD_OK == CDC_Transmit_FS((uint8_t *) buff, chunksize));
 
-        PUTS("Tx: ");
-        for(int i=0;i<chunksize; i++) {
-            PRINTF("%02X ", buff[i]);
-        }
-        PUTS("\r\n");
-
         buff += chunksize;
         total -= chunksize;
     }

@@ -35,11 +35,11 @@ extern "C" {
 #define KB(size)                        ((size) * 1024)
 
 #ifndef MIN
-#define MIN(a,b)                        ((a) < (b) ? (a) : (b))
+#define MIN(a,b)                        (((a) < (b)) ? (a) : (b))
 #endif
 
 #ifndef MAX
-#define MAX(a,b)                        ((a) > (b) ? (a) : (b))
+#define MAX(a,b)                        (((a) > (b)) ? (a) : (b))
 #endif
 
 #define ROUND_UP(value, boundary)       ((value) + ((boundary) - (value)) % (boundary))
