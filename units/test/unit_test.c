@@ -183,6 +183,7 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
 
     switch (command) {
         case CMD_PING:
+            dbg("Ping msg!");
             tf_respond_ok(frame_id);
             //sched_respond_suc(frame_id);
             break;
@@ -198,7 +199,7 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
                 .len = len,
             };
 
-            PRINTF("Rx len %d: ", (int)len);
+            PRINTF("ECHO, len %d: ", (int)len);
             PUTSN((char *) cpy, len);
             PUTS("\r\n");
 

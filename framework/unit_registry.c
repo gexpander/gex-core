@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/26.
 //
 
+#include <utils/hexdump.h>
 #include "platform.h"
 #include "utils/avrlibc.h"
 #include "comm/messages.h"

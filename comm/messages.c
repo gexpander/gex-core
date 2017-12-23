@@ -57,7 +57,7 @@ static void job_unhandled_resp(Job *job)
 
 static TF_Result lst_default(TinyFrame *tf, TF_Msg *msg)
 {
-    dbg("!! Unhandled msg type %d, frame_id %d", (int)msg->type, (int)msg->frame_id);
+    dbg("!! Unhandled msg type %02"PRIx8", frame_id 0x%04"PRIx16, msg->type, msg->frame_id);
     Job job = {
         .cb = job_unhandled_resp,
         .frame_id = msg->frame_id,
