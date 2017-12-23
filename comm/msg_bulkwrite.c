@@ -19,7 +19,6 @@ static TF_Result bulkwrite_lst(TinyFrame *tf, TF_Msg *msg)
 
     // this is a final call before timeout, to clean up
     if (msg->data == NULL) {
-        dbg("Bulk rx lst cleanup\r\n");
         goto close;
     }
 
