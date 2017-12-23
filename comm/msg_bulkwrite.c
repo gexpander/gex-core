@@ -71,7 +71,7 @@ void bulkwrite_start(TinyFrame *tf, struct bulk_write *bulk)
 
     {
         uint8_t buf[8];
-        PayloadBuilder pb = pb_start(buf, 4, NULL);
+        PayloadBuilder pb = pb_start(buf, 8, NULL);
         pb_u32(&pb, bulk->len);
         pb_u32(&pb, TF_MAX_PAYLOAD_RX);
 
