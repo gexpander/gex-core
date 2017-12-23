@@ -9,6 +9,9 @@
 #include "task_sched.h"
 #include "TinyFrame.h"
 
+#define BULK_LST_TIMEOUT_MS 200
+#define BULKREAD_MAX_CHUNK  512 // this is a static buffer
+
 /**
  * Supported message types (TF_TYPE)
  */
@@ -38,6 +41,7 @@ extern TinyFrame *comm;
 // Must be after the enum because it's used in the header file.
 #include "msg_responses.h"
 #include "msg_bulkread.h"
+#include "msg_bulkwrite.h"
 
 /**
  * Initialize TinyFrame and set up listeners

@@ -11,11 +11,6 @@
 
 #include <TinyFrame.h>
 
-
-#define BULK_LST_TIMEOUT_MS 200
-
-#define BULKREAD_MAX_CHUNK  512 // this is a static buffer
-
 typedef struct bulk_read BulkRead;
 
 /**

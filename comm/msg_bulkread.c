@@ -30,40 +30,38 @@ static TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
 
     if (msg->type == MSG_BULK_ABORT) {
         goto close;
-    } else if (msg->type == MSG_BULK_READ_POLL) {
+    }
+    else if (msg->type == MSG_BULK_READ_POLL) {
+        // find how much data the reader wants
         PayloadParser pp = pp_start(msg->data, msg->len, NULL);
         uint32_t chunk = pp_u32(&pp);
-
-        // if past len, say we're done and close
-        if (bulk->offset >= bulk->len) {
-            TF_ClearMsg(msg);
-            msg->frame_id = bulk->frame_id;
-            msg->type = MSG_BULK_END;
-            TF_Respond(tf, msg);
-            goto close;
-        }
 
         chunk = MIN(chunk, bulk->len - bulk->offset);
         chunk = MIN(chunk, BULKREAD_MAX_CHUNK);
 
+        // load data into the buffer
         bulk->read(bulk, chunk, bulkread_buffer);
 
-        TF_ClearMsg(msg);
-        msg->frame_id = bulk->frame_id;
-        msg->type = MSG_BULK_DATA;
-        msg->data = bulkread_buffer;
-        msg->len = (TF_LEN) chunk;
-        TF_Respond(tf, msg);
+        bool last = (bulk->offset + chunk >= bulk->len);
+
+        TF_Msg resp;
+        TF_ClearMsg(&resp);
+        resp.frame_id = bulk->frame_id;
+        resp.type = (last ? MSG_BULK_END : MSG_BULK_DATA); // the last chunk has the END type
+        resp.data = bulkread_buffer;
+        resp.len = (TF_LEN) chunk;
+        TF_Respond(tf, &resp);
+
+        if (last) goto close;
 
         // advance the position pointer
         bulk->offset += chunk;
     }
 
-    msg->userdata = bulk; // We must put it back
     return TF_RENEW;
 
-    close:
-    if (msg->userdata) {
+close:
+    if (bulk) {
         // Ask user to free the bulk and userdata
         bulk->read(bulk, 0, NULL);
         msg->userdata = NULL;
