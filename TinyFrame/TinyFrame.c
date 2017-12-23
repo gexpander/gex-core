@@ -1,6 +1,8 @@
 //---------------------------------------------------------------------------
 #include "TinyFrame.h"
 #include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
 //---------------------------------------------------------------------------
 
 // Compatibility with ESP8266 SDK
@@ -243,6 +245,7 @@ bool _TF_FN TF_AddIdListener(TinyFrame *tf, TF_Msg *msg, TF_Listener cb, TF_TICK
             return true;
         }
     }
+    fprintf(stderr,"TF failed to add ID listener\n");
     return false;
 }
 
@@ -372,6 +375,13 @@ static void _TF_FN TF_HandleReceivedMessage(TinyFrame *tf)
                 if (res == TF_RENEW) {
                     renew_id_listener(ilst);
                 }
+
+                if (res == TF_CLOSE) {
+                    // Set userdata to NULL to avoid calling user for cleanup
+                    ilst->userdata = NULL;
+                    ilst->userdata2 = NULL;
+                    cleanup_id_listener(tf, i, ilst);
+                }
                 return;
             }
         }
@@ -389,8 +399,12 @@ static void _TF_FN TF_HandleReceivedMessage(TinyFrame *tf)
             res = tlst->fn(tf, &msg);
 
             if (res != TF_NEXT) {
-                // if it's TF_CLOSE, we assume user already cleaned up userdata
-                // TF_RENEW doesn't make sense here because type listeners don't expire
+                // type listeners don't have userdata.
+                // TF_RENEW doesn't make sense here because type listeners don't expire = same as TF_STAY
+
+                if (res == TF_CLOSE) {
+                    cleanup_type_listener(tf, i, tlst);
+                }
                 return;
             }
         }
@@ -404,8 +418,16 @@ static void _TF_FN TF_HandleReceivedMessage(TinyFrame *tf)
             res = glst->fn(tf, &msg);
 
             if (res != TF_NEXT) {
-                // if it's TF_CLOSE, we assume user already cleaned up userdata
-                // TF_RENEW doesn't make sense here because generic listeners don't expire
+                // generic listeners don't have userdata.
+                // TF_RENEW doesn't make sense here because generic listeners don't expire = same as TF_STAY
+
+                // note: It's not expected that user will have multiple generic listeners, or
+                // ever actually remove them. They're most useful as default callbacks if no other listener
+                // handled the message.
+
+                if (res == TF_CLOSE) {
+                    cleanup_generic_listener(tf, i, glst);
+                }
                 return;
             }
         }
@@ -477,63 +499,63 @@ void _TF_FN TF_AcceptChar(TinyFrame *tf, unsigned char c)
         case TFState_ID:
             CKSUM_ADD(tf->cksum, c);
             COLLECT_NUMBER(tf->id, TF_ID) {
-                // Enter LEN state
-                tf->state = TFState_LEN;
-                tf->rxi = 0;
-            }
+        // Enter LEN state
+        tf->state = TFState_LEN;
+        tf->rxi = 0;
+    }
             break;
 
         case TFState_LEN:
             CKSUM_ADD(tf->cksum, c);
             COLLECT_NUMBER(tf->len, TF_LEN) {
-                // Enter TYPE state
-                tf->state = TFState_TYPE;
-                tf->rxi = 0;
-            }
+        // Enter TYPE state
+        tf->state = TFState_TYPE;
+        tf->rxi = 0;
+    }
             break;
 
         case TFState_TYPE:
             CKSUM_ADD(tf->cksum, c);
             COLLECT_NUMBER(tf->type, TF_TYPE) {
 #if TF_CKSUM_TYPE == TF_CKSUM_NONE
-                tf->state = TFState_DATA;
+        tf->state = TFState_DATA;
                 tf->rxi = 0;
 #else
-                // enter HEAD_CKSUM state
-                tf->state = TFState_HEAD_CKSUM;
-                tf->rxi = 0;
-                tf->ref_cksum = 0;
+        // enter HEAD_CKSUM state
+        tf->state = TFState_HEAD_CKSUM;
+        tf->rxi = 0;
+        tf->ref_cksum = 0;
 #endif
-            }
+    }
             break;
 
         case TFState_HEAD_CKSUM:
-            COLLECT_NUMBER(tf->ref_cksum, TF_CKSUM) {
-                // Check the header checksum against the computed value
-                CKSUM_FINALIZE(tf->cksum);
+        COLLECT_NUMBER(tf->ref_cksum, TF_CKSUM) {
+        // Check the header checksum against the computed value
+        CKSUM_FINALIZE(tf->cksum);
 
-                if (tf->cksum != tf->ref_cksum) {
-                    TF_ResetParser(tf);
-                    break;
-                }
+        if (tf->cksum != tf->ref_cksum) {
+            TF_ResetParser(tf);
+            break;
+        }
 
-                if (tf->len == 0) {
-                    TF_HandleReceivedMessage(tf);
-                    TF_ResetParser(tf);
-                    break;
-                }
+        if (tf->len == 0) {
+            TF_HandleReceivedMessage(tf);
+            TF_ResetParser(tf);
+            break;
+        }
 
-                // Enter DATA state
-                tf->state = TFState_DATA;
-                tf->rxi = 0;
+        // Enter DATA state
+        tf->state = TFState_DATA;
+        tf->rxi = 0;
 
-                CKSUM_RESET(tf->cksum); // Start collecting the payload
+        CKSUM_RESET(tf->cksum); // Start collecting the payload
 
-                if (tf->len >= TF_MAX_PAYLOAD_RX) {
-                    // ERROR - frame too long. Consume, but do not store.
-                    tf->discard_data = true;
-                }
-            }
+        if (tf->len >= TF_MAX_PAYLOAD_RX) {
+            // ERROR - frame too long. Consume, but do not store.
+            tf->discard_data = true;
+        }
+    }
             break;
 
         case TFState_DATA:
@@ -559,15 +581,15 @@ void _TF_FN TF_AcceptChar(TinyFrame *tf, unsigned char c)
             break;
 
         case TFState_DATA_CKSUM:
-            COLLECT_NUMBER(tf->ref_cksum, TF_CKSUM) {
-                // Check the header checksum against the computed value
-                CKSUM_FINALIZE(tf->cksum);
-                if (!tf->discard_data && tf->cksum == tf->ref_cksum) {
-                    TF_HandleReceivedMessage(tf);
-                }
+        COLLECT_NUMBER(tf->ref_cksum, TF_CKSUM) {
+        // Check the header checksum against the computed value
+        CKSUM_FINALIZE(tf->cksum);
+        if (!tf->discard_data && tf->cksum == tf->ref_cksum) {
+            TF_HandleReceivedMessage(tf);
+        }
 
-                TF_ResetParser(tf);
-            }
+        TF_ResetParser(tf);
+    }
             break;
     }
 

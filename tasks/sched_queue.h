@@ -37,6 +37,6 @@ struct rx_que_item {
 
 #define LP_SCHED_CAPACITY 5
 #define HP_SCHED_CAPACITY 5
-#define RX_QUE_CAPACITY 8
+#define RX_QUE_CAPACITY 16
 
 #endif //GEX_SCHED_QUEUE_H

@@ -183,7 +183,8 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
 
     switch (command) {
         case CMD_PING:
-            sched_respond_suc(frame_id);
+            tf_respond_ok(frame_id);
+            //sched_respond_suc(frame_id);
             break;
 
         case CMD_ECHO:;
