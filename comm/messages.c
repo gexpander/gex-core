@@ -6,18 +6,49 @@
 #include "TinyFrame.h"
 #include "framework/unit_registry.h"
 #include "comm/messages.h"
-#include "task_sched.h"
 
-TinyFrame tf_;
+static TinyFrame tf_;
 TinyFrame *comm = &tf_;
 
 // ---------------------------------------------------------------------------
 
-// Pre-declaring local functions
-static TF_Result lst_ping(TinyFrame *tf, TF_Msg *msg);
-static TF_Result lst_unit(TinyFrame *tf, TF_Msg *msg);
-static TF_Result lst_list_units(TinyFrame *tf, TF_Msg *msg);
-static TF_Result lst_default(TinyFrame *tf, TF_Msg *msg);
+/**
+ * Ping request listener - returns version string and other info about the build
+ */
+static TF_Result lst_ping(TinyFrame *tf, TF_Msg *msg)
+{
+    com_respond_snprintf(msg->frame_id, MSG_SUCCESS, "%s/%s", GEX_VERSION, GEX_PLATFORM);
+    return TF_STAY;
+}
+
+/**
+ * Default listener, fallback for unhandled messages
+ */
+static TF_Result lst_default(TinyFrame *tf, TF_Msg *msg)
+{
+    dbg("!! Unhandled msg type %02"PRIx8", frame_id 0x%04"PRIx16, msg->type, msg->frame_id);
+
+    com_respond_snprintf(msg->frame_id, MSG_ERROR, "UNKNOWN MSG %"PRIu8, msg->type);
+    return TF_STAY;
+}
+
+/**
+ * Unit request listener, a message targeted at a particular
+ */
+static TF_Result lst_unit(TinyFrame *tf, TF_Msg *msg)
+{
+    ureg_deliver_unit_request(msg);
+    return TF_STAY;
+}
+
+
+static TF_Result lst_list_units(TinyFrame *tf, TF_Msg *msg)
+{
+    ureg_report_active_units(msg->frame_id);
+    return TF_STAY;
+}
+
+// ---------------------------------------------------------------------------
 
 void comm_init(void)
 {
@@ -28,38 +59,4 @@ void comm_init(void)
 
     // fall-through
     TF_AddGenericListener(comm, lst_default);
-}
-
-// ---------------------------------------------------------------------------
-
-static TF_Result lst_ping(TinyFrame *tf, TF_Msg *msg)
-{
-    com_respond_snprintf(msg->frame_id, MSG_SUCCESS, "%s/%s", GEX_VERSION, GEX_PLATFORM);
-    return TF_STAY;
-}
-
-// ----------------------------------------------------------------------------
-
-static TF_Result lst_default(TinyFrame *tf, TF_Msg *msg)
-{
-    dbg("!! Unhandled msg type %02"PRIx8", frame_id 0x%04"PRIx16, msg->type, msg->frame_id);
-
-    com_respond_snprintf(msg->frame_id, MSG_ERROR, "UNKNOWN MSG %"PRIu8, msg->type);
-    return TF_STAY;
-}
-
-// ----------------------------------------------------------------------------
-
-static TF_Result lst_unit(TinyFrame *tf, TF_Msg *msg)
-{
-    ureg_deliver_unit_request(msg);
-    return TF_STAY;
-}
-
-// ----------------------------------------------------------------------------
-
-static TF_Result lst_list_units(TinyFrame *tf, TF_Msg *msg)
-{
-    ureg_report_active_units(msg->frame_id);
-    return TF_STAY;
 }

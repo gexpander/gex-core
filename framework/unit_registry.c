@@ -516,8 +516,11 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     UlistEntry *li = ulist_head;
     while (li != NULL) {
         Unit *const pUnit = &li->unit;
-        if (pUnit->callsign == callsign) {
+        if (pUnit->callsign == callsign && pUnit->status == E_SUCCESS) {
             bool ok = pUnit->driver->handleRequest(pUnit, msg->frame_id, command, &pp);
+
+            // send extra SUCCESS confirmation message.
+            // error is expected to have already been reported.
             if (ok && confirmed) {
                 com_respond_ok(msg->frame_id);
             }
@@ -530,7 +533,7 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     com_respond_snprintf(msg->frame_id, MSG_ERROR, "NO UNIT @ %"PRIu8, callsign);
 }
 
-
+/** Send a response for a unit-list request */
 void ureg_report_active_units(TF_ID frame_id)
 {
     // count bytes needed
@@ -539,24 +542,29 @@ void ureg_report_active_units(TF_ID frame_id)
     UlistEntry *li = ulist_head;
     uint32_t count = 0;
     while (li != NULL) {
-        count++;
-        msglen += strlen(li->unit.name)+1;
+        if (li->unit.status == E_SUCCESS) {
+            count++;
+            msglen += strlen(li->unit.name) + 1;
+            msglen += strlen(li->unit.driver->name) + 1;
+        }
         li = li->next;
     }
-    msglen += count;
+    msglen += count; // one byte per message for the callsign
 
     bool suc = true;
     uint8_t *buff = malloc_ck(msglen, &suc);
     if (!suc) { com_respond_str(MSG_ERROR, frame_id, "OUT OF MEMORY"); return; }
-
     {
         PayloadBuilder pb = pb_start(buff, msglen, NULL);
         pb_u8(&pb, (uint8_t) count); // assume we don't have more than 255 units
 
         li = ulist_head;
         while (li != NULL) {
-            pb_u8(&pb, li->unit.callsign);
-            pb_string(&pb, li->unit.name);
+            if (li->unit.status == E_SUCCESS) {
+                pb_u8(&pb, li->unit.callsign);
+                pb_string(&pb, li->unit.name);
+                pb_string(&pb, li->unit.driver->name);
+            }
             li = li->next;
         }
 
@@ -564,6 +572,5 @@ void ureg_report_active_units(TF_ID frame_id)
 
         com_respond_buf(frame_id, MSG_SUCCESS, buff, msglen);
     }
-
     free(buff);
 }
