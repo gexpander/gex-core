@@ -10,17 +10,22 @@
 #include "utils/payload_parser.h"
 #include "utils/payload_builder.h"
 
+/** Buffer for preparing bulk chunks */
 static uint8_t bulkread_buffer[BULKREAD_MAX_CHUNK];
 
-TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
+/**
+ * TF listener for the bulk read transaction
+ */
+static TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
 {
+    struct bulk_read *bulk = msg->userdata;
+
     // this is a final call before timeout, to clean up
     if (msg->data == NULL) {
         dbg("Bulk rx lst cleanup\r\n");
         goto close;
     }
 
-    struct bulk_read *bulk = msg->userdata;
     assert_param(NULL != bulk);
 
     if (msg->type == MSG_BULK_ABORT) {
@@ -41,7 +46,7 @@ TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
         chunk = MIN(chunk, bulk->len - bulk->offset);
         chunk = MIN(chunk, BULKREAD_MAX_CHUNK);
 
-        bulk->read(bulk->offset, chunk, bulkread_buffer);
+        bulk->read(bulk, chunk, bulkread_buffer);
 
         TF_ClearMsg(msg);
         msg->frame_id = bulk->frame_id;
@@ -59,12 +64,14 @@ TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
 
     close:
     if (msg->userdata) {
-        free(msg->userdata);
+        // Ask user to free the bulk and userdata
+        bulk->read(bulk, 0, NULL);
         msg->userdata = NULL;
     }
     return TF_CLOSE;
 }
 
+/** Start the bulk read flow */
 void bulkread_start(TinyFrame *tf, struct bulk_read *bulk)
 {
     assert_param(bulk);
