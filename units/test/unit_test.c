@@ -117,13 +117,13 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
 
     switch (command) {
         case CMD_PING:
-            tf_respond_ok(frame_id);
+            com_respond_ok(frame_id);
             break;
 
         case CMD_ECHO:;
             uint32_t len;
             const uint8_t *data = pp_tail(pp, &len);
-            tf_respond_buf(MSG_SUCCESS, frame_id, data, len);
+            com_respond_buf(frame_id, MSG_SUCCESS, data, len);
             break;
 
         case CMD_BULKREAD:;
@@ -138,7 +138,7 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
             break;
 
         default:
-            tf_respond_bad_cmd(frame_id);
+            com_respond_bad_cmd(frame_id);
             return false;
     }
 

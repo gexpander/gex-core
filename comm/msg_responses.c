@@ -5,7 +5,7 @@
 #include "messages.h"
 #include "msg_responses.h"
 
-void tf_respond_snprintf(TF_TYPE type, TF_ID id, const char *format, ...)
+void com_respond_snprintf(TF_ID frame_id, TF_TYPE type, const char *format, ...)
 {
 #define ERR_STR_LEN 64
 
@@ -15,17 +15,17 @@ void tf_respond_snprintf(TF_TYPE type, TF_ID id, const char *format, ...)
     uint32_t len = (uint32_t) fixup_vsnprintf(&buf[0], ERR_STR_LEN, format, args);
     va_end(args);
 
-    tf_respond_buf(type, id, (const uint8_t *) buf, len);
+    com_respond_buf(frame_id, type, (const uint8_t *) buf, len);
 }
 
 
-void tf_respond_buf(TF_TYPE type, TF_ID id, const uint8_t *buf, uint32_t len)
+void com_respond_buf(TF_ID frame_id, TF_TYPE type, const uint8_t *buf, uint32_t len)
 {
     TF_Msg msg;
     TF_ClearMsg(&msg);
     {
         msg.type = type;
-        msg.frame_id = id;
+        msg.frame_id = frame_id;
         msg.data = buf;
         msg.len = (TF_LEN) len;
     }
@@ -33,13 +33,13 @@ void tf_respond_buf(TF_TYPE type, TF_ID id, const uint8_t *buf, uint32_t len)
 }
 
 
-void tf_respond_ok(TF_ID frame_id)
+void com_respond_ok(TF_ID frame_id)
 {
-    tf_respond_buf(MSG_SUCCESS, frame_id, NULL, 0);
+    com_respond_buf(frame_id, MSG_SUCCESS, NULL, 0);
 }
 
 
-void tf_send_buf(TF_TYPE type, const uint8_t *buf, uint32_t len)
+void com_send_buf(TF_TYPE type, const uint8_t *buf, uint32_t len)
 {
     TF_Msg msg;
     TF_ClearMsg(&msg);
@@ -53,46 +53,46 @@ void tf_send_buf(TF_TYPE type, const uint8_t *buf, uint32_t len)
 }
 
 
-void tf_respond_str(TF_TYPE type, TF_ID frame_id, const char *str)
+void com_respond_str(TF_TYPE type, TF_ID frame_id, const char *str)
 {
-    tf_respond_buf(type, frame_id, (const uint8_t *) str, (uint32_t) strlen(str));
+    com_respond_buf(frame_id, type, (const uint8_t *) str, (uint32_t) strlen(str));
 }
 
 
 // ---------------------------------------------------------------------------
 
-void tf_respond_err(TF_ID frame_id, const char *message)
+void com_respond_err(TF_ID frame_id, const char *message)
 {
-    tf_respond_str(MSG_ERROR, frame_id, message);
+    com_respond_str(MSG_ERROR, frame_id, message);
 }
 
 
-void tf_respond_bad_cmd(TF_ID frame_id)
+void com_respond_bad_cmd(TF_ID frame_id)
 {
-    tf_respond_err(frame_id, "BAD COMMAND");
+    com_respond_err(frame_id, "BAD COMMAND");
 }
 
 
-void tf_respond_malformed_cmd(TF_ID frame_id)
+void com_respond_malformed_cmd(TF_ID frame_id)
 {
-    tf_respond_err(frame_id, "MALFORMED PAYLOAD");
+    com_respond_err(frame_id, "MALFORMED PAYLOAD");
 }
 
 // ---------------------------------------------------------------------------
 
-void tf_respond_u8(TF_ID frame_id, uint8_t d)
+void com_respond_u8(TF_ID frame_id, uint8_t d)
 {
-    tf_respond_buf(MSG_SUCCESS, frame_id, (const uint8_t *) &d, 1);
+    com_respond_buf(frame_id, MSG_SUCCESS, (const uint8_t *) &d, 1);
 }
 
 
-void tf_respond_u16(TF_ID frame_id, uint16_t d)
+void com_respond_u16(TF_ID frame_id, uint16_t d)
 {
-    tf_respond_buf(MSG_SUCCESS, frame_id, (const uint8_t *) &d, 2);
+    com_respond_buf(frame_id, MSG_SUCCESS, (const uint8_t *) &d, 2);
 }
 
 
-void tf_respond_u32(TF_ID frame_id, uint32_t d)
+void com_respond_u32(TF_ID frame_id, uint32_t d)
 {
-    tf_respond_buf(MSG_SUCCESS, frame_id, (const uint8_t *) &d, 4);
+    com_respond_buf(frame_id, MSG_SUCCESS, (const uint8_t *) &d, 4);
 }

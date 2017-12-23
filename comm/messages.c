@@ -34,7 +34,7 @@ void comm_init(void)
 
 static TF_Result lst_ping(TinyFrame *tf, TF_Msg *msg)
 {
-    tf_respond_snprintf(MSG_SUCCESS, msg->frame_id, "%s/%s", GEX_VERSION, GEX_PLATFORM);
+    com_respond_snprintf(msg->frame_id, MSG_SUCCESS, "%s/%s", GEX_VERSION, GEX_PLATFORM);
     return TF_STAY;
 }
 
@@ -44,7 +44,7 @@ static TF_Result lst_default(TinyFrame *tf, TF_Msg *msg)
 {
     dbg("!! Unhandled msg type %02"PRIx8", frame_id 0x%04"PRIx16, msg->type, msg->frame_id);
 
-    tf_respond_snprintf(MSG_ERROR, msg->frame_id, "UNKNOWN MSG %"PRIu8, msg->type);
+    com_respond_snprintf(msg->frame_id, MSG_ERROR, "UNKNOWN MSG %"PRIu8, msg->type);
     return TF_STAY;
 }
 

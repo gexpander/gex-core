@@ -509,7 +509,7 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     if (!pp.ok) { dbg("!! pp not OK!"); }
 
     if (callsign == 0 || !pp.ok) {
-        tf_respond_malformed_cmd(msg->frame_id);
+        com_respond_malformed_cmd(msg->frame_id);
         return;
     }
 
@@ -519,7 +519,7 @@ void ureg_deliver_unit_request(TF_Msg *msg)
         if (pUnit->callsign == callsign) {
             bool ok = pUnit->driver->handleRequest(pUnit, msg->frame_id, command, &pp);
             if (ok && confirmed) {
-                tf_respond_ok(msg->frame_id);
+                com_respond_ok(msg->frame_id);
             }
             return;
         }
@@ -527,7 +527,7 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     }
 
     // Not found
-    tf_respond_snprintf(MSG_ERROR, msg->frame_id, "NO UNIT @ %"PRIu8, callsign);
+    com_respond_snprintf(msg->frame_id, MSG_ERROR, "NO UNIT @ %"PRIu8, callsign);
 }
 
 
@@ -547,7 +547,7 @@ void ureg_report_active_units(TF_ID frame_id)
 
     bool suc = true;
     uint8_t *buff = malloc_ck(msglen, &suc);
-    if (!suc) { tf_respond_str(MSG_ERROR, frame_id, "OUT OF MEMORY"); return; }
+    if (!suc) { com_respond_str(MSG_ERROR, frame_id, "OUT OF MEMORY"); return; }
 
     {
         PayloadBuilder pb = pb_start(buff, msglen, NULL);
@@ -562,7 +562,7 @@ void ureg_report_active_units(TF_ID frame_id)
 
         assert_param(pb.ok);
 
-        tf_respond_buf(MSG_SUCCESS, frame_id, buff, msglen);
+        com_respond_buf(frame_id, MSG_SUCCESS, buff, msglen);
     }
 
     free(buff);
