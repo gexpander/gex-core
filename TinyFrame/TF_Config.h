@@ -60,7 +60,7 @@ typedef uint8_t TF_COUNT;
 // Frame ID listeners (wait for response / multi-part message)
 #define TF_MAX_ID_LST   4
 // Frame Type listeners (wait for frame with a specific first payload byte)
-#define TF_MAX_TYPE_LST 5
+#define TF_MAX_TYPE_LST 6
 // Generic listeners (fallback if no other listener catches it)
 #define TF_MAX_GEN_LST  1
 

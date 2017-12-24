@@ -36,6 +36,7 @@ enum Message_Types_ {
     MSG_LIST_UNITS = 0x20,       //!< Get all active unit call-signs, types and names
     MSG_INI_READ = 0x21,         //!< Read the ini file via bulk
     MSG_INI_WRITE = 0x22,        //!< Write the ini file via bulk
+    MSG_PERSIST_CFG = 0x23,      //!< Write current settings to Flash (the equivalent of replacing the lock jumper)
 };
 
 extern TinyFrame *comm;

@@ -3,6 +3,7 @@
 //
 
 #include <framework/settings.h>
+#include <utils/ini_parser.h>
 #include "platform.h"
 #include "TinyFrame.h"
 #include "framework/unit_registry.h"
@@ -59,6 +60,7 @@ static void settings_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer
     // clean-up request
     if (buffer == NULL) {
         free(bulk);
+        dbg("INI read complete.");
         return;
     }
 
@@ -66,20 +68,78 @@ static void settings_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer
     settings_build_ini(&iw);
 }
 
+/**
+ * Listener: Export INI file via TF
+ */
 static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
 {
+    dbg("Bulk read INI file");
+
     BulkRead *bulk = malloc(sizeof(BulkRead));
+    assert_param(bulk);
+
     bulk->frame_id = msg->frame_id;
     bulk->len = settings_get_ini_len();
     bulk->read = settings_bulkread_cb;
+    bulk->userdata = NULL;
+
     bulkread_start(tf, bulk);
 
     return TF_STAY;
 }
 
+// ---------------------------------------------------------------------------
+
+/** Callback for receiving a key-value pair from the INi parser when importing a INI file */
+static void iniparser_cb(const char *section, const char *key, const char *value, void *userData)
+{
+    settings_load_ini_key(section, key, value);
+}
+
+/** Callback for importing INI file */
+static void settings_bulkwrite_cb(BulkWrite *bulk, const uint8_t *chunk, uint32_t len)
+{
+    // clean-up request
+    if (chunk == NULL) {
+        ini_parse_end();
+        settings_load_ini_end();
+        dbg("INI write complete.");
+
+        free(bulk);
+        return;
+    }
+
+    ini_parse((const char *) chunk, len);
+}
+
+/**
+ * Listener: Import INI file (write from PC via TF)
+ */
 static TF_Result lst_ini_import(TinyFrame *tf, TF_Msg *msg)
 {
-    //
+    dbg("Bulk write INI file");
+
+    BulkWrite *bulk = malloc(sizeof(BulkWrite));
+    assert_param(bulk);
+
+    bulk->frame_id = msg->frame_id;
+    bulk->len = settings_get_ini_len();
+    bulk->write = settings_bulkwrite_cb;
+
+    settings_load_ini_begin();
+    ini_parse_begin(iniparser_cb, NULL);
+
+    bulkwrite_start(tf, bulk);
+
+    return TF_STAY;
+}
+
+// ---------------------------------------------------------------------------
+
+/** Listener: Save settings to Flash */
+static TF_Result lst_persist_cfg(TinyFrame *tf, TF_Msg *msg)
+{
+    settings_save();
     return TF_STAY;
 }
 
@@ -96,6 +156,7 @@ void comm_init(void)
     suc &= TF_AddTypeListener(comm, MSG_LIST_UNITS, lst_list_units);
     suc &= TF_AddTypeListener(comm, MSG_INI_READ, lst_ini_export);
     suc &= TF_AddTypeListener(comm, MSG_INI_WRITE, lst_ini_import);
+    suc &= TF_AddTypeListener(comm, MSG_PERSIST_CFG, lst_persist_cfg);
 
     // fall-through
     suc &= TF_AddGenericListener(comm, lst_default);
