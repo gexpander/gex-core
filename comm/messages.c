@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/21.
 //
 
+#include <framework/settings.h>
 #include "platform.h"
 #include "TinyFrame.h"
 #include "framework/unit_registry.h"
@@ -50,9 +51,29 @@ static TF_Result lst_list_units(TinyFrame *tf, TF_Msg *msg)
     return TF_STAY;
 }
 
+// ---------------------------------------------------------------------------
+
+/** Callback for bulk read of the settings file */
+static void settings_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer)
+{
+    // clean-up request
+    if (buffer == NULL) {
+        free(bulk);
+        return;
+    }
+
+    IniWriter iw = iw_init((char *)buffer, bulk->offset, chunk);
+    settings_build_ini(&iw);
+}
+
 static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
 {
-    //
+    BulkRead *bulk = malloc(sizeof(BulkRead));
+    bulk->frame_id = msg->frame_id;
+    bulk->len = settings_get_ini_len();
+    bulk->read = settings_bulkread_cb;
+    bulkread_start(tf, bulk);
+
     return TF_STAY;
 }
 
