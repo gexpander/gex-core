@@ -19,7 +19,8 @@ TinyFrame *comm = &tf_;
  */
 static TF_Result lst_ping(TinyFrame *tf, TF_Msg *msg)
 {
-    com_respond_snprintf(msg->frame_id, MSG_SUCCESS, "%s/%s", GEX_VERSION, GEX_PLATFORM);
+    com_respond_snprintf(msg->frame_id, MSG_SUCCESS,
+                         "GEX v%s on %s", GEX_VERSION, GEX_PLATFORM);
     return TF_STAY;
 }
 
