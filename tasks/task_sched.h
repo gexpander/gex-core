@@ -10,6 +10,7 @@
 
 #if USE_STACK_MONITOR
 extern volatile uint32_t jobQueHighWaterMark;
+extern volatile uint32_t msgQueHighWaterMark;
 #endif
 
 extern osThreadId tskJobRunnerHandle;

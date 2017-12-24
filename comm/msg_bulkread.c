@@ -18,7 +18,7 @@ static uint8_t bulkread_buffer[BULKREAD_MAX_CHUNK];
  */
 static TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
 {
-    struct bulk_read *bulk = msg->userdata;
+    BulkRead *bulk = msg->userdata;
 
     // this is a final call before timeout, to clean up
     if (msg->data == NULL) {
@@ -69,7 +69,7 @@ close:
 }
 
 /** Start the bulk read flow */
-void bulkread_start(TinyFrame *tf, struct bulk_read *bulk)
+void bulkread_start(TinyFrame *tf, BulkRead *bulk)
 {
     assert_param(bulk);
     assert_param(bulk->len);

@@ -4,9 +4,9 @@
 
 #include "platform.h"
 #include "comm/messages.h"
-#include "utils/hexdump.h"
 #include "task_msg.h"
-#include "sched_queue.h"
+
+volatile uint32_t msgQueHighWaterMark = 0;
 
 /**
  * Process data received from TinyFrame.
@@ -27,5 +27,11 @@ void TaskMessaging(const void * argument)
         assert_param(slot.len>0 && slot.len<=64); // check the len is within bounds
 
         TF_Accept(comm, slot.data, slot.len);
+
+#if USE_STACK_MONITOR
+        uint32_t count;
+        count = (uint32_t) uxQueueMessagesWaiting(queRxDataHandle); // this seems to return N+1, hence we don't add the +1 for the one just removed.
+        msgQueHighWaterMark = MAX(msgQueHighWaterMark, count);
+#endif
     }
 }

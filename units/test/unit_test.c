@@ -141,7 +141,7 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
             break;
 
         case CMD_BULKREAD:;
-            struct bulk_read *br = malloc(sizeof(struct bulk_read));
+            BulkRead *br = malloc(sizeof(struct bulk_read));
             assert_param(br);
 
             br->len = (uint32_t) strlen(longtext);
@@ -152,10 +152,10 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
             break;
 
         case CMD_BULKWRITE:;
-            struct bulk_write *bw = malloc(sizeof(struct bulk_write));
+            BulkWrite *bw = malloc(sizeof(struct bulk_write));
             assert_param(bw);
 
-            bw->len = 1024;
+            bw->len = 10240;
             bw->frame_id = frame_id;
             bw->write = bw_dump;
 

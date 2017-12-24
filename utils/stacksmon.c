@@ -68,6 +68,10 @@ void stackmon_dump(void)
     PRINTF("   Used slots: \033[33m%"PRIu32"\033[m\r\n",
            jobQueHighWaterMark);
 
+    PUTS("\033[36m>> MSG QUEUE\033[m\r\n");
+    PRINTF("   Used slots: \033[33m%"PRIu32"\033[m\r\n",
+           msgQueHighWaterMark);
+
     PRINTF("\033[1m---------------------------\033[m\r\n\r\n");
 }
 

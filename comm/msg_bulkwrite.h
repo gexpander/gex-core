@@ -35,7 +35,7 @@ struct bulk_write {
  * @param tf - tinyframe instance
  * @param bulk - bulk write config structure (malloc'd or static)
  */
-void bulkwrite_start(TinyFrame *tf, struct bulk_write *bulk);
+void bulkwrite_start(TinyFrame *tf, BulkWrite *bulk);
 
 
 #endif //GEX_F072_MSG_BULKWRITE_H

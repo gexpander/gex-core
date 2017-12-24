@@ -39,7 +39,7 @@ struct bulk_read {
  * @param tf - tinyframe instance
  * @param bulk - bulk read config structure (malloc'd or static)
  */
-void bulkread_start(TinyFrame *tf, struct bulk_read *bulk);
+void bulkread_start(TinyFrame *tf, BulkRead *bulk);
 
 
 #endif //GEX_F072_MSG_BULKREAD_H

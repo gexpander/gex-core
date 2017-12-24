@@ -15,7 +15,7 @@
  */
 static TF_Result bulkwrite_lst(TinyFrame *tf, TF_Msg *msg)
 {
-    struct bulk_write *bulk = msg->userdata;
+    BulkWrite *bulk = msg->userdata;
 
     // this is a final call before timeout, to clean up
     if (msg->data == NULL) {
@@ -60,7 +60,7 @@ close:
 }
 
 /** Start the bulk write flow */
-void bulkwrite_start(TinyFrame *tf, struct bulk_write *bulk)
+void bulkwrite_start(TinyFrame *tf, BulkWrite *bulk)
 {
     assert_param(bulk);
     assert_param(bulk->len);

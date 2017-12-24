@@ -58,9 +58,9 @@
 
 /* Variables -----------------------------------------------------------------*/
 
-#define STACK_MAIN 160
-#define STACK_MSG 230
-#define STACK_JOBRUNNER 150
+#define STACK_MAIN 150
+#define STACK_MSG 150
+#define STACK_JOBRUNNER 128
 
 osThreadId tskMainHandle;
 uint32_t mainTaskBuffer[ STACK_MAIN ];
