@@ -30,7 +30,7 @@ void settings_save(void);
  *
  * NOTE: Should the file be received only partially, this may corrupt the settings.
  * For this reason we don't commit it to flash immediately but require user to replace
- * the LOCK jumper before unplugging the device. (TODO implement the LOCK jumper and this feature!!)
+ * the LOCK jumper before unplugging the device.
  */
 void settings_load_ini_begin(void);
 
@@ -46,7 +46,7 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
  *
  * NOTE: Should the file be received only partially, this may corrupt the settings.
  * For this reason we don't commit it to flash immediately but require user to replace
- * the LOCK jumper before unplugging the device. (TODO implement the LOCK jumper and this feature!!)
+ * the LOCK jumper before unplugging the device.
  */
 void settings_load_ini_end(void);
 
