@@ -32,12 +32,12 @@ void settings_save(void);
  * For this reason we don't commit it to flash immediately but require user to replace
  * the LOCK jumper before unplugging the device. (TODO implement the LOCK jumper and this feature!!)
  */
-void settings_read_ini_begin(void);
+void settings_load_ini_begin(void);
 
 /**
  * Load settings from INI kv pair.
  */
-void settings_read_ini(const char *restrict section, const char *restrict key, const char *restrict value);
+void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value);
 
 /**
  * Call this before any of the ini read stuff
@@ -48,13 +48,13 @@ void settings_read_ini(const char *restrict section, const char *restrict key, c
  * For this reason we don't commit it to flash immediately but require user to replace
  * the LOCK jumper before unplugging the device. (TODO implement the LOCK jumper and this feature!!)
  */
-void settings_read_ini_end(void);
+void settings_load_ini_end(void);
 
 /**
  * Write all settings to a iniwriter
  * @param iw - writer handle
  */
-void settings_write_ini(IniWriter *iw);
+void settings_build_ini(IniWriter *iw);
 
 /**
  * Get total settings len (caution: this is expensive, works by dummy-printing everything)

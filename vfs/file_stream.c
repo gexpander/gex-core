@@ -199,7 +199,7 @@ static bool detect_conf(const uint8_t *data, uint32_t size)
 
 static void iniparser_cb(const char *section, const char *key, const char *value, void *userData)
 {
-    settings_read_ini(section, key, value);
+    settings_load_ini_key(section, key, value);
 }
 
 static error_t open_conf(void *state)
@@ -208,7 +208,7 @@ static error_t open_conf(void *state)
     conf->file_pos = 0;
     vfs_printf("\r\n---- INI OPEN! ----");
 
-    settings_read_ini_begin();
+    settings_load_ini_begin();
     ini_parse_begin(iniparser_cb, NULL);
 
     return E_SUCCESS;
@@ -236,7 +236,7 @@ static error_t close_conf(void *state)
     vfs_printf("Close INI, total bytes = %d", conf->file_pos);
 
     ini_parse_end();
-    settings_read_ini_end();
+    settings_load_ini_end();
 
     // force a full remount to have the changes be visible
     vfs_mngr_fs_remount(true);

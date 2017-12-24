@@ -15,7 +15,7 @@
 /**
  * Supported message types (TF_TYPE)
  */
-enum TF_Types_ {
+enum Message_Types_ {
     // General, low level
     MSG_SUCCESS = 0x00, //!< Generic success response; used by default in all responses; payload is transaction-specific
     MSG_PING = 0x01,    //!< Ping request (or response), used to test connection
@@ -29,11 +29,13 @@ enum TF_Types_ {
     MSG_BULK_ABORT = 0x08,       //!< Discard the ongoing transfer
 
     // Unit messages
-    MSG_UNIT_REQUEST = 0x10,    //!< Command addressed to a particular unit
-    MSG_UNIT_REPORT = 0x11,    //!< Spontaneous report from a unit
+    MSG_UNIT_REQUEST = 0x10,     //!< Command addressed to a particular unit
+    MSG_UNIT_REPORT = 0x11,      //!< Spontaneous report from a unit
 
     // System messages
-    MSG_LIST_UNITS = 0x20,    //!< Get all unit call-signs and names
+    MSG_LIST_UNITS = 0x20,       //!< Get all active unit call-signs, types and names
+    MSG_INI_READ = 0x21,         //!< Read the ini file via bulk
+    MSG_INI_WRITE = 0x22,        //!< Write the ini file via bulk
 };
 
 extern TinyFrame *comm;

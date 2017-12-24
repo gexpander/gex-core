@@ -182,6 +182,7 @@ void settings_save(void)
         fls_printf("Final flush\r\n");
         savebuf_flush(&pb, true);
     }
+
     fls_printf("Locking flash...\r\n");
     hst = HAL_FLASH_Lock();
     assert_param(hst == HAL_OK);
@@ -196,21 +197,21 @@ void settings_save(void)
 /**
  * Write system settings to INI (without section)
  */
-void settings_write_ini(IniWriter *iw)
+void settings_build_ini(IniWriter *iw)
 {
     // File header
     iw_comment(iw, "CONFIG.INI");
     iw_comment(iw, "Overwrite this file to change settings.");
     iw_comment(iw, "Close the LOCK jumper to save them to Flash.");
 
-    systemsettings_write_ini(iw);
+    systemsettings_build_ini(iw);
     iw_newline(iw);
 
-    ureg_export_combined(iw);
+    ureg_build_ini(iw);
 }
 
 
-void settings_read_ini_begin(void)
+void settings_load_ini_begin(void)
 {
     SystemSettings.modified = true;
 
@@ -219,13 +220,13 @@ void settings_read_ini_begin(void)
     ureg_remove_all_units();
 }
 
-void settings_read_ini(const char *restrict section, const char *restrict key, const char *restrict value)
+void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value)
 {
 //    dbg("[%s] %s = %s", section, key, value);
 
     if (streq(section, "SYSTEM")) {
         // system is always at the top
-        systemsettings_read_ini(key, value);
+        systemsettings_load_ini(key, value);
     }
     else if (streq(section, "UNITS")) {
         // this will always come before individual units config
@@ -236,14 +237,14 @@ void settings_read_ini(const char *restrict section, const char *restrict key, c
         // all unit sections contain the colon character [TYPE:NAME]
         const char *nameptr = strchr(section, ':');
         if (nameptr) {
-            ureg_read_unit_ini(nameptr+1, key, value);
+            ureg_load_unit_ini_key(nameptr + 1, key, value);
         } else {
             dbg("! Bad config key: [%s] %s = %s", section, key, value);
         }
     }
 }
 
-void settings_read_ini_end(void)
+void settings_load_ini_end(void)
 {
     if (!ureg_finalize_all_init()) {
         dbg("Some units failed to init!!");
@@ -254,7 +255,7 @@ uint32_t settings_get_ini_len(void)
 {
     // this writer is configured to skip everything, so each written byte will decrement the skip count
     IniWriter iw = iw_init(NULL, 0xFFFFFFFF, 1);
-    settings_write_ini(&iw);
+    settings_build_ini(&iw);
     // now we just check how many bytes were skipped
     return 0xFFFFFFFF - iw.skip;
 }

@@ -45,7 +45,7 @@ bool systemsettings_load(PayloadParser *pp)
 /**
  * Write system settings to INI (without section)
  */
-void systemsettings_write_ini(IniWriter *iw)
+void systemsettings_build_ini(IniWriter *iw)
 {
     iw_section(iw, "SYSTEM");
     iw_comment(iw, "Data link accessible as virtual comport (Y, N)");
@@ -55,7 +55,7 @@ void systemsettings_write_ini(IniWriter *iw)
 /**
  * Load system settings from INI kv pair
  */
-bool systemsettings_read_ini(const char *restrict key, const char *restrict value)
+bool systemsettings_load_ini(const char *restrict key, const char *restrict value)
 {
     bool suc = true;
     if (streq(key, "expose_vcom")) {

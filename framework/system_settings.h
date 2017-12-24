@@ -43,13 +43,13 @@ bool systemsettings_load(PayloadParser *pp);
 /**
  * Write system settings to INI
  */
-void systemsettings_write_ini(IniWriter *iw);
+void systemsettings_build_ini(IniWriter *iw);
 
 /**
  * Load system settings from INI kv pair
  *
  * @return true on success
  */
-bool systemsettings_read_ini(const char *restrict key, const char *restrict value);
+bool systemsettings_load_ini(const char *restrict key, const char *restrict value);
 
 #endif //GEX_SYSTEM_SETTINGS_H

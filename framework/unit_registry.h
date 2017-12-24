@@ -70,7 +70,7 @@ void ureg_export_unit(uint32_t index, IniWriter *iw);
  *
  * @param iw
  */
-void ureg_export_combined(IniWriter *iw);
+void ureg_build_ini(IniWriter *iw);
 
 /**
 * Get number of instantiated units
@@ -98,9 +98,9 @@ bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restr
  * @param value - value to set as string
  * @return success
  */
-bool ureg_read_unit_ini(const char *restrict name,
-                        const char *restrict key,
-                        const char *restrict value);
+bool ureg_load_unit_ini_key(const char *restrict name,
+                            const char *restrict key,
+                            const char *restrict value);
 
 /**
  * Run init() for all unit instances.

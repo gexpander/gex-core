@@ -41,10 +41,24 @@ static TF_Result lst_unit(TinyFrame *tf, TF_Msg *msg)
     return TF_STAY;
 }
 
-
+/**
+ * List all active unit callsigns, names and types
+ */
 static TF_Result lst_list_units(TinyFrame *tf, TF_Msg *msg)
 {
     ureg_report_active_units(msg->frame_id);
+    return TF_STAY;
+}
+
+static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
+{
+    //
+    return TF_STAY;
+}
+
+static TF_Result lst_ini_import(TinyFrame *tf, TF_Msg *msg)
+{
+    //
     return TF_STAY;
 }
 
@@ -53,10 +67,17 @@ static TF_Result lst_list_units(TinyFrame *tf, TF_Msg *msg)
 void comm_init(void)
 {
     TF_InitStatic(comm, TF_SLAVE);
-    TF_AddTypeListener(comm, MSG_PING, lst_ping);
-    TF_AddTypeListener(comm, MSG_UNIT_REQUEST, lst_unit);
-    TF_AddTypeListener(comm, MSG_LIST_UNITS, lst_list_units);
+
+    bool suc = true;
+
+    suc &= TF_AddTypeListener(comm, MSG_PING, lst_ping);
+    suc &= TF_AddTypeListener(comm, MSG_UNIT_REQUEST, lst_unit);
+    suc &= TF_AddTypeListener(comm, MSG_LIST_UNITS, lst_list_units);
+    suc &= TF_AddTypeListener(comm, MSG_INI_READ, lst_ini_export);
+    suc &= TF_AddTypeListener(comm, MSG_INI_WRITE, lst_ini_import);
 
     // fall-through
-    TF_AddGenericListener(comm, lst_default);
+    suc &= TF_AddGenericListener(comm, lst_default);
+
+    assert_param(suc);
 }

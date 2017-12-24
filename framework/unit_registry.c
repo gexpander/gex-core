@@ -339,9 +339,9 @@ bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restr
     return false;
 }
 
-bool ureg_read_unit_ini(const char *restrict name,
-                        const char *restrict key,
-                        const char *restrict value)
+bool ureg_load_unit_ini_key(const char *restrict name,
+                            const char *restrict key,
+                            const char *restrict value)
 {
     UlistEntry *li = ulist_head;
     while (li != NULL) {
@@ -431,7 +431,7 @@ void ureg_export_unit(uint32_t index, IniWriter *iw)
 }
 
 // unit to INI
-void ureg_export_combined(IniWriter *iw)
+void ureg_build_ini(IniWriter *iw)
 {
     UlistEntry *li;
     UregEntry *re;

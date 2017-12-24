@@ -36,21 +36,21 @@ static uint32_t read_file_config_ini(uint32_t sector_offset, uint8_t *data, uint
     const uint32_t skip = sector_offset*VFS_SECTOR_SIZE;
 
     IniWriter iw = iw_init((char *)data, skip, avail);
-    settings_write_ini(&iw);
+    settings_build_ini(&iw);
 
     return avail - iw.count;
 }
 
 
+////
+//static void write_file_config_ini(uint32_t sector_offset, const uint8_t *data, uint32_t num_sectors)
+//{
+//    vfs_printf("Write CONFIG.INI, so %d, ns %d", sector_offset, num_sectors);
 //
-static void write_file_config_ini(uint32_t sector_offset, const uint8_t *data, uint32_t num_sectors)
-{
-    vfs_printf("Write CONFIG.INI, so %d, ns %d", sector_offset, num_sectors);
-
-    for(uint32_t i=0;i<num_sectors*VFS_SECTOR_SIZE;i++) {
-        PRINTF("%c", data[i]);
-    }
-}
+//    for(uint32_t i=0;i<num_sectors*VFS_SECTOR_SIZE;i++) {
+//        PRINTF("%c", data[i]);
+//    }
+//}
 
 
 void vfs_user_build_filesystem(void)
@@ -58,9 +58,10 @@ void vfs_user_build_filesystem(void)
     dbg("Rebuilding VFS...");
 
     // Setup the filesystem based on target parameters
-    vfs_init(daplink_drive_name, 0/*unused*/);
+    vfs_init(daplink_drive_name, 0/*unused "disk size"*/);
 
-    vfs_create_file("CONFIG  INI", read_file_config_ini, write_file_config_ini, settings_get_ini_len());
+    // Write is done using a stream, this is never called
+    vfs_create_file("CONFIG  INI", read_file_config_ini, NULL, settings_get_ini_len());
 }
 
 // Callback to handle changes to the root directory.  Should be used with vfs_set_file_change_callback
