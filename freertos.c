@@ -71,18 +71,18 @@ uint32_t jobRunnerBuffer[ TSK_STACK_JOBRUNNER ];
 osStaticThreadDef_t jobRunnerControlBlock;
 
 osMessageQId queSchedHandle;
-uint8_t myQueue02Buffer[ JOB_QUEUE_CAPACITY * sizeof( struct sched_que_item ) ];
-osStaticMessageQDef_t myQueue02ControlBlock;
+uint8_t queSchedBuffer[ JOB_QUEUE_CAPACITY * sizeof( struct sched_que_item ) ];
+osStaticMessageQDef_t queSchedControlBlock;
 
 osMessageQId queRxDataHandle;
-uint8_t myQueue03Buffer[ RX_QUE_CAPACITY * sizeof( struct rx_que_item ) ];
-osStaticMessageQDef_t myQueue03ControlBlock;
+uint8_t queRxDataBuffer[ RX_QUE_CAPACITY * sizeof( struct rx_que_item ) ];
+osStaticMessageQDef_t queRxDataControlBlock;
 
 osMutexId mutTinyFrameTxHandle;
-osStaticMutexDef_t myMutex01ControlBlock;
+osStaticMutexDef_t mutTinyFrameTxControlBlock;
 
 osSemaphoreId semVcomTxReadyHandle;
-osStaticSemaphoreDef_t myBinarySem01ControlBlock;
+osStaticSemaphoreDef_t semVcomTxReadyControlBlock;
 
 /* USER CODE BEGIN Variables */
 
@@ -139,7 +139,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the mutex(es) */
   /* definition and creation of mutTinyFrameTx */
-  osMutexStaticDef(mutTinyFrameTx, &myMutex01ControlBlock);
+  osMutexStaticDef(mutTinyFrameTx, &mutTinyFrameTxControlBlock);
   mutTinyFrameTxHandle = osMutexCreate(osMutex(mutTinyFrameTx));
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -148,7 +148,7 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the semaphores(s) */
   /* definition and creation of semVcomTxReady */
-  osSemaphoreStaticDef(semVcomTxReady, &myBinarySem01ControlBlock);
+  osSemaphoreStaticDef(semVcomTxReady, &semVcomTxReadyControlBlock);
   semVcomTxReadyHandle = osSemaphoreCreate(osSemaphore(semVcomTxReady), 1);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
@@ -180,11 +180,11 @@ void MX_FREERTOS_Init(void) {
   /* Create the queue(s) */
 
   /* definition and creation of queSchedHP */
-  osMessageQStaticDef(queSchedHP, JOB_QUEUE_CAPACITY, struct sched_que_item, myQueue02Buffer, &myQueue02ControlBlock);
+  osMessageQStaticDef(queSchedHP, JOB_QUEUE_CAPACITY, struct sched_que_item, queSchedBuffer, &queSchedControlBlock);
   queSchedHandle = osMessageCreate(osMessageQ(queSchedHP), NULL);
 
   /* definition and creation of queRxData */
-  osMessageQStaticDef(queRxData, RX_QUE_CAPACITY, struct rx_que_item, myQueue03Buffer, &myQueue03ControlBlock);
+  osMessageQStaticDef(queRxData, RX_QUE_CAPACITY, struct rx_que_item, queRxDataBuffer, &queRxDataControlBlock);
   queRxDataHandle = osMessageCreate(osMessageQ(queRxData), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
