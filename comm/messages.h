@@ -5,12 +5,10 @@
 #ifndef GEX_MESSAGES_H
 #define GEX_MESSAGES_H
 
+#include "platform.h"
 #include "sched_queue.h"
 #include "task_sched.h"
 #include "TinyFrame.h"
-
-#define BULK_LST_TIMEOUT_MS 200
-#define BULKREAD_MAX_CHUNK  512 // this is a static buffer
 
 /**
  * Supported message types (TF_TYPE)

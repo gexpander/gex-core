@@ -2,17 +2,16 @@
 // Created by MightyPork on 2017/12/22.
 //
 
+#include "platform.h"
 #include "messages.h"
 #include "msg_responses.h"
 
 void com_respond_snprintf(TF_ID frame_id, TF_TYPE type, const char *format, ...)
 {
-#define ERR_STR_LEN 64
-
-    char buf[ERR_STR_LEN];
+    char buf[ERR_MSG_STR_LEN];
     va_list args;
     va_start(args, format);
-    uint32_t len = (uint32_t) fixup_vsnprintf(&buf[0], ERR_STR_LEN, format, args);
+    uint32_t len = (uint32_t) fixup_vsnprintf(&buf[0], ERR_MSG_STR_LEN, format, args);
     va_end(args);
 
     com_respond_buf(frame_id, type, (const uint8_t *) buf, len);

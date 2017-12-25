@@ -13,7 +13,7 @@
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #endif
 
-#define IWBUFFER_LEN 128
+//#define IWBUFFER_LEN 128 // moved to plat_compat.h
 
 // sprintf from varargs, allocating buffer on stack. Uses 'format' argument
 #define IW_VPRINTF() do { \

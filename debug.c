@@ -7,8 +7,6 @@
 
 #if USE_DEBUG_UART
 
-#define DBG_BUF_LEN 80
-
 // debug printf
 int PRINTF(const char *format, ...)
 {

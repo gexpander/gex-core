@@ -35,7 +35,4 @@ struct rx_que_item {
     uint8_t data[64];
 };
 
-#define HP_SCHED_CAPACITY 5
-#define RX_QUE_CAPACITY 10
-
 #endif //GEX_SCHED_QUEUE_H

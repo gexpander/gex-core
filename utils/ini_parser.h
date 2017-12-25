@@ -10,8 +10,8 @@
 #endif
 
 // buffer sizes
-#define INI_KEY_MAX 20
-#define INI_VALUE_MAX 30
+//#define INI_KEY_MAX 20
+//#define INI_VALUE_MAX 30 // moved to plat_compat.h
 
 /**
  * INI parser callback, called for each found key-value pair.

@@ -2,8 +2,8 @@
 // Created by MightyPork on 2017/11/26.
 //
 
-#include "utils/hexdump.h"
 #include "platform.h"
+#include "utils/hexdump.h"
 #include "settings.h"
 #include "unit_registry.h"
 #include "system_settings.h"
@@ -47,8 +47,7 @@ void settings_load(void)
 }
 
 
-#define SAVE_BUF_SIZE 256
-static uint8_t save_buffer[SAVE_BUF_SIZE];
+static uint8_t save_buffer[FLASH_SAVE_BUF_LEN];
 static uint32_t save_addr;
 
 #if DEBUG_FLASH_WRITE
@@ -126,7 +125,7 @@ static void savebuf_flush(PayloadBuilder *pb, bool final)
  */
 static bool savebuf_ovhandler(PayloadBuilder *pb, uint32_t more)
 {
-    if (more > SAVE_BUF_SIZE) return false;
+    if (more > FLASH_SAVE_BUF_LEN) return false;
     savebuf_flush(pb, false);
     return true;
 }
@@ -135,7 +134,7 @@ static bool savebuf_ovhandler(PayloadBuilder *pb, uint32_t more)
 void settings_save(void)
 {
     HAL_StatusTypeDef hst;
-    PayloadBuilder pb = pb_start(save_buffer, SAVE_BUF_SIZE, savebuf_ovhandler);
+    PayloadBuilder pb = pb_start(save_buffer, FLASH_SAVE_BUF_LEN, savebuf_ovhandler);
 
     save_addr = SETTINGS_FLASH_ADDR;
 

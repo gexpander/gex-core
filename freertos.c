@@ -48,30 +48,26 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "FreeRTOS.h"
-#include "task.h"
 #include "cmsis_os.h"
 
-/* USER CODE BEGIN Includes */     
+/* USER CODE BEGIN Includes */
+#include "platform.h"
 #include "tasks/sched_queue.h"
 #include "stacksmon.h"
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
 
-#define STACK_MAIN 160
-#define STACK_MSG 200
-#define STACK_JOBRUNNER 128
-
 osThreadId tskMainHandle;
-uint32_t mainTaskBuffer[ STACK_MAIN ];
+uint32_t mainTaskBuffer[ TSK_STACK_MAIN ];
 osStaticThreadDef_t mainTaskControlBlock;
 
 osThreadId tskMsgHandle;
-uint32_t msgTaskBuffer[ STACK_MSG ];
+uint32_t msgTaskBuffer[ TSK_STACK_MSG ];
 osStaticThreadDef_t msgTaskControlBlock;
 
 osThreadId tskJobRunnerHandle;
-uint32_t jobRunnerBuffer[ STACK_JOBRUNNER ];
+uint32_t jobRunnerBuffer[ TSK_STACK_JOBRUNNER ];
 osStaticThreadDef_t jobRunnerControlBlock;
 
 osMessageQId queSchedHandle;
@@ -166,15 +162,15 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of tskMain */
-  osThreadStaticDef(tskMain, TaskMain, osPriorityHigh, 0, STACK_MAIN, mainTaskBuffer, &mainTaskControlBlock);
+  osThreadStaticDef(tskMain, TaskMain, osPriorityHigh, 0, TSK_STACK_MAIN, mainTaskBuffer, &mainTaskControlBlock);
   tskMainHandle = osThreadCreate(osThread(tskMain), NULL);
 
   /* definition and creation of tskJobRunner */
-  osThreadStaticDef(tskJobRunner, TaskJobQueue, osPriorityAboveNormal, 0, STACK_JOBRUNNER, jobRunnerBuffer, &jobRunnerControlBlock);
+  osThreadStaticDef(tskJobRunner, TaskJobQueue, osPriorityAboveNormal, 0, TSK_STACK_JOBRUNNER, jobRunnerBuffer, &jobRunnerControlBlock);
   tskJobRunnerHandle = osThreadCreate(osThread(tskJobRunner), NULL);
 
   /* definition and creation of TaskMessaging */
-  osThreadStaticDef(tskMsg, TaskMessaging, osPriorityNormal, 0, STACK_MSG, msgTaskBuffer, &msgTaskControlBlock);
+  osThreadStaticDef(tskMsg, TaskMessaging, osPriorityNormal, 0, TSK_STACK_MSG, msgTaskBuffer, &msgTaskControlBlock);
   tskMsgHandle = osThreadCreate(osThread(tskMsg), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
