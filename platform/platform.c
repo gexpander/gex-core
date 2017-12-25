@@ -12,8 +12,6 @@
 #include "units/neopixel/unit_neopixel.h"
 #include "units/test/unit_test.h"
 
-// ----- RELEASE AVAILABLE RESOURCES -----
-
 void plat_init_resources(void)
 {
     __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -24,6 +22,7 @@ void plat_init_resources(void)
 
     // --- Common unit drivers ---
     ureg_add_type(&UNIT_PIN);
+    ureg_add_type(&UNIT_TEST);
 
     // --- platform specific resource releases and claims ---
 

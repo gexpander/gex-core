@@ -249,7 +249,10 @@ bool ureg_load_units(PayloadParser *pp)
         // TYPE
         pp_string(pp, typebuf, 16);
         Unit *const pUnit = ureg_instantiate(typebuf);
-        assert_param(pUnit);
+        if (!pUnit) {
+            dbg("!! Unknown unit type %s, aborting load.", typebuf);
+            break;
+        }
 
         // NAME
         pp_string(pp, typebuf, 16);

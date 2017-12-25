@@ -11,7 +11,6 @@ GEX_SRC_DIR = \
     User/units/pin \
     User/TinyFrame \
     User/CWPack \
-    User/vfs \
     User/tasks
 
 GEX_SOURCES = \
@@ -19,12 +18,7 @@ GEX_SOURCES = \
     User/USB/usbd_cdc_if.c \
     User/USB/usbd_conf.c \
     User/USB/usbd_desc.c \
-    User/USB/usbd_storage_if.c \
     User/USB/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c \
-    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c \
-    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_bot.c \
-    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_data.c \
-    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_scsi.c \
     User/USB/STM32_USB_Device_Library/Class/MSC_CDC/usbd_msc_cdc.c \
     User/USB/STM32_USB_Device_Library/Core/Src/usbd_core.c \
     User/USB/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
@@ -67,7 +61,7 @@ GEX_CDEFS_BASE =  \
     -D__packed="__attribute__((__packed__))" \
     -DUSE_FULL_LL_DRIVER \
 
-# TODO implement debug build choice
+# TODO implement debug build choice - enable or disable debugging
 ifeq '1' '1'
 GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DUSE_FULL_ASSERT=1 \
@@ -86,4 +80,22 @@ GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DVERBOSE_HARDFAULT=0 \
     -DUSE_STACK_MONITOR=0 \
     -DUSE_DEBUG_UART=0
+endif
+
+
+# TODO implement debug build choice - enable or disable MSC
+ifeq '1' '1'
+
+GEX_SOURCES += \
+    User/USB/usbd_storage_if.c \
+    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc.c \
+    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_bot.c \
+    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_data.c \
+    User/USB/STM32_USB_Device_Library/Class/MSC/Src/usbd_msc_scsi.c
+
+GEX_SRC_DIR += \
+    User/vfs
+
+else
+GEX_CDEFS += -DDISABLE_MSC
 endif

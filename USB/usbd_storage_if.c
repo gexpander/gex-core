@@ -47,8 +47,8 @@
 */
 
 /* Includes ------------------------------------------------------------------*/
-#include <platform/status_led.h>
 #include "platform.h"
+#include "platform/status_led.h"
 #include "usbd_storage_if.h"
 /* USER CODE BEGIN INCLUDE */
 #include "vfs/vfs_manager.h"
@@ -101,7 +101,7 @@
   */
 /* USER CODE BEGIN INQUIRY_DATA_FS */ 
 /* USB Mass storage Standard Inquiry Data */
-int8_t  STORAGE_Inquirydata_FS[] = {/* 36 */
+uint8_t  STORAGE_Inquirydata_FS[] = {/* 36 */
   /* LUN 0 */
   0x00,		
   0x80,		

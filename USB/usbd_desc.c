@@ -72,7 +72,7 @@
 /** @defgroup USBD_DESC_Private_Defines
   * @{
   */ 
-#define USBD_VID              1155
+#define USBD_VID              1155 // TODO choose a VID:PID (eg. via pid.codes - 0x1209)
 #define USBD_PID_FS          22314
 #define USBD_LANGID_NUM       1033
 #define USBD_MANUFACTURER_STRING     "MightyPork"
@@ -220,7 +220,7 @@ uint8_t *  USBD_FS_LangIDStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *leng
 */
 uint8_t *  USBD_FS_ProductStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  USBD_GetString (USBD_PRODUCT_STRING_FS, USBD_StrDesc, length);
+  USBD_GetString ((uint8_t *) USBD_PRODUCT_STRING_FS, USBD_StrDesc, length);
   return USBD_StrDesc;
 }
 
@@ -233,7 +233,7 @@ uint8_t *  USBD_FS_ProductStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *len
 */
 uint8_t *  USBD_FS_ManufacturerStrDescriptor( USBD_SpeedTypeDef speed , uint16_t *length)
 {
-  USBD_GetString (USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
+  USBD_GetString ((uint8_t *) USBD_MANUFACTURER_STRING, USBD_StrDesc, length);
   return USBD_StrDesc;
 }
 

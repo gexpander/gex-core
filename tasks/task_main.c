@@ -19,8 +19,10 @@ void TaskMain(void const * argument)
 {
     dbg("> Main task started!");
 
+#ifndef DISABLE_MSC
     vfs_if_usbd_msc_init();
     vfs_mngr_init(1);
+#endif
 
     uint32_t startTime = xTaskGetTickCount();
     uint32_t cnt = 1;
@@ -33,7 +35,11 @@ void TaskMain(void const * argument)
         uint32_t elapsed = now - startTime;
         if (elapsed >= 100) {
             // interval 100ms or more - slow periodic
+
+#ifndef DISABLE_MSC
             vfs_mngr_periodic(elapsed);
+#endif
+
             LockJumper_Check();
             startTime = now;
 
@@ -61,6 +67,7 @@ void TaskMain(void const * argument)
             //
         }
 
+#ifndef DISABLE_MSC
         // MSC - read/write etc
         if (msg & (USBEVT_FLAG_EPx_IN(MSC_EPIN_ADDR))) {
             USBD_MSC_DataIn(&hUsbDeviceFS, MSC_EPIN_ADDR);
@@ -69,6 +76,7 @@ void TaskMain(void const * argument)
         if (msg & (USBEVT_FLAG_EPx_OUT(MSC_EPOUT_ADDR))) {
             USBD_MSC_DataOut(&hUsbDeviceFS, MSC_EPOUT_ADDR);
         }
+#endif
 
         // CDC - config packets and data in/out
         if (msg & (USBEVT_FLAG_EPx_IN(CDC_IN_EP))) {

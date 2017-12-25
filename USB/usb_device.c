@@ -75,7 +75,9 @@ void MX_USB_DEVICE_Init(void)
 
   USBD_RegisterClass(&hUsbDeviceFS, &USBD_MSC_CDC);
 
+#ifndef DISABLE_MSC
   USBD_MSC_RegisterStorage(&hUsbDeviceFS, &USBD_Storage_Interface_fops_FS);
+#endif
   USBD_CDC_RegisterInterface(&hUsbDeviceFS, &USBD_Interface_fops_FS);
 
   USBD_Start(&hUsbDeviceFS);

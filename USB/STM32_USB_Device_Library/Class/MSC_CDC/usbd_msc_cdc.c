@@ -164,7 +164,9 @@ static uint8_t USBD_MSC_CDC_Init(struct _USBD_HandleTypeDef *pdev, uint8_t cfgid
 {
     // this is not correct, but will work if neither returns BUSY (which they don't)
     uint8_t ret = 0;
+#ifndef DISABLE_MSC
     ret |= USBD_MSC_Init(pdev, cfgidx);
+#endif
     ret |= USBD_CDC_Init(pdev, cfgidx);
     return ret;
 }
@@ -172,7 +174,9 @@ static uint8_t USBD_MSC_CDC_Init(struct _USBD_HandleTypeDef *pdev, uint8_t cfgid
 static uint8_t USBD_MSC_CDC_DeInit(struct _USBD_HandleTypeDef *pdev, uint8_t cfgidx)
 {
     uint8_t ret = 0;
+#ifndef DISABLE_MSC
     ret |= USBD_MSC_DeInit(pdev, cfgidx);
+#endif
     ret |= USBD_CDC_DeInit(pdev, cfgidx);
     return ret;
 }
@@ -199,7 +203,9 @@ static uint8_t USBD_MSC_CDC_Setup(struct _USBD_HandleTypeDef *pdev, USBD_SetupRe
     }
 
     // class specific, or Interface -> Clear Feature
+#ifndef DISABLE_MSC
     USBD_MSC_Setup(pdev, req);
+#endif
     USBD_CDC_Setup(pdev, req);
     return USBD_OK;
 }
@@ -291,6 +297,9 @@ uint8_t  *USBD_MSC_CDC_GetFSCfgDesc (uint16_t *length)
 
     // Optionally hide settings (if lock jumper is installed)
     bool msc_visible = SystemSettings.editable;
+#ifdef DISABLE_MSC
+    msc_visible = false;
+#endif
     USBD_MSC_CDC_CfgFSDesc[14] = (uint8_t) (msc_visible ? 0x08 : 0xFF);
 
     return USBD_MSC_CDC_CfgFSDesc;
@@ -316,7 +325,7 @@ uint8_t  *USBD_MSC_CDC_GetUsrStrDescriptor(struct _USBD_HandleTypeDef *pdev, uin
 {
     const char *str;
     switch (index) {
-        case 0x04: str = "Settings Virtual Mass Storage"; break;
+        case 0x04: str = "Settings VFS"; break;
         case 0x05: str = "Virtual Comport ACM"; break;
         case 0x06: str = "Virtual Comport CDC"; break;
         default: str = "No Descriptor";
