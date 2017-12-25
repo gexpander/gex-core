@@ -11,12 +11,13 @@
 
 #if USE_DEBUG_UART
 
-void dbg(const char *format, ...) __attribute__((format(printf,1,2))) ;
-
 int PRINTF(const char *format, ...) __attribute__((format(printf,1,2))) ;
 void PUTSN(const char *string, size_t len);
 int PUTS(const char *string);
+void PUTNL(void);
 int PUTCHAR(int ch);
+
+#define dbg(format, ...) do { PRINTF(format, ##__VA_ARGS__); PUTNL(); } while (0)
 
 #else
 #define dbg(format, ...) do {} while (0)

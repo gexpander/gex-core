@@ -9,7 +9,7 @@
  */
 void __attribute__((noreturn)) abort_msg(const char *msg, const char *filename, uint32_t line)
 {
-    dbg("\r\n\033[31m%s:\033[m %s:%"PRIu32"\r\n", msg, filename, line);
+    dbg("\r\n\033[31m%s:\033[m %s:%"PRIu32, msg, filename, line);
     vPortEnterCritical();
     StatusLed_On(STATUS_FAULT);
     while(1);
@@ -23,7 +23,7 @@ void __attribute__((noreturn)) abort_msg(const char *msg, const char *filename, 
  */
 void warn_msg(const char *msg, const char *filename, uint32_t line)
 {
-    dbg("\r\n\033[33m%s:\033[m %s:%"PRIu32"\r\n", msg, filename, line);
+    dbg("\r\n\033[33m%s:\033[m %s:%"PRIu32, msg, filename, line);
 }
 
 /**

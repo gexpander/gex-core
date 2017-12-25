@@ -71,7 +71,7 @@ uint32_t jobRunnerBuffer[ TSK_STACK_JOBRUNNER ];
 osStaticThreadDef_t jobRunnerControlBlock;
 
 osMessageQId queSchedHandle;
-uint8_t myQueue02Buffer[ HP_SCHED_CAPACITY * sizeof( struct sched_que_item ) ];
+uint8_t myQueue02Buffer[ JOB_QUEUE_CAPACITY * sizeof( struct sched_que_item ) ];
 osStaticMessageQDef_t myQueue02ControlBlock;
 
 osMessageQId queRxDataHandle;
@@ -180,7 +180,7 @@ void MX_FREERTOS_Init(void) {
   /* Create the queue(s) */
 
   /* definition and creation of queSchedHP */
-  osMessageQStaticDef(queSchedHP, HP_SCHED_CAPACITY, struct sched_que_item, myQueue02Buffer, &myQueue02ControlBlock);
+  osMessageQStaticDef(queSchedHP, JOB_QUEUE_CAPACITY, struct sched_que_item, myQueue02Buffer, &myQueue02ControlBlock);
   queSchedHandle = osMessageCreate(osMessageQ(queSchedHP), NULL);
 
   /* definition and creation of queRxData */

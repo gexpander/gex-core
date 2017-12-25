@@ -575,6 +575,7 @@ static void file_data_handler(uint32_t sector, const uint8_t *buf, uint32_t num_
                        file_transfer_state.size_transferred);
 
             vfs_printf_nonl("\033[31m", 5);
+            // FIXME this seems wrong
             vfs_printf_nonl((const char *) buf, VFS_SECTOR_SIZE * num_of_sectors);
             vfs_printf_nonl("\033[0m\r\n", 6);
 

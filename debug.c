@@ -17,8 +17,15 @@ int PRINTF(const char *format, ...)
     va_start(args, format);
     /*convert into string at buff[0] of length iw*/
     len = (int)fixup_vsnprintf(&dbg_buf[0], DBG_BUF_LEN, format, args);
+
+    if (len >= DBG_BUF_LEN) {
+        dbg_buf[DBG_BUF_LEN-1] = 0;
+        len = DBG_BUF_LEN-1;
+    }
+
     _write_r(NULL, 2, dbg_buf, (size_t) len);
     va_end(args);
+
     return len;
 }
 
@@ -31,6 +38,15 @@ void PUTSN(const char *string, size_t len)
 {
     if (len == 0) len = strlen(string);
     _write_r(NULL, 2, string, (size_t) len);
+}
+
+/**
+ * Puts a newline
+ *
+ */
+void PUTNL(void)
+{
+    _write_r(NULL, 2, "\r\n", 2);
 }
 
 /**
@@ -54,28 +70,6 @@ int PUTCHAR(int ch)
 {
     _write_r(NULL, 2, &ch, 1);
     return ch; // or EOF
-}
-
-/**
- * Print string to debug uart, add newline if missing (printf-like)
- * @param format
- * @param ...
- */
-void dbg(const char *format, ...)
-{
-    va_list args;
-    int len;
-    char dbg_buf[DBG_BUF_LEN];
-
-    va_start(args, format);
-    len = (int)VSNPRINTF(&dbg_buf[0], DBG_BUF_LEN, format, args);
-    _write_r(NULL, 2, dbg_buf, (size_t) len);
-
-    // add newline if not present
-    if (dbg_buf[len-1] != '\n')
-        _write_r(NULL, 2, "\r\n",  2);
-
-    va_end(args);
 }
 
 #endif

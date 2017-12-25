@@ -61,17 +61,10 @@ GEX_CDEFS_BASE =  \
     -D__packed="__attribute__((__packed__))" \
     -DUSE_FULL_LL_DRIVER \
 
-# TODO implement debug build choice - enable or disable debugging
-ifeq '1' '1'
-GEX_CDEFS = $(GEX_CDEFS_BASE) \
-    -DUSE_FULL_ASSERT=1 \
-    -DVERBOSE_ASSERT=1 \
-    -DDEBUG_VFS=0 \
-    -DDEBUG_FLASH_WRITE=0 \
-    -DVERBOSE_HARDFAULT=1 \
-    -DUSE_STACK_MONITOR=1 \
-    -DUSE_DEBUG_UART=1
-else
+
+
+ifeq '$(DISABLE_DEBUG)' '1'
+
 GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DUSE_FULL_ASSERT=0 \
     -DVERBOSE_ASSERT=0 \
@@ -80,11 +73,26 @@ GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DVERBOSE_HARDFAULT=0 \
     -DUSE_STACK_MONITOR=0 \
     -DUSE_DEBUG_UART=0
+
+else
+
+GEX_CDEFS = $(GEX_CDEFS_BASE) \
+    -DUSE_FULL_ASSERT=1 \
+    -DVERBOSE_ASSERT=1 \
+    -DDEBUG_VFS=0 \
+    -DDEBUG_FLASH_WRITE=0 \
+    -DVERBOSE_HARDFAULT=1 \
+    -DUSE_STACK_MONITOR=1 \
+    -DUSE_DEBUG_UART=1
+
 endif
 
 
-# TODO implement debug build choice - enable or disable MSC
-ifeq '1' '1'
+ifeq '$(DISABLE_MSC)' '1'
+
+GEX_CDEFS += -DDISABLE_MSC
+
+else
 
 GEX_SOURCES += \
     User/USB/usbd_storage_if.c \
@@ -96,6 +104,4 @@ GEX_SOURCES += \
 GEX_SRC_DIR += \
     User/vfs
 
-else
-GEX_CDEFS += -DDISABLE_MSC
 endif

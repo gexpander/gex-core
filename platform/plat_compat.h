@@ -5,69 +5,39 @@
 #ifndef GEX_PLAT_COMPAT_H
 #define GEX_PLAT_COMPAT_H
 
-// -------- Buffers and stack sizes ---------
+// -------- Static buffers ---------
+#define TSK_STACK_MAIN      150 // USB / VFS task stack size
+#define TSK_STACK_MSG       180 // TF message handler task stack size
+#define TSK_STACK_JOBRUNNER 100 // Job runner task stack size
 
-// FreeRTOS thread stacks (in 4-byte words)
-#define TSK_STACK_MAIN      160
-#define TSK_STACK_MSG       200
-#define TSK_STACK_JOBRUNNER 128
+#define BULKREAD_MAX_CHUNK  256 // Bulk read buffer
 
-// Size of the snprintf buffer for debug messages
-// (this is on stack to avoid races)
-#define DBG_BUF_LEN 80
+#define FLASH_SAVE_BUF_LEN  256 // Static buffer for saving to flash
 
-// Bulk read/write
-#define BULK_LST_TIMEOUT_MS 200 // timeout for the bulk transaction to expire
-#define BULKREAD_MAX_CHUNK  512 // this is a static buffer
+#define JOB_QUEUE_CAPACITY  4 // Job runner queue size (16 bytes each)
+#define RX_QUE_CAPACITY    10 // TinyFrame rx queue size (64 bytes each)
 
-// Error message buffer size (on stack)
-#define ERR_MSG_STR_LEN 32
+#define TF_MAX_PAYLOAD_RX 512 // TF max Rx payload
+#define TF_SENDBUF_LEN     64 // TF transmit buffer (can be less than a full frame)
 
-// Static buffer for saving to flash
-#define FLASH_SAVE_BUF_LEN 256
+#define TF_MAX_ID_LST   4 // Frame ID listener count
+#define TF_MAX_TYPE_LST 6 // Frame Type listener count
+#define TF_MAX_GEN_LST  1 // Generic listener count
 
-// Number of job runner slots
-#define HP_SCHED_CAPACITY 5
+#define USBD_MAX_STR_DESC_SIZ   64 // Descriptor conversion buffer (used for converting ASCII to UTF-16, must be 2x the size of the longest descriptor)
+#define MSC_MEDIA_PACKET       512 // Mass storage sector size (packet)
 
-// Number of message queue slots (64 bytes each)
-#define RX_QUE_CAPACITY 10
+#define INI_KEY_MAX    20 // Ini parser key buffer
+#define INI_VALUE_MAX  30 // Ini parser value buffer
 
+// -------- Stack buffers ----------
+#define DBG_BUF_LEN      80 // Size of the snprintf buffer for debug messages
+#define ERR_MSG_STR_LEN  32 // Error message buffer size
+#define IWBUFFER_LEN     80 // Ini writer buffer for sprintf
 
-// ------ TinyFrame config ------
-
-// Maximum received payload size (static buffer)
-// Larger payloads will be rejected.
-#define TF_MAX_PAYLOAD_RX 640
-
-// Size of the sending buffer. Larger payloads will be split to pieces and sent
-// in multiple calls to the write function. This can be lowered to reduce RAM usage.
-#define TF_SENDBUF_LEN 64
-
-// --- Listener counts - determine sizes of the static slot tables ---
-
-// Frame ID listeners (wait for response / multi-part message)
-#define TF_MAX_ID_LST   4
-// Frame Type listeners (wait for frame with a specific first payload byte)
-#define TF_MAX_TYPE_LST 6
-// Generic listeners (fallback if no other listener catches it)
-#define TF_MAX_GEN_LST  1
-
-// Timeout for receiving & parsing a frame
-// ticks = number of calls to TF_Tick()
-#define TF_PARSER_TIMEOUT_TICKS 250
-
-
-// --- Mass Storage / USB config ---
-
-#define USBD_MAX_STR_DESC_SIZ  128
-#define MSC_MEDIA_PACKET       512
-
-
-// INI buffer sizes
-#define INI_KEY_MAX 20
-#define INI_VALUE_MAX 30
-// ini writer
-#define IWBUFFER_LEN 128
+// -------- Timeouts ------------
+#define TF_PARSER_TIMEOUT_TICKS 100 // Timeout for receiving & parsing a frame
+#define BULK_LST_TIMEOUT_MS     200 // timeout for the bulk transaction to expire
 
 
 

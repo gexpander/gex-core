@@ -81,7 +81,7 @@ void stackmon_check_canaries(void)
     for (uint32_t i = 0; i < nextidx; i++) {
         struct stackhandle *stack = &stacks[i];
         if (stack->buffer[0] != 0xA5) {
-            dbg("\r\n\033[31;1m!!!! STACK \"%s\" OVERRUN - CANARY IS DEAD !!!!\033[m\r\n", stack->description);
+            dbg("\r\n\033[31;1m!!!! STACK \"%s\" OVERRUN - CANARY IS DEAD !!!!\033[m", stack->description);
             stackmon_dump();
             trap("ABORT");
         }

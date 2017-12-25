@@ -39,7 +39,7 @@ void GEX_PreInit(void)
     DebugUart_PreInit();
 
     dbg("\r\n\033[37;1m*** GEX "GEX_VERSION" on "GEX_PLATFORM" ***\033[m");
-    dbg("Build "__DATE__" "__TIME__"\r\n");
+    dbg("Build "__DATE__" "__TIME__);
 
     plat_init();
 
