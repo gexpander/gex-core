@@ -22,7 +22,10 @@ void plat_init_resources(void)
 
     // --- Common unit drivers ---
     ureg_add_type(&UNIT_PIN);
-    ureg_add_type(&UNIT_TEST);
+
+    #if !DISABLE_TEST_UNIT
+        ureg_add_type(&UNIT_TEST);
+    #endif
 
     // --- platform specific resource releases and claims ---
 

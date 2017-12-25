@@ -105,3 +105,7 @@ GEX_SRC_DIR += \
     User/vfs
 
 endif
+
+ifeq '$(DISABLE_TEST_UNIT)' '1'
+GEX_CDEFS += -DDISABLE_TEST_UNIT
+endif
