@@ -12,20 +12,6 @@
 #include "units/neopixel/unit_neopixel.h"
 #include "units/test/unit_test.h"
 
-
-// ----- SUPPORTED UNITS -----
-
-void plat_register_units(void)
-{
-    ureg_add_type(&UNIT_PIN);
-    ureg_add_type(&UNIT_NEOPIXEL);
-
-    ureg_add_type(&UNIT_TEST);
-
-    // Platform-specific units could be added here
-}
-
-
 // ----- RELEASE AVAILABLE RESOURCES -----
 
 void plat_init_resources(void)
@@ -36,9 +22,18 @@ void plat_init_resources(void)
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOE_CLK_ENABLE();
 
-#if defined(GEX_PLAT_F103_BLUEPILL)
+    // --- Common unit drivers ---
+    ureg_add_type(&UNIT_PIN);
 
-    // Platform F103C8T6 - free all present resources
+    // --- platform specific resource releases and claims ---
+
+#if defined(GEX_PLAT_F103_BLUEPILL)
+    // Platform STM32F103C8T6 Bluepill ($4 board from eBay)
+
+    // Units supported by the platform (known to work correctly)
+    ureg_add_type(&UNIT_NEOPIXEL);
+
+    // free all present resources
     {
         rsc_free_range(NULL, R_ADC1, R_ADC2);
         rsc_free_range(NULL, R_I2C1, R_I2C2);
@@ -72,9 +67,15 @@ void plat_init_resources(void)
         assert_param(ok);
     }
 #elif defined(GEX_PLAT_F072_DISCOVERY)
+    // Platform STM32F073RBT
+
+    // Additional GPIO ports
     __HAL_RCC_GPIOF_CLK_ENABLE();
 
-    // Platform F073RBT - free all present resources
+    // Units supported by the platform (known to work correctly)
+    // ureg_add_type(&UNIT_XYZ);
+
+    // Free all present resources
     {
         rsc_free(NULL, R_ADC1);
         rsc_free(NULL, R_CAN1);
@@ -118,9 +119,15 @@ void plat_init_resources(void)
         assert_param(ok);
     }
 #elif defined(GEX_PLAT_F303_DISCOVERY)
+    // Platform STM32F303VCT
+
+    // Additional GPIO ports
     __HAL_RCC_GPIOF_CLK_ENABLE();
 
-    // Platform F303VCT - free all present resources
+    // Units supported by the platform (known to work correctly)
+    // ureg_add_type(&UNIT_XYZ);
+
+    // Free all present resources
     {
         rsc_free_range(NULL, R_ADC1, R_ADC4);
         rsc_free(NULL, R_CAN1);
@@ -169,9 +176,15 @@ void plat_init_resources(void)
         assert_param(ok);
     }
 #elif defined(GEX_PLAT_F407_DISCOVERY)
+    // Platform STM32F407VGT
+
+    // Additional GPIO ports
     __HAL_RCC_GPIOF_CLK_ENABLE();
 
-    // Platform F407VGT - free all present resources
+    // Units supported by the platform (known to work correctly)
+    // ureg_add_type(&UNIT_XYZ);
+
+    // Free all present resources
     {
         rsc_free_range(NULL, R_ADC1, R_ADC3);
         rsc_free_range(NULL, R_CAN1, R_CAN2);

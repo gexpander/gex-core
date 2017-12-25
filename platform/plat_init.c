@@ -19,15 +19,11 @@ void plat_init(void)
 
     dbg("Setting up resources ...");
     rsc_init_registry();
-    plat_init_resources();
+    plat_init_resources(); // also registers unit drivers
 
     LockJumper_Init();
     StatusLed_Init();
     DebugUart_Init(); // <- only the resource claim
-
-    dbg("Registering platform units ...");
-    // All user-configurable units are now added to the repository
-    plat_register_units();
 
     dbg("Loading settings ...");
     // Load settings from Flash and apply (includes System settings and all Unit settings)
