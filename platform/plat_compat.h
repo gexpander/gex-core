@@ -32,7 +32,7 @@
 
 // -------- Stack buffers ----------
 #define DBG_BUF_LEN      80 // Size of the snprintf buffer for debug messages
-#define ERR_MSG_STR_LEN  32 // Error message buffer size
+#define ERR_MSG_STR_LEN  64 // Error message buffer size
 #define IWBUFFER_LEN     80 // Ini writer buffer for sprintf
 
 // -------- Timeouts ------------
