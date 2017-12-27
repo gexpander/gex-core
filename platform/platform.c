@@ -249,12 +249,13 @@ void plat_usb_reconnect(void)
 
     USBD_LL_Reset(&hUsbDeviceFS);
 
-#if defined(GEX_PLAT_F072_DISCOVERY) || defined(GEX_PLAT_F303_DISCOVERY)
+#if defined(GEX_PLAT_F103_BLUEPILL)
+    // F103 doesn't have pull-up control
+#else
     HAL_PCD_DevDisconnect(&hpcd_USB_FS);
     osDelay(100);
     HAL_PCD_DevConnect(&hpcd_USB_FS);
-#else
-    // F103 doesn't have pull-up control
 #endif
+
 }
 
