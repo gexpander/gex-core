@@ -58,6 +58,7 @@
 #include "usbd_def.h"
 
 extern USBD_HandleTypeDef hUsbDeviceFS;
+extern PCD_HandleTypeDef hpcd_USB_FS;
 
 /* USB_Device init function */	
 void MX_USB_DEVICE_Init(void);

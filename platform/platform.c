@@ -247,8 +247,14 @@ void plat_usb_reconnect(void)
 {
     // TODO add better reset methods available on different chips
 
-    // F103 doesn't have pull-up control, this is probably the best we can do
-    // This does not seem to trigger descriptors reload.
     USBD_LL_Reset(&hUsbDeviceFS);
+
+#if defined(GEX_PLAT_F072_DISCOVERY)
+    HAL_PCD_DevDisconnect(&hpcd_USB_FS);
+    osDelay(100);
+    HAL_PCD_DevConnect(&hpcd_USB_FS);
+#else
+    // F103 doesn't have pull-up control
+#endif
 }
 
