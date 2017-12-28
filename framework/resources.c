@@ -5,6 +5,7 @@
 #include "platform.h"
 #include "unit.h"
 #include "resources.h"
+#include "pin_utils.h"
 
 static bool rsc_initialized = false;
 
@@ -79,6 +80,30 @@ bool rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1)
         if (!rsc_claim(unit, (Resource) i)) return false;
     }
 
+    return true;
+}
+
+bool rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
+{
+    bool suc = true;
+
+    for (int i = 0; i < 16; i++) {
+        if (pins & (1 << i)) {
+            Resource rsc = pin2resource(port_name, (uint8_t) i, &suc);
+            if (!suc) {
+                unit->status = E_BAD_CONFIG;
+
+                rsc_teardown(unit);
+                return false;
+            }
+
+            suc = rsc_claim(unit, rsc);
+            if (!suc) {
+                rsc_teardown(unit);
+                return false;
+            }
+        }
+    }
     return true;
 }
 

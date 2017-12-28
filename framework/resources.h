@@ -88,4 +88,15 @@ void rsc_teardown(Unit *unit);
 void rsc_free(Unit *unit, Resource rsc);
 void rsc_free_range(Unit *unit, Resource rsc0, Resource rsc1);
 
+/**
+ * Claim GPIOs by bitmask and port name, atomically.
+ * Tear down the unit on failure.
+ *
+ * @param unit - claiming unit
+ * @param port_name - port (eg. 'A')
+ * @param pins - pins, bitmask
+ * @return success
+ */
+bool rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins);
+
 #endif //GEX_RESOURCES_H

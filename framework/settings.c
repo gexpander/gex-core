@@ -16,7 +16,7 @@ static bool savebuf_ovhandler(PayloadBuilder *pb, uint32_t more);
 
 // This is the first entry in a valid config.
 // Change with each breaking change to force config reset.
-#define CONFIG_MARKER 0xA55D
+#define CONFIG_MARKER 0xA55E
 
 void settings_load(void)
 {
@@ -270,7 +270,7 @@ void settings_load_ini_begin(void)
 
 void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value)
 {
-    dbg("[%s] %s = %s", section, key, value);
+//    dbg("[%s] %s = %s", section, key, value);
     static char namebuf[INI_KEY_MAX];
 
     if (streq(section, "SYSTEM")) {

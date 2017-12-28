@@ -6,6 +6,8 @@
 #include "unit.h"
 #include "resources.h"
 
+char unit_tmp64[64];
+
 // Abort partly inited unit
 void clean_failed_unit(Unit *unit)
 {

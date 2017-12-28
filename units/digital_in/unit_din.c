@@ -2,16 +2,17 @@
 // Created by MightyPork on 2017/11/25.
 //
 
+#include <stm32f072xb.h>
 #include "comm/messages.h"
 #include "unit_base.h"
-#include "unit_dout.h"
+#include "unit_din.h"
 
 /** Private data structure */
 struct priv {
     char port_name;
     uint16_t pins; // pin mask
-    uint16_t initial; // initial pin states
-    uint16_t open_drain; // open drain pins
+    uint16_t pulldown; // pull-downs (default is pull-up)
+    uint16_t pullup; // pull-ups
 
     GPIO_TypeDef *port;
 };
@@ -19,7 +20,7 @@ struct priv {
 // ------------------------------------------------------------------------
 
 /** Load from a binary buffer stored in Flash */
-static void DO_loadBinary(Unit *unit, PayloadParser *pp)
+static void DI_loadBinary(Unit *unit, PayloadParser *pp)
 {
     struct priv *priv = unit->data;
 
@@ -28,12 +29,14 @@ static void DO_loadBinary(Unit *unit, PayloadParser *pp)
 
     priv->port_name = pp_char(pp);
     priv->pins = pp_u16(pp);
-    priv->initial = pp_u16(pp);
-    priv->open_drain = pp_u16(pp);
+    priv->pulldown = pp_u16(pp);
+    priv->pullup = pp_u16(pp);
+
+    dbg("load bin, pulldown = %X", priv->pulldown);
 }
 
 /** Write to a binary buffer for storing in Flash */
-static void DO_writeBinary(Unit *unit, PayloadBuilder *pb)
+static void DI_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
@@ -41,14 +44,14 @@ static void DO_writeBinary(Unit *unit, PayloadBuilder *pb)
 
     pb_char(pb, priv->port_name);
     pb_u16(pb, priv->pins);
-    pb_u16(pb, priv->initial);
-    pb_u16(pb, priv->open_drain);
+    pb_u16(pb, priv->pulldown);
+    pb_u16(pb, priv->pullup);
 }
 
 // ------------------------------------------------------------------------
 
 /** Parse a key-value pair from the INI file */
-static bool DO_loadIni(Unit *unit, const char *key, const char *value)
+static bool DI_loadIni(Unit *unit, const char *key, const char *value)
 {
     bool suc = true;
     struct priv *priv = unit->data;
@@ -59,11 +62,12 @@ static bool DO_loadIni(Unit *unit, const char *key, const char *value)
     else if (streq(key, "pins")) {
         priv->pins = parse_pinmask(value, &suc);
     }
-    else if (streq(key, "initial")) {
-        priv->initial = parse_pinmask(value, &suc);
+    else if (streq(key, "pull-up")) {
+        priv->pullup = parse_pinmask(value, &suc);
     }
-    else if (streq(key, "opendrain")) {
-        priv->open_drain = parse_pinmask(value, &suc);
+    else if (streq(key, "pull-down")) {
+        priv->pulldown = parse_pinmask(value, &suc);
+        dbg("parsinf ini, pulldown = %X", priv->pulldown);
     }
     else {
         return false;
@@ -73,7 +77,7 @@ static bool DO_loadIni(Unit *unit, const char *key, const char *value)
 }
 
 /** Generate INI file section for the unit */
-static void DO_writeIni(Unit *unit, IniWriter *iw)
+static void DI_writeIni(Unit *unit, IniWriter *iw)
 {
     struct priv *priv = unit->data;
 
@@ -83,17 +87,21 @@ static void DO_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Pins (comma separated, supports ranges)");
     iw_entry(iw, "pins", "%s", str_pinmask(priv->pins, unit_tmp64));
 
-    iw_comment(iw, "Initially high pins");
-    iw_entry(iw, "initial", "%s", str_pinmask(priv->initial, unit_tmp64));
+    iw_comment(iw, "Pins with pull-up");
+    iw_entry(iw, "pull-up", "%s", str_pinmask(priv->pullup, unit_tmp64));
 
-    iw_comment(iw, "Open-drain pins");
-    iw_entry(iw, "opendrain", "%s", str_pinmask(priv->open_drain, unit_tmp64));
+    iw_comment(iw, "Pins with pull-down");
+    iw_entry(iw, "pull-down", "%s", str_pinmask(priv->pulldown, unit_tmp64));
+
+#if PLAT_NO_FLOATING_INPUTS
+    iw_comment(iw, "NOTE: Pins use pull-up by default.\r\n");
+#endif
 }
 
 // ------------------------------------------------------------------------
 
 /** Allocate data structure and set defaults */
-static bool DO_preInit(Unit *unit)
+static bool DI_preInit(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
@@ -102,20 +110,20 @@ static bool DO_preInit(Unit *unit)
     // some defaults
     priv->port_name = 'A';
     priv->pins = 0x0001;
-    priv->open_drain = 0x0000;
-    priv->initial = 0x0000;
+    priv->pulldown = 0x0000;
+    priv->pullup = 0x0000;
 
     return true;
 }
 
 /** Finalize unit set-up */
-static bool DO_init(Unit *unit)
+static bool DI_init(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data;
 
-    priv->initial &= priv->pins;
-    priv->open_drain &= priv->pins;
+    priv->pulldown &= priv->pins;
+    priv->pullup &= priv->pins;
 
     // --- Parse config ---
     priv->port = port2periph(priv->port_name, &suc);
@@ -134,25 +142,28 @@ static bool DO_init(Unit *unit)
             uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
 
             // --- Init hardware ---
-            LL_GPIO_SetPinMode(priv->port, ll_pin, LL_GPIO_MODE_OUTPUT);
+            LL_GPIO_SetPinMode(priv->port, ll_pin, LL_GPIO_MODE_INPUT);
 
-            LL_GPIO_SetPinOutputType(priv->port, ll_pin, (priv->open_drain & mask) ?
-                                                         LL_GPIO_OUTPUT_OPENDRAIN :
-                                                         LL_GPIO_OUTPUT_PUSHPULL);
+            uint32_t pull = 0;
 
-            LL_GPIO_SetPinSpeed(priv->port, ll_pin, LL_GPIO_SPEED_FREQ_HIGH);
+            #if PLAT_NO_FLOATING_INPUTS
+                pull = LL_GPIO_PULL_UP;
+            #else
+                pull = LL_GPIO_PULL_NO;
+            #endif
+
+            if (priv->pulldown & mask) pull = LL_GPIO_PULL_DOWN;
+            if (priv->pullup & mask) pull = LL_GPIO_PULL_UP;
+            LL_GPIO_SetPinPull(priv->port, ll_pin, pull);
         }
     }
-
-    // Set the initial state
-    priv->port->ODR &= ~priv->pins;
-    priv->port->ODR |= priv->initial;
 
     return true;
 }
 
+
 /** Tear down the unit */
-static void DO_deInit(Unit *unit)
+static void DI_deInit(Unit *unit)
 {
     struct priv *priv = unit->data;
 
@@ -160,7 +171,6 @@ static void DO_deInit(Unit *unit)
     uint16_t mask = 1;
     for (int i = 0; i < 16; i++, mask <<= 1) {
         if (priv->pins & mask) {
-
             uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
             assert_param(suc); // this should never fail if we got this far
 
@@ -180,46 +190,23 @@ static void DO_deInit(Unit *unit)
 // ------------------------------------------------------------------------
 
 enum PinCmd_ {
-    CMD_WRITE = 0,
-    CMD_SET = 1,
-    CMD_CLEAR = 2,
-    CMD_TOGGLE = 3,
+    CMD_READ = 0,
 };
 
 /** Handle a request message */
-static bool DO_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
+static bool DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
     (void)pp;
 
     struct priv *priv = unit->data;
 
-    uint16_t packed = pp_u16(pp);
-
-    uint16_t mask = priv->pins;
-    uint16_t spread = port_spread(packed, mask);
-
-    uint16_t set, reset;
+    uint16_t packed = port_pack((uint16_t) priv->port->IDR, priv->pins);
 
     switch (command) {
-        case CMD_WRITE:;
-            set = spread;
-            reset = (~spread) & mask;
-            priv->port->BSRR = set | (reset<<16);
-            break;
-
-        case CMD_SET:
-            priv->port->BSRR = spread;
-            break;
-
-        case CMD_CLEAR:
-            priv->port->BSRR = (spread<<16);
-            break;
-
-        case CMD_TOGGLE:;
-            spread = (uint16_t) (~priv->port->ODR) & mask;
-            set = spread;
-            reset = (~spread) & mask;
-            priv->port->BSRR = set | (reset<<16);
+        case CMD_READ:;
+            PayloadBuilder pb = pb_start((uint8_t*)unit_tmp64, 64, NULL);
+            pb_u16(&pb, packed);
+            com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp64, pb_length(&pb));
             break;
 
         default:
@@ -233,18 +220,18 @@ static bool DO_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Payloa
 // ------------------------------------------------------------------------
 
 /** Unit template */
-const UnitDriver UNIT_DOUT = {
-    .name = "DO",
-    .description = "Digital output",
+const UnitDriver UNIT_DIN = {
+    .name = "DI",
+    .description = "Digital input",
     // Settings
-    .preInit = DO_preInit,
-    .cfgLoadBinary = DO_loadBinary,
-    .cfgWriteBinary = DO_writeBinary,
-    .cfgLoadIni = DO_loadIni,
-    .cfgWriteIni = DO_writeIni,
+    .preInit = DI_preInit,
+    .cfgLoadBinary = DI_loadBinary,
+    .cfgWriteBinary = DI_writeBinary,
+    .cfgLoadIni = DI_loadIni,
+    .cfgWriteIni = DI_writeIni,
     // Init
-    .init = DO_init,
-    .deInit = DO_deInit,
+    .init = DI_init,
+    .deInit = DI_deInit,
     // Function
-    .handleRequest = DO_handleRequest,
+    .handleRequest = DI_handleRequest,
 };

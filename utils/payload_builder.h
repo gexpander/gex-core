@@ -62,7 +62,7 @@ struct PayloadBuilder_ {
 // --- utilities ---
 
 /** Get already used bytes count */
-#define pb_length(pb) ((pb)->current - (pb)->start)
+#define pb_length(pb) ((uint32_t)((pb)->current - (pb)->start))
 
 /** Reset the current pointer to start */
 #define pb_rewind(pb) do { pb->current = pb->start; } while (0)

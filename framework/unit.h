@@ -11,6 +11,8 @@
 #include "utils/payload_builder.h"
 #include "utils/payload_parser.h"
 
+extern char unit_tmp64[64]; // temporary static buffer
+
 typedef struct unit Unit;
 typedef struct unit_driver UnitDriver;
 

@@ -45,13 +45,20 @@
 
 // -------- Platform specific includes and defines ---------
 
+/// Feature flags:
+// PLAT_FLASHBANKS - has the Banks field on the Flash config struct
+// PLAT_NO_FLOATING_INPUTS - can't have digital inputs with no pull resistor
+// PLAT_USB_PHYCLOCK - requires special config of phy clock for USB
+// PLAT_USB_OTGFS - uses the USB OTG IP, needs different config code
+
 #if defined(GEX_PLAT_F103_BLUEPILL)
 
     // platform name for the version string
     #define GEX_PLATFORM "STM32F103-Bluepill"
 
-    // This platform has the Banks field on the Flash config struct for settings save
+    // feature flags
     #define PLAT_FLASHBANKS 1
+    #define PLAT_NO_FLOATING_INPUTS 1
 
     #include <stm32f1xx.h>
     #include <stm32f1xx_hal.h>
