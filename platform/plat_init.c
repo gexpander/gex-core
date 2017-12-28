@@ -27,7 +27,7 @@ void plat_init(void)
 
     dbg("Loading settings ...");
     // Load settings from Flash and apply (includes System settings and all Unit settings)
-    settings_load();
+    settings_load(); // XXX maybe this should be moved to the main task
 
     comm_init();
 }

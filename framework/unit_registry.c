@@ -43,8 +43,11 @@ static int32_t unit_count = -1;
 void ureg_add_type(const UnitDriver *driver)
 {
     assert_param(driver != NULL);
-    assert_param(driver->description != NULL);
     assert_param(driver->name != NULL);
+
+    dbg("Loading driver %s", driver->name);
+
+    assert_param(driver->description != NULL);
     assert_param(driver->preInit != NULL);
     assert_param(driver->cfgLoadBinary != NULL);
     assert_param(driver->cfgLoadIni != NULL);
