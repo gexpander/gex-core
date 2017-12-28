@@ -5,6 +5,8 @@
 #ifndef GEX_PLAT_COMPAT_H
 #define GEX_PLAT_COMPAT_H
 
+#define VFS_DRIVE_NAME "GEX"
+
 // -------- Static buffers ---------
 #define TSK_STACK_MAIN      220 // USB / VFS task stack size
 #define TSK_STACK_MSG       200 // TF message handler task stack size

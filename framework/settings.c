@@ -209,33 +209,63 @@ static void savebuf_flush(PayloadBuilder *pb, bool final)
     fls_printf("\r\n");
 }
 
-/**
- * Write system settings to INI (without section)
- */
-void settings_build_ini(IniWriter *iw)
+// ---------------------------------------------------------------
+
+static void ini_preamble(IniWriter *iw, const char *filename)
 {
     // File header
-    iw_hdr_comment(iw, "CONFIG.INI");
+    iw_hdr_comment(iw, filename);
     iw_hdr_comment(iw, "GEX v%s on %s", GEX_VERSION, GEX_PLATFORM);
     iw_hdr_comment(iw, "built %s at %s", __DATE__, __TIME__);
     iw_cmt_newline(iw);
 
     iw_comment(iw, "Overwrite this file to change settings.");
     iw_comment(iw, "Close the LOCK jumper to save them to Flash.");
+}
 
-    systemsettings_build_ini(iw);
+/**
+ * Write system settings to INI (without section)
+ */
+void settings_build_units_ini(IniWriter *iw)
+{
+    ini_preamble(iw, "UNITS.INI");
 
     ureg_build_ini(iw);
 }
 
+/**
+ * Write system settings to INI (without section)
+ */
+void settings_build_system_ini(IniWriter *iw)
+{
+    ini_preamble(iw, "SYSTEM.INI");
+
+    systemsettings_build_ini(iw);
+}
+
+uint32_t settings_get_units_ini_len(void)
+{
+    // this writer is configured to skip everything, so each written byte will decrement the skip count
+    IniWriter iw = iw_init(NULL, 0xFFFFFFFF, 1); // count is never used, we use 1 because 0 means we're full
+    settings_build_units_ini(&iw);
+    // now we just check how many bytes were skipped
+    return 0xFFFFFFFF - iw.skip;
+}
+
+uint32_t settings_get_system_ini_len(void)
+{
+    // same as above
+    IniWriter iw = iw_init(NULL, 0xFFFFFFFF, 1);
+    settings_build_system_ini(&iw);
+    return 0xFFFFFFFF - iw.skip;
+}
+
+// ---------------------------------------------------------------
 
 void settings_load_ini_begin(void)
 {
     SystemSettings.modified = true;
-
-    // load defaults
-    systemsettings_loadDefaults();
-    ureg_remove_all_units();
+    SystemSettings.pristine = true;
 }
 
 void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value)
@@ -244,25 +274,35 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
     static char namebuf[INI_KEY_MAX];
 
     if (streq(section, "SYSTEM")) {
+
+        if (SystemSettings.pristine) {
+            SystemSettings.pristine = false;
+            systemsettings_loadDefaults();
+        }
+
         // system is always at the top
         systemsettings_load_ini(key, value);
     }
     else if (streq(section, "UNITS")) {
+
+        if (SystemSettings.pristine) {
+            SystemSettings.pristine = false;
+            ureg_remove_all_units();
+        }
+
         // this will always come before individual units config
         // install or tear down units as described by the config
         ureg_instantiate_by_ini(key, value);
-    } else {
+    }
+    else {
         // not a standard section, may be some unit config
-        // all unit sections contain the colon character [TYPE:NAME]
+        // all unit sections contain the colon character [TYPE:NAME@CALLSIGN]
         const char *nameptr = strchr(section, ':');
         const char *csptr = strchr(section, '@');
 
-        dbg("cs = %s", csptr);
         if (nameptr && csptr) {
             strncpy(namebuf, nameptr+1, csptr - nameptr - 1);
             uint8_t cs = (uint8_t) avr_atoi(csptr + 1);
-            dbg("cs is %d", cs);
-            dbg("name is %s", namebuf);
             ureg_load_unit_ini_key(namebuf, key, value, cs);
         } else {
             dbg("! Bad config key: [%s] %s = %s", section, key, value);
@@ -275,13 +315,4 @@ void settings_load_ini_end(void)
     if (!ureg_finalize_all_init()) {
         dbg("Some units failed to init!!");
     }
-}
-
-uint32_t settings_get_ini_len(void)
-{
-    // this writer is configured to skip everything, so each written byte will decrement the skip count
-    IniWriter iw = iw_init(NULL, 0xFFFFFFFF, 1);
-    settings_build_ini(&iw);
-    // now we just check how many bytes were skipped
-    return 0xFFFFFFFF - iw.skip;
 }

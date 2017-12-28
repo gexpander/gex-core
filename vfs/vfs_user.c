@@ -25,32 +25,34 @@
 #include "vfs_manager.h"
 #include "str_utils.h"
 
-const vfs_filename_t daplink_drive_name = "VIRTUALFS";
+const vfs_filename_t daplink_drive_name = VFS_DRIVE_NAME;
 
 // File callback to be used with vfs_add_file to return file contents
-static uint32_t read_file_config_ini(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
+static uint32_t read_file_units_ini(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
 {
-    vfs_printf("Read config.ini");
+    vfs_printf("Read UNITS.INI");
 
     const uint32_t avail = num_sectors*VFS_SECTOR_SIZE;
     const uint32_t skip = sector_offset*VFS_SECTOR_SIZE;
 
     IniWriter iw = iw_init((char *)data, skip, avail);
-    settings_build_ini(&iw);
+    settings_build_units_ini(&iw);
 
     return avail - iw.count;
 }
 
+static uint32_t read_file_system_ini(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
+{
+    vfs_printf("Read SYSTEM.INI");
 
-////
-//static void write_file_config_ini(uint32_t sector_offset, const uint8_t *data, uint32_t num_sectors)
-//{
-//    vfs_printf("Write CONFIG.INI, so %d, ns %d", sector_offset, num_sectors);
-//
-//    for(uint32_t i=0;i<num_sectors*VFS_SECTOR_SIZE;i++) {
-//        PRINTF("%c", data[i]);
-//    }
-//}
+    const uint32_t avail = num_sectors*VFS_SECTOR_SIZE;
+    const uint32_t skip = sector_offset*VFS_SECTOR_SIZE;
+
+    IniWriter iw = iw_init((char *)data, skip, avail);
+    settings_build_system_ini(&iw);
+
+    return avail - iw.count;
+}
 
 
 void vfs_user_build_filesystem(void)
@@ -60,8 +62,8 @@ void vfs_user_build_filesystem(void)
     // Setup the filesystem based on target parameters
     vfs_init(daplink_drive_name, 0/*unused "disk size"*/);
 
-    // Write is done using a stream, this is never called
-    vfs_create_file("CONFIG  INI", read_file_config_ini, NULL, settings_get_ini_len());
+    vfs_create_file("UNITS   INI", read_file_units_ini, NULL, settings_get_units_ini_len());
+    vfs_create_file("SYSTEM  INI", read_file_system_ini, NULL, settings_get_system_ini_len());
 }
 
 // Callback to handle changes to the root directory.  Should be used with vfs_set_file_change_callback

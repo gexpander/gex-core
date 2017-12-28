@@ -193,8 +193,8 @@ static bool detect_conf(const uint8_t *data, uint32_t size)
     // and may not be known for a while - we cannot use that to detect anything, unless we buffer the entire file
     // (a bad idea)
 
-    // TODO detect config file
-    return data[0] == '#'; // here we just assume everything is INI
+    // Our INI files always start with two hashes
+    return size >= 2 && data[0] == '#' && data[1] == '#';
 }
 
 static void iniparser_cb(const char *section, const char *key, const char *value, void *userData)

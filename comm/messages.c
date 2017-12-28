@@ -66,7 +66,7 @@ static void settings_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer
     }
 
     IniWriter iw = iw_init((char *)buffer, bulk->offset, chunk);
-    settings_build_ini(&iw);
+    settings_build_units_ini(&iw);
 }
 
 /**
@@ -80,7 +80,7 @@ static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
     assert_param(bulk);
 
     bulk->frame_id = msg->frame_id;
-    bulk->len = settings_get_ini_len();
+    bulk->len = settings_get_units_ini_len();
     bulk->read = settings_bulkread_cb;
     bulk->userdata = NULL;
 
@@ -124,7 +124,7 @@ static TF_Result lst_ini_import(TinyFrame *tf, TF_Msg *msg)
     assert_param(bulk);
 
     bulk->frame_id = msg->frame_id;
-    bulk->len = settings_get_ini_len();
+    bulk->len = settings_get_units_ini_len();
     bulk->write = settings_bulkwrite_cb;
 
     settings_load_ini_begin();

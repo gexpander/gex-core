@@ -477,6 +477,8 @@ void ureg_build_ini(IniWriter *iw)
                 count++;
             }
             li = li->next;
+
+            if (iw->count == 0) return; // avoid printing discarded tail
         }
         re = re->next;
         iw_newline(iw);
@@ -487,6 +489,8 @@ void ureg_build_ini(IniWriter *iw)
     while (li != NULL) {
         export_unit_do(li, iw);
         li = li->next;
+
+        if (iw->count == 0) return; // avoid printing discarded tail
     }
 }
 

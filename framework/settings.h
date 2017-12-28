@@ -51,16 +51,29 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
 void settings_load_ini_end(void);
 
 /**
- * Write all settings to a iniwriter
+ * Write UNITS.INI to a iniwriter
  * @param iw - writer handle
  */
-void settings_build_ini(IniWriter *iw);
+void settings_build_units_ini(IniWriter *iw);
 
 /**
- * Get total settings len (caution: this is expensive, works by dummy-printing everything)
+ * Get UNITS.INI len (expensive, uses dummy read)
  *
  * @return bytes
  */
-uint32_t settings_get_ini_len(void);
+uint32_t settings_get_units_ini_len(void);
+
+/**
+ * Write SYSTEM.INI to iniwriter
+ * @param iw - writer handle
+ */
+void settings_build_system_ini(IniWriter *iw);
+
+/**
+ * Get SYSTEM.INI len (expensive, uses dummy read)
+ *
+ * @return bytes
+ */
+uint32_t settings_get_system_ini_len(void);
 
 #endif //GEX_SETTINGS_H

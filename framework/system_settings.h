@@ -17,6 +17,7 @@ struct system_settings {
     // Support flags put here for scoping, but not atcually part of the persistent settings
     volatile bool editable; //!< True if we booted with the LOCK jumper removed
     volatile bool modified; //!< True if user did any change to the settings (checked when the LOCK jumper is replaced)
+    volatile bool pristine; //!< Marks unknown state before we reach first section marker that determines what file it is
 };
 
 extern struct system_settings SystemSettings;
