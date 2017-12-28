@@ -8,7 +8,6 @@
 #include "framework/resources.h"
 #include "framework/unit_registry.h"
 
-#include "units/pin/unit_pin.h"
 #include "units/digital_out/unit_dout.h"
 #include "units/digital_in/unit_din.h"
 #include "units/neopixel/unit_neopixel.h"
@@ -23,7 +22,6 @@ void plat_init_resources(void)
     __HAL_RCC_GPIOE_CLK_ENABLE();
 
     // --- Common unit drivers ---
-    ureg_add_type(&UNIT_PIN);
     ureg_add_type(&UNIT_DOUT);
     ureg_add_type(&UNIT_DIN);
 

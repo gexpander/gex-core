@@ -8,7 +8,6 @@ GEX_SRC_DIR = \
     User/units/system \
     User/units/neopixel \
     User/units/test \
-    User/units/pin \
     User/units/digital_out \
     User/units/digital_in \
     User/TinyFrame \
