@@ -23,8 +23,8 @@ struct ureg_entry {
     UregEntry *next;
 };
 
-UregEntry *ureg_head = NULL;
-UregEntry *ureg_tail = NULL;
+static UregEntry *ureg_head = NULL;
+static UregEntry *ureg_tail = NULL;
 
 // ---
 
@@ -33,8 +33,10 @@ struct ulist_entry {
     UlistEntry *next;
 };
 
-UlistEntry *ulist_head = NULL;
-UlistEntry *ulist_tail = NULL;
+static UlistEntry *ulist_head = NULL;
+static UlistEntry *ulist_tail = NULL;
+
+static int32_t unit_count = -1;
 
 // ---
 
@@ -79,21 +81,6 @@ static void free_le_unit(UlistEntry *le)
     }
 }
 
-/** Remove a unit and update links appropriately */
-static void remove_unit_from_list(UlistEntry *restrict le, UlistEntry *restrict parent)
-{
-    if (parent == NULL) {
-        ulist_head = le->next;
-    } else {
-        parent->next = le->next;
-    }
-
-    // Fix tail potentially pointing to the removed entry
-    if (ulist_tail == le) {
-        ulist_tail = parent;
-    }
-}
-
 /** Add unit to the list, updating references as needed */
 static void add_unit_to_list(UlistEntry *le)
 {
@@ -104,28 +91,6 @@ static void add_unit_to_list(UlistEntry *le)
         ulist_tail->next = le;
     }
     ulist_tail = le;
-}
-
-/** Find a unit in the list */
-static UlistEntry *find_unit(const Unit *unit, UlistEntry **pParent)
-{
-    UlistEntry *le = ulist_head;
-    UlistEntry *parent = NULL;
-    while (le != NULL) {
-        if (&le->unit == unit) {
-            if (pParent != NULL) {
-                *pParent = parent;
-            }
-            return le;
-        }
-
-        parent = le;
-        le = le->next;
-    }
-
-    dbg("!! Unit was not found in registry");
-    *pParent = NULL;
-    return NULL;
 }
 
 // create a unit instance (not yet loading or initing - just pre-init)
@@ -173,39 +138,6 @@ Unit *ureg_instantiate(const char *driver_name)
     return NULL;
 }
 
-// remove before init()
-void ureg_clean_failed(Unit *unit)
-{
-    dbg("Removing failed unit from registry...");
-
-    UlistEntry *le;
-    UlistEntry *parent;
-    le = find_unit(unit, &parent);
-    if (!le) return;
-
-    clean_failed_unit(&le->unit);
-
-    remove_unit_from_list(le, parent);
-
-    free(le);
-}
-
-// remove after successful init()
-void ureg_remove_unit(Unit *unit)
-{
-    dbg("Cleaning & removing unit from registry...");
-
-    UlistEntry *le;
-    UlistEntry *parent;
-    le = find_unit(unit, &parent);
-    if (!le) return;
-
-    free_le_unit(le);
-
-    remove_unit_from_list(le, parent);
-    free(le);
-}
-
 void ureg_save_units(PayloadBuilder *pb)
 {
     assert_param(pb->ok);
@@ -242,6 +174,7 @@ bool ureg_load_units(PayloadParser *pp)
     char typebuf[16];
 
     assert_param(pp->ok);
+    unit_count = -1; // reset the counter
 
     // Check units list marker byte
     if (pp_char(pp) != 'U') return false;
@@ -250,10 +183,10 @@ bool ureg_load_units(PayloadParser *pp)
     (void)version; // version can affect the format
 
     { // units list
-        uint16_t unit_count = pp_u16(pp);
-        dbg("Units to load: %d", (int) unit_count);
+        uint16_t count = pp_u16(pp);
+        dbg("Units to load: %d", (int) count);
 
-        for (uint32_t j = 0; j < unit_count; j++) {
+        for (uint32_t j = 0; j < count; j++) {
             // We're now unpacking a single unit
 
             // Marker that this is a unit - it could get out of alignment if structure changed
@@ -312,11 +245,14 @@ void ureg_remove_all_units(void)
     }
 
     ulist_head = ulist_tail = NULL;
+    unit_count = -1;
 }
 
 /** Create unit instances from the [UNITS] overview section */
 bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restrict names)
 {
+    unit_count = -1; // reset the counter
+
     UregEntry *re = ureg_head;
     while (re != NULL) {
         if (streq(re->driver->name, driver_name)) {
@@ -425,22 +361,6 @@ static void export_unit_do(UlistEntry *li, IniWriter *iw)
 }
 
 // unit to INI
-void ureg_export_unit(uint32_t index, IniWriter *iw)
-{
-    UlistEntry *li = ulist_head;
-    uint32_t count = 0;
-    while (li != NULL) {
-        if (count == index) {
-            export_unit_do(li, iw);
-            return;
-        }
-
-        count++;
-        li = li->next;
-    }
-}
-
-// unit to INI
 void ureg_build_ini(IniWriter *iw)
 {
     UlistEntry *li;
@@ -497,15 +417,18 @@ void ureg_build_ini(IniWriter *iw)
 // count units
 uint32_t ureg_get_num_units(void)
 {
-    // TODO keep this in a variable
-    UlistEntry *li = ulist_head;
-    uint32_t count = 0;
-    while (li != NULL) {
-        count++;
-        li = li->next;
+    if (unit_count == -1) {
+        // TODO keep this in a variable
+        UlistEntry *li = ulist_head;
+        uint32_t count = 0;
+        while (li != NULL) {
+            count++;
+            li = li->next;
+        }
+        unit_count = count;
     }
 
-    return count;
+    return (uint32_t) unit_count;
 }
 
 /** Deliver message to it's destination unit */

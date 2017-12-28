@@ -273,6 +273,9 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
 //    dbg("[%s] %s = %s", section, key, value);
     static char namebuf[INI_KEY_MAX];
 
+    // SYSTEM and UNITS files must be separate.
+    // Init functions are run for first key in the section.
+
     if (streq(section, "SYSTEM")) {
 
         if (SystemSettings.pristine) {
