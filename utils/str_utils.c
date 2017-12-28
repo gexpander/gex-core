@@ -3,16 +3,19 @@
 //
 
 #include "str_utils.h"
+#include "platform.h"
 #include "avrlibc.h"
 
 bool str_parse_yn(const char *str, bool *suc)
 {
+    // TODO implement strcasecmp without the locale crap from newlib and use it here
     if (streq(str, "Y")) return true;
-    if (streq(str, "1")) return true;
-    if (streq(str, "YES")) return true;
-
     if (streq(str, "N")) return false;
+
+    if (streq(str, "1")) return true;
     if (streq(str, "0")) return false;
+
+    if (streq(str, "YES")) return true;
     if (streq(str, "NO")) return false;
 
     *suc = false;
@@ -36,22 +39,4 @@ uint8_t str_parse_012(const char *str, const char *a, const char *b, const char 
 
     *suc = false;
     return 0;
-}
-
-bool str_parse_pin(const char *value, char *targetName, uint8_t *targetNumber)
-{
-    // discard leading 'P'
-    if (value[0] == 'P') {
-        value++;
-    }
-
-    size_t len = strlen(value);
-    if (len<2||len>3) return false;
-
-    *targetName = (uint8_t) value[0];
-    if (!(*targetName >= 'A' && *targetName <= 'H')) return false;
-
-    // lets just hope it's OK
-    *targetNumber = (uint8_t) avr_atoi(value + 1);
-    return true;
 }

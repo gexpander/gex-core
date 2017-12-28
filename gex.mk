@@ -9,6 +9,7 @@ GEX_SRC_DIR = \
     User/units/neopixel \
     User/units/test \
     User/units/pin \
+    User/units/digital_out \
     User/TinyFrame \
     User/CWPack \
     User/tasks
@@ -80,7 +81,7 @@ GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DUSE_FULL_ASSERT=1 \
     -DVERBOSE_ASSERT=1 \
     -DDEBUG_VFS=0 \
-    -DDEBUG_FLASH_WRITE=0 \
+    -DDEBUG_FLASH_WRITE=1 \
     -DVERBOSE_HARDFAULT=1 \
     -DUSE_STACK_MONITOR=1 \
     -DUSE_DEBUG_UART=1

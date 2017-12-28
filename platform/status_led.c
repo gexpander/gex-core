@@ -17,8 +17,8 @@ void StatusLed_PreInit(void)
 {
     bool suc = true;
     // Resolve pin
-    led_periph = plat_port2periph(STATUS_LED_PORT, &suc);
-    led_llpin = plat_pin2ll(STATUS_LED_PIN, &suc);
+    led_periph = port2periph(STATUS_LED_PORT, &suc);
+    led_llpin = pin2ll(STATUS_LED_PIN, &suc);
 
     // Configure for output
     LL_GPIO_SetPinMode(led_periph, led_llpin, LL_GPIO_MODE_OUTPUT);
@@ -34,7 +34,7 @@ void StatusLed_Init(void)
     bool suc = true;
 
     // Resolve and claim resource
-    Resource rsc = plat_pin2resource(STATUS_LED_PORT, STATUS_LED_PIN, &suc);
+    Resource rsc = pin2resource(STATUS_LED_PORT, STATUS_LED_PIN, &suc);
     assert_param(suc);
 
     suc &= rsc_claim(&UNIT_SYSTEM, rsc);

@@ -24,15 +24,15 @@ void LockJumper_Init(void)
     bool suc = true;
 
     // Resolve and claim resource
-    Resource rsc = plat_pin2resource(LOCK_JUMPER_PORT, LOCK_JUMPER_PIN, &suc);
+    Resource rsc = pin2resource(LOCK_JUMPER_PORT, LOCK_JUMPER_PIN, &suc);
     assert_param(suc);
 
     suc &= rsc_claim(&UNIT_SYSTEM, rsc);
     assert_param(suc);
 
     // Resolve pin
-    lock_periph = plat_port2periph(LOCK_JUMPER_PORT, &suc);
-    lock_llpin = plat_pin2ll(LOCK_JUMPER_PIN, &suc);
+    lock_periph = port2periph(LOCK_JUMPER_PORT, &suc);
+    lock_llpin = pin2ll(LOCK_JUMPER_PIN, &suc);
     assert_param(suc);
 
     // Configure for input

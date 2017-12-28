@@ -9,6 +9,7 @@
 #include "framework/unit_registry.h"
 
 #include "units/pin/unit_pin.h"
+#include "units/digital_out/unit_dout.h"
 #include "units/neopixel/unit_neopixel.h"
 #include "units/test/unit_test.h"
 
@@ -22,8 +23,9 @@ void plat_init_resources(void)
 
     // --- Common unit drivers ---
     ureg_add_type(&UNIT_PIN);
+    ureg_add_type(&UNIT_DOUT);
 
-    #if !DISABLE_TEST_UNIT
+    #if HAVE_TEST_UNIT
         ureg_add_type(&UNIT_TEST);
     #endif
 

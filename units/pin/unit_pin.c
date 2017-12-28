@@ -53,7 +53,7 @@ static bool Pin_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "pin")) {
-        suc = str_parse_pin(value, &priv->port_name, &priv->pin_number);
+        suc = parse_pin(value, &priv->port_name, &priv->pin_number);
     }
     else if (streq(key, "dir")) {
         priv->output = str_parse_01(value, "IN", "OUT", &suc);
@@ -114,9 +114,9 @@ static bool Pin_init(Unit *unit)
     struct priv *priv = unit->data;
 
     // --- Parse config ---
-    priv->ll_pin = plat_pin2ll(priv->pin_number, &suc);
-    priv->port = plat_port2periph(priv->port_name, &suc);
-    Resource rsc = plat_pin2resource(priv->port_name, priv->pin_number, &suc);
+    priv->ll_pin = pin2ll(priv->pin_number, &suc);
+    priv->port = port2periph(priv->port_name, &suc);
+    Resource rsc = pin2resource(priv->port_name, priv->pin_number, &suc);
     if (!suc) {
         unit->status = E_BAD_CONFIG;
         return false;
