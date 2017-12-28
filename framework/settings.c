@@ -270,7 +270,7 @@ void settings_load_ini_begin(void)
 
 void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value)
 {
-//    dbg("[%s] %s = %s", section, key, value);
+    //dbg("[%s] %s = %s", section, key, value);
     static char namebuf[INI_KEY_MAX];
 
     // SYSTEM and UNITS files must be separate.
@@ -303,10 +303,13 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
         const char *nameptr = strchr(section, ':');
         const char *csptr = strchr(section, '@');
 
-        if (nameptr && csptr) {
+        if (nameptr != NULL && csptr != NULL) {
             strncpy(namebuf, nameptr+1, csptr - nameptr - 1);
+            namebuf[csptr - nameptr - 1] = 0;
             uint8_t cs = (uint8_t) avr_atoi(csptr + 1);
-            ureg_load_unit_ini_key(namebuf, key, value, cs);
+
+            bool res = ureg_load_unit_ini_key(namebuf, key, value, cs);
+            if (!res) dbg("!! error loading %s@%d.%s = %s", namebuf, (int)cs, key, value);
         } else {
             dbg("! Bad config key: [%s] %s = %s", section, key, value);
         }

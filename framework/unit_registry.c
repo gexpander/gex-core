@@ -305,8 +305,8 @@ bool ureg_load_unit_ini_key(const char *restrict name,
 {
     UlistEntry *li = ulist_head;
     while (li != NULL) {
-        if (streq(li->unit.name, name)) {
-            Unit *const pUnit = &li->unit;
+        Unit *const pUnit = &li->unit;
+        if (streq(pUnit->name, name)) {
             pUnit->callsign = callsign;
             return pUnit->driver->cfgLoadIni(pUnit, key, value);
         }
