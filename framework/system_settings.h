@@ -12,6 +12,7 @@
 
 struct system_settings {
     bool visible_vcom;
+    bool ini_comments;
 
     // Support flags put here for scoping, but not atcually part of the persistent settings
     volatile bool editable; //!< True if we booted with the LOCK jumper removed

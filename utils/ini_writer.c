@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/12/01.
 //
 
+#include <framework/system_settings.h>
 #include "platform.h"
 #include "ini_writer.h"
 
@@ -65,8 +66,18 @@ void iw_section(IniWriter *iw, const char *format, ...)
 void iw_comment(IniWriter *iw, const char *format, ...)
 {
     if (iw->count == 0) return;
+    if (!SystemSettings.ini_comments) return;
 
     iw_string(iw, "# ");
+    IW_VPRINTF();
+    iw_newline(iw);
+}
+
+void iw_hdr_comment(IniWriter *iw, const char *format, ...)
+{
+    if (iw->count == 0) return;
+
+    iw_string(iw, "## ");
     IW_VPRINTF();
     iw_newline(iw);
 }

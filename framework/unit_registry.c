@@ -2,14 +2,15 @@
 // Created by MightyPork on 2017/11/26.
 //
 
-#include <utils/hexdump.h>
 #include "platform.h"
+#include "utils/hexdump.h"
 #include "utils/avrlibc.h"
 #include "comm/messages.h"
 #include "utils/ini_writer.h"
 #include "utils/str_utils.h"
 #include "utils/malloc_safe.h"
 #include "unit_registry.h"
+#include "system_settings.h"
 #include "resources.h"
 
 // ** Unit repository **
@@ -212,21 +213,27 @@ void ureg_save_units(PayloadBuilder *pb)
     uint32_t count = ureg_get_num_units();
 
     pb_char(pb, 'U');
-    pb_u16(pb, (uint16_t) count);
+    pb_u8(pb, 0); // Format version
 
-    UlistEntry *le = ulist_head;
-    while (le != NULL) {
-        Unit *const pUnit = &le->unit;
-        pb_char(pb, 'u');
-        pb_string(pb, pUnit->driver->name);
-        pb_string(pb, pUnit->name);
-        pb_u8(pb, pUnit->callsign);
+    { // Units list
+        pb_u16(pb, (uint16_t) count);
 
-        // Now all the rest, unit-specific
-        pUnit->driver->cfgWriteBinary(pUnit, pb);
-        assert_param(pb->ok);
-        le = le->next;
-    }
+        UlistEntry *le = ulist_head;
+        while (le != NULL) {
+            Unit *const pUnit = &le->unit;
+            pb_char(pb, 'u'); // marker
+            { // Single unit
+                pb_string(pb, pUnit->driver->name);
+                pb_string(pb, pUnit->name);
+                pb_u8(pb, pUnit->callsign);
+
+                // Now all the rest, unit-specific
+                pUnit->driver->cfgWriteBinary(pUnit, pb);
+                assert_param(pb->ok);
+            } // end single unit
+            le = le->next;
+        }
+    } // end units list
 }
 
 bool ureg_load_units(PayloadParser *pp)
@@ -236,44 +243,53 @@ bool ureg_load_units(PayloadParser *pp)
 
     assert_param(pp->ok);
 
+    // Check units list marker byte
     if (pp_char(pp) != 'U') return false;
-    uint16_t unit_count = pp_u16(pp);
-    dbg("Units to load: %d", (int)unit_count);
+    uint8_t version = pp_u8(pp); // units list format version
 
-    for (uint32_t j = 0; j < unit_count; j++) {
-        // We're now unpacking a single unit
+    (void)version; // version can affect the format
 
-        // Marker that this is a unit - it could get out of alignment if structure changed
-        if (pp_char(pp) != 'u') return false;
+    { // units list
+        uint16_t unit_count = pp_u16(pp);
+        dbg("Units to load: %d", (int) unit_count);
 
-        // TYPE
-        pp_string(pp, typebuf, 16);
-        Unit *const pUnit = ureg_instantiate(typebuf);
-        if (!pUnit) {
-            dbg("!! Unknown unit type %s, aborting load.", typebuf);
-            break;
+        for (uint32_t j = 0; j < unit_count; j++) {
+            // We're now unpacking a single unit
+
+            // Marker that this is a unit - it could get out of alignment if structure changed
+            if (pp_char(pp) != 'u') return false;
+
+            { // Single unit
+                // TYPE
+                pp_string(pp, typebuf, 16);
+                Unit *const pUnit = ureg_instantiate(typebuf);
+                if (!pUnit) {
+                    dbg("!! Unknown unit type %s, aborting load.", typebuf);
+                    break;
+                }
+
+                // NAME
+                pp_string(pp, typebuf, 16);
+                pUnit->name = strdup(typebuf);
+                assert_param(pUnit->name);
+
+                // callsign
+                pUnit->callsign = pp_u8(pp);
+                assert_param(pUnit->callsign != 0);
+
+                // Load the rest of the unit
+                pUnit->driver->cfgLoadBinary(pUnit, pp);
+                assert_param(pp->ok);
+
+                dbg("Adding unit \"%s\" of type %s", pUnit->name, pUnit->driver->name);
+
+                suc = pUnit->driver->init(pUnit); // finalize the load and init the unit
+                if (pUnit->status == E_LOADING) {
+                    pUnit->status = suc ? E_SUCCESS : E_BAD_CONFIG;
+                }
+            } // end unit
         }
-
-        // NAME
-        pp_string(pp, typebuf, 16);
-        pUnit->name = strdup(typebuf);
-        assert_param(pUnit->name);
-
-        // callsign
-        pUnit->callsign = pp_u8(pp);
-        assert_param(pUnit->callsign != 0);
-
-        // Load the rest of the unit
-        pUnit->driver->cfgLoadBinary(pUnit, pp);
-        assert_param(pp->ok);
-
-        dbg("Adding unit \"%s\" of type %s", pUnit->name, pUnit->driver->name);
-
-        suc = pUnit->driver->init(pUnit); // finalize the load and init the unit
-        if (pUnit->status == E_LOADING) {
-            pUnit->status = suc ? E_SUCCESS : E_BAD_CONFIG;
-        }
-    }
+    } // end units list
 
     return pp->ok;
 }
@@ -298,7 +314,7 @@ void ureg_remove_all_units(void)
     ulist_head = ulist_tail = NULL;
 }
 
-
+/** Create unit instances from the [UNITS] overview section */
 bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restrict names)
 {
     UregEntry *re = ureg_head;
@@ -342,22 +358,18 @@ bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restr
     return false;
 }
 
+/** Load unit key-value */
 bool ureg_load_unit_ini_key(const char *restrict name,
                             const char *restrict key,
-                            const char *restrict value)
+                            const char *restrict value,
+                            uint8_t callsign)
 {
     UlistEntry *li = ulist_head;
     while (li != NULL) {
         if (streq(li->unit.name, name)) {
             Unit *const pUnit = &li->unit;
-
-            if (streq(key, "callsign")) {
-                // handled separately from unit data
-                pUnit->callsign = (uint8_t) avr_atoi(value);
-                return true;
-            } else {
-                return pUnit->driver->cfgLoadIni(pUnit, key, value);
-            }
+            pUnit->callsign = callsign;
+            return pUnit->driver->cfgLoadIni(pUnit, key, value);
         }
 
         li = li->next;
@@ -365,6 +377,7 @@ bool ureg_load_unit_ini_key(const char *restrict name,
     return false;
 }
 
+/** Finalize untis init */
 bool ureg_finalize_all_init(void)
 {
     dbg("Finalizing units init...");
@@ -404,17 +417,11 @@ static void export_unit_do(UlistEntry *li, IniWriter *iw)
 {
     Unit *const pUnit = &li->unit;
 
-    iw_section(iw, "%s:%s", pUnit->driver->name, pUnit->name);
+    iw_section(iw, "%s:%s@%d", pUnit->driver->name, pUnit->name, (int)pUnit->callsign);
     if (pUnit->status != E_SUCCESS) {
         iw_comment(iw, "!!! %s", error_get_string(pUnit->status));
     }
-    iw_newline(iw);
-
-    iw_comment(iw, "Unit address 1-255");
-    iw_entry(iw, "callsign", "%d", pUnit->callsign);
-
     pUnit->driver->cfgWriteIni(pUnit, iw);
-    iw_newline(iw);
 }
 
 // unit to INI
@@ -455,7 +462,7 @@ void ureg_build_ini(IniWriter *iw)
 
         const UnitDriver *const pDriver = re->driver;
 
-        iw_newline(iw);
+        iw_cmt_newline(iw);
         iw_comment(iw, pDriver->description);
         iw_string(iw, pDriver->name);
         iw_string(iw, "=");
@@ -474,7 +481,6 @@ void ureg_build_ini(IniWriter *iw)
         re = re->next;
         iw_newline(iw);
     }
-    iw_newline(iw); // space before the unit sections
 
     // Now we dump all the units
     li = ulist_head;

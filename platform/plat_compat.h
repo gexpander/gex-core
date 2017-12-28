@@ -6,8 +6,8 @@
 #define GEX_PLAT_COMPAT_H
 
 // -------- Static buffers ---------
-#define TSK_STACK_MAIN      200 // USB / VFS task stack size
-#define TSK_STACK_MSG       180 // TF message handler task stack size
+#define TSK_STACK_MAIN      220 // USB / VFS task stack size
+#define TSK_STACK_MSG       200 // TF message handler task stack size
 #define TSK_STACK_JOBRUNNER 80 // Job runner task stack size
 
 #define BULKREAD_MAX_CHUNK  256 // Bulk read buffer

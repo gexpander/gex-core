@@ -71,6 +71,9 @@ struct PayloadBuilder_ {
 /** Write from a buffer */
 bool pb_buf(PayloadBuilder *pb, const uint8_t *buf, uint32_t len);
 
+/** Write zeros */
+bool pb_reserve(PayloadBuilder *pb, uint32_t len);
+
 /** Write a zero terminated string */
 bool pb_string(PayloadBuilder *pb, const char *str);
 

@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/26.
 //
 
+#include <utils/avrlibc.h>
 #include "platform.h"
 #include "utils/hexdump.h"
 #include "settings.h"
@@ -9,9 +10,13 @@
 #include "system_settings.h"
 #include "utils/str_utils.h"
 
+// pre-declarations
+static void savebuf_flush(PayloadBuilder *pb, bool final);
+static bool savebuf_ovhandler(PayloadBuilder *pb, uint32_t more);
+
 // This is the first entry in a valid config.
 // Change with each breaking change to force config reset.
-#define CONFIG_MARKER 0xA55C
+#define CONFIG_MARKER 0xA55D
 
 void settings_load(void)
 {
@@ -32,16 +37,22 @@ void settings_load(void)
         return;
     }
 
-    // System section
-    if (!systemsettings_load(&pp)) {
-        dbg("!! System settings failed to load");
-        return;
-    }
+    uint8_t version = pp_u8(&pp); // top level settings format version
 
-    if (!ureg_load_units(&pp)) {
-        dbg("!! Unit settings failed to load");
-        return;
-    }
+    { // Settings
+        (void)version; // Conditional choices based on version
+
+        // System section
+        if (!systemsettings_load(&pp)) {
+            dbg("!! System settings failed to load");
+            return;
+        }
+
+        if (!ureg_load_units(&pp)) {
+            dbg("!! Unit settings failed to load");
+            return;
+        }
+    } // End settings
 
     dbg("System settings loaded OK");
 }
@@ -55,6 +66,89 @@ static uint32_t save_addr;
 #else
 #define fls_printf(fmt, ...) do {} while (0)
 #endif
+
+/**
+ * Save buffer overflow handler.
+ * This should flush whatever is in the buffer and let CWPack continue
+ *
+ * @param pb - buffer
+ * @param more - how many more bytes are needed (this is meant for realloc / buffer expanding)
+ * @return - success code
+ */
+static bool savebuf_ovhandler(PayloadBuilder *pb, uint32_t more)
+{
+    if (more > FLASH_SAVE_BUF_LEN) return false;
+    savebuf_flush(pb, false);
+    return true;
+}
+
+/** Save settings to flash */
+void settings_save(void)
+{
+    HAL_StatusTypeDef hst;
+    PayloadBuilder pb = pb_start(save_buffer, FLASH_SAVE_BUF_LEN, savebuf_ovhandler);
+
+    save_addr = SETTINGS_FLASH_ADDR;
+
+    fls_printf("--- Starting flash write... ---\r\n");
+    hst = HAL_FLASH_Unlock();
+    assert_param(hst == HAL_OK);
+    {
+        fls_printf("ERASE flash pages for settings storage...\r\n");
+        // We have to first erase the pages
+        FLASH_EraseInitTypeDef erase;
+
+#if PLAT_FLASHBANKS
+        erase.Banks = FLASH_BANK_1; // TODO ?????
+#endif
+
+#if defined(GEX_PLAT_F407_DISCOVERY)
+        // specialty for F4 with too much flash
+        erase.NbSectors = 1;
+        erase.Sector = SETTINGS_FLASH_SECTOR;
+        erase.TypeErase = FLASH_TYPEERASE_SECTORS;
+        erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+        erase.Banks = FLASH_BANK_1; // unused for sector erase
+#else
+        erase.NbPages = SETTINGS_BLOCK_SIZE/FLASH_PAGE_SIZE;
+        erase.PageAddress = SETTINGS_FLASH_ADDR;
+        erase.TypeErase = FLASH_TYPEERASE_PAGES;
+#endif
+        uint32_t pgerror = 0;
+        hst = HAL_FLASHEx_Erase(&erase, &pgerror);
+        assert_param(pgerror == 0xFFFFFFFFU);
+        assert_param(hst == HAL_OK);
+
+        // and now we can start writing...
+
+        fls_printf("Beginning settings collect\r\n");
+
+        // Marker that this is a valid save
+        pb_u16(&pb, CONFIG_MARKER);
+        pb_u8(&pb, 0); // Settings format version
+
+        { // Settings
+            fls_printf("Saving system settings\r\n");
+            systemsettings_save(&pb);
+
+            fls_printf("Saving units\r\n");
+            ureg_save_units(&pb);
+        } // End settings
+
+        fls_printf("Final flush\r\n");
+        savebuf_flush(&pb, true);
+    }
+
+    fls_printf("Locking flash...\r\n");
+    hst = HAL_FLASH_Lock();
+    assert_param(hst == HAL_OK);
+    fls_printf("--- Flash done ---\r\n");
+
+#if DEBUG_FLASH_WRITE
+    dbg("written @ %p", (void*)SETTINGS_FLASH_ADDR);
+    hexDump("Flash", (void*)SETTINGS_FLASH_ADDR, 64);
+#endif
+}
 
 /**
  * Flush the save buffer to flash, moving leftovers from uneven half-words
@@ -116,95 +210,20 @@ static void savebuf_flush(PayloadBuilder *pb, bool final)
 }
 
 /**
- * Save buffer overflow handler.
- * This should flush whatever is in the buffer and let CWPack continue
- *
- * @param pb - buffer
- * @param more - how many more bytes are needed (this is meant for realloc / buffer expanding)
- * @return - success code
- */
-static bool savebuf_ovhandler(PayloadBuilder *pb, uint32_t more)
-{
-    if (more > FLASH_SAVE_BUF_LEN) return false;
-    savebuf_flush(pb, false);
-    return true;
-}
-
-// Save settings to flash
-void settings_save(void)
-{
-    HAL_StatusTypeDef hst;
-    PayloadBuilder pb = pb_start(save_buffer, FLASH_SAVE_BUF_LEN, savebuf_ovhandler);
-
-    save_addr = SETTINGS_FLASH_ADDR;
-
-    fls_printf("--- Starting flash write... ---\r\n");
-    hst = HAL_FLASH_Unlock();
-    assert_param(hst == HAL_OK);
-    {
-        fls_printf("ERASE flash pages for settings storage...\r\n");
-        // We have to first erase the pages
-        FLASH_EraseInitTypeDef erase;
-
-#if PLAT_FLASHBANKS
-        erase.Banks = FLASH_BANK_1; // TODO ?????
-#endif
-
-#if defined(GEX_PLAT_F407_DISCOVERY)
-        // specialty for F4 with too much flash
-        erase.NbSectors = 1;
-        erase.Sector = SETTINGS_FLASH_SECTOR;
-        erase.TypeErase = FLASH_TYPEERASE_SECTORS;
-        erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-        erase.Banks = FLASH_BANK_1; // unused for sector erase
-#else
-        erase.NbPages = SETTINGS_BLOCK_SIZE/FLASH_PAGE_SIZE;
-        erase.PageAddress = SETTINGS_FLASH_ADDR;
-        erase.TypeErase = FLASH_TYPEERASE_PAGES;
-#endif
-        uint32_t pgerror = 0;
-        hst = HAL_FLASHEx_Erase(&erase, &pgerror);
-        assert_param(pgerror == 0xFFFFFFFFU);
-        assert_param(hst == HAL_OK);
-
-        // and now we can start writing...
-
-        fls_printf("Beginning settings collect\r\n");
-
-        // Marker that this is a valid save
-        pb_u16(&pb, CONFIG_MARKER);
-        fls_printf("Saving system settings\r\n");
-        systemsettings_save(&pb);
-        fls_printf("Saving units\r\n");
-        ureg_save_units(&pb);
-
-        fls_printf("Final flush\r\n");
-        savebuf_flush(&pb, true);
-    }
-
-    fls_printf("Locking flash...\r\n");
-    hst = HAL_FLASH_Lock();
-    assert_param(hst == HAL_OK);
-    fls_printf("--- Flash done ---\r\n");
-
-#if DEBUG_FLASH_WRITE
-    dbg("written @ %p", (void*)SETTINGS_FLASH_ADDR);
-    hexDump("Flash", (void*)SETTINGS_FLASH_ADDR, 64);
-#endif
-}
-
-/**
  * Write system settings to INI (without section)
  */
 void settings_build_ini(IniWriter *iw)
 {
     // File header
-    iw_comment(iw, "CONFIG.INI");
+    iw_hdr_comment(iw, "CONFIG.INI");
+    iw_hdr_comment(iw, "GEX v%s on %s", GEX_VERSION, GEX_PLATFORM);
+    iw_hdr_comment(iw, "built %s at %s", __DATE__, __TIME__);
+    iw_cmt_newline(iw);
+
     iw_comment(iw, "Overwrite this file to change settings.");
     iw_comment(iw, "Close the LOCK jumper to save them to Flash.");
 
     systemsettings_build_ini(iw);
-    iw_newline(iw);
 
     ureg_build_ini(iw);
 }
@@ -221,7 +240,8 @@ void settings_load_ini_begin(void)
 
 void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value)
 {
-//    dbg("[%s] %s = %s", section, key, value);
+    dbg("[%s] %s = %s", section, key, value);
+    static char namebuf[INI_KEY_MAX];
 
     if (streq(section, "SYSTEM")) {
         // system is always at the top
@@ -235,8 +255,15 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
         // not a standard section, may be some unit config
         // all unit sections contain the colon character [TYPE:NAME]
         const char *nameptr = strchr(section, ':');
-        if (nameptr) {
-            ureg_load_unit_ini_key(nameptr + 1, key, value);
+        const char *csptr = strchr(section, '@');
+
+        dbg("cs = %s", csptr);
+        if (nameptr && csptr) {
+            strncpy(namebuf, nameptr+1, csptr - nameptr - 1);
+            uint8_t cs = (uint8_t) avr_atoi(csptr + 1);
+            dbg("cs is %d", cs);
+            dbg("name is %s", namebuf);
+            ureg_load_unit_ini_key(namebuf, key, value, cs);
         } else {
             dbg("! Bad config key: [%s] %s = %s", section, key, value);
         }

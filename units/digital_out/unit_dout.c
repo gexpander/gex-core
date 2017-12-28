@@ -76,7 +76,7 @@ static void DO_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Port name");
     iw_entry(iw, "port", "%c", priv->port_name);
 
-    iw_comment(iw, "Pins (descending, csv, ranges using colon)");
+    iw_comment(iw, "Pins (comma separated, supports ranges)");
     iw_entry(iw, "pins", "%s", str_pinmask(priv->pins, buf));
 
     iw_comment(iw, "Initially high pins");

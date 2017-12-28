@@ -17,6 +17,17 @@ bool pb_buf(PayloadBuilder *pb, const uint8_t *buf, uint32_t len)
     return true;
 }
 
+/** Add some zeros */
+bool pb_reserve(PayloadBuilder *pb, uint32_t len)
+{
+    pb_check_capacity(pb, len);
+    if (!pb->ok) return false;
+
+    memset(pb->current, 0, len);
+    pb->current += len;
+    return true;
+}
+
 /** Write s zero terminated string */
 bool pb_string(PayloadBuilder *pb, const char *str)
 {

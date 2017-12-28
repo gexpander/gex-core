@@ -44,7 +44,7 @@ static void *userdata = NULL; //!< Currently assigned user data for the callback
 
 // Buffers
 static char keybuf[INI_KEY_MAX];
-static char secbuf[INI_KEY_MAX];
+static char secbuf[INI_KEY_MAX+10];
 static char valbuf[INI_VALUE_MAX];
 
 // See header for doxygen!

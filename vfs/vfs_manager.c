@@ -718,7 +718,9 @@ static void transfer_update_file_info(vfs_file_t file, uint32_t start_sector, ui
         vfs_printf("    error: starting sector changed from %i to %i\r\n", file_transfer_state.start_sector, start_sector);
         // this is probably a new file
 
-        trap("Changed start offset");//FIXME this sometimes happens, need to find how to reproduce
+        dbg("WARN! Changed start offset");
+
+        //trap("Changed start offset");//FIXME this sometimes happens, need to find how to reproduce
         switch_to_new_file(stream, start_sector, true);
     }
 

@@ -46,6 +46,9 @@ static inline void iw_string(IniWriter *iw, const char *str)
 }
 
 #define iw_newline(iw) iw_string(iw, "\r\n")
+#define iw_cmt_newline(iw) do { \
+    if (SystemSettings.ini_comments) iw_string(iw, "\r\n"); \
+} while (0)
 
 /**
  * Try to snprintf to the file
@@ -76,6 +79,12 @@ void iw_section(IniWriter *iw, const char *format, ...)
  */
 void iw_comment(IniWriter *iw, const char *format, ...)
     __attribute__((format(printf,2,3)));
+
+/**
+ * Same as iw_comment(), but ignores the systemsettings option to disable comments
+ */
+void iw_hdr_comment(IniWriter *iw, const char *format, ...)
+__attribute__((format(printf,2,3)));
 
 /**
  * Try to write a key-value entry

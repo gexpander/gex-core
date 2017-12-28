@@ -96,11 +96,13 @@ bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restr
  * @param name - unit name (for look-up)
  * @param key - property key
  * @param value - value to set as string
+ * @param callsign - callsign (is part of the section string)
  * @return success
  */
 bool ureg_load_unit_ini_key(const char *restrict name,
                             const char *restrict key,
-                            const char *restrict value);
+                            const char *restrict value,
+                            uint8_t callsign);
 
 /**
  * Run init() for all unit instances.
