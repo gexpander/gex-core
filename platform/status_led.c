@@ -122,12 +122,12 @@ void Indicator_Tick(void)
             }
         }
         else if (active_effect == STATUS_DISK_BUSY) {
-            if (effect_time == 600) {
+            if (effect_time >= 400) {
                 led_off();
                 active_effect = STATUS_NONE;
             }
-            else if (effect_time % 200 == 0) led_on();
-            else if (effect_time % 200 == 100) led_off();
+            else if (effect_time % 100 == 0) led_on();
+            else if (effect_time % 100 == 50) led_off();
         }
         else if (active_effect == STATUS_WELCOME) {
             if (effect_time == 0) led_on();
