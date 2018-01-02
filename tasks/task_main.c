@@ -24,6 +24,8 @@ void TaskMain(void const * argument)
     vfs_mngr_init(1);
 #endif
 
+    Indicator_Effect(STATUS_WELCOME);
+
     uint32_t startTime = xTaskGetTickCount();
     uint32_t cnt = 1;
     while(1) {
