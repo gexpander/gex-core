@@ -22,7 +22,7 @@ void plat_init(void)
     plat_init_resources(); // also registers unit drivers
 
     LockJumper_Init();
-    StatusLed_Init();
+    Indicator_Init();
     DebugUart_Init(); // <- only the resource claim
 
     dbg("Loading settings ...");

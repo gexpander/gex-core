@@ -223,7 +223,6 @@ int8_t  STORAGE_IsReady_FS (uint8_t lun)
 {
   /* USER CODE BEGIN 4 */
 //    dbg("STORAGE_IsReady_FS? %d", vfs_info.MediaReady);
-    StatusLed_Set(STATUS_DISK_ATTACHED, vfs_info.MediaReady);
 
     // Media change - no re-plug
     if (vfs_info.MediaChanged) {

@@ -16,7 +16,7 @@
 void GEX_MsTick(void)
 {
     TF_Tick(comm);
-    StatusLed_Tick();
+    Indicator_Tick();
 }
 
 /**
@@ -35,7 +35,7 @@ void GEX_PreInit(void)
     __HAL_RCC_GPIOF_CLK_ENABLE();
 #endif
 
-    StatusLed_PreInit();
+    Indicator_PreInit();
     DebugUart_PreInit();
 
     dbg("\r\n\033[37;1m*** GEX "GEX_VERSION" on "GEX_PLATFORM" ***\033[m");

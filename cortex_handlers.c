@@ -29,7 +29,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
     configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
     called if a stack overflow is detected. */
     PRINTF(tFAULT" RTOS stack overflow! tsk: %s\r\n", (char *) pcTaskName);
-    StatusLed_On(STATUS_FAULT);
+    Indicator_Effect(STATUS_FAULT);
 
     stackmon_dump();
     while (1);
@@ -178,7 +178,7 @@ void  __attribute__((naked)) HardFault_Handler(void)
 #endif
 
     PRINTF(tFAULT" HARD FAULT\r\n\r\n");
-    StatusLed_On(STATUS_FAULT);
+    Indicator_Effect(STATUS_FAULT);
     while (1);
 }
 

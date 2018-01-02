@@ -112,7 +112,7 @@ error_t stream_open(stream_type_t stream_type)
         return E_INTERNAL;
     }
 
-    StatusLed_On(STATUS_DISK_BUSY);
+    Indicator_Effect(STATUS_DISK_BUSY);
     // TODO create a thread...?
 
     // Initialize all variables
@@ -178,7 +178,7 @@ error_t stream_close(void)
     // set only if stream_open has been called
 //    stream_thread_assert(); // ???
     // Close stream
-    StatusLed_Off(STATUS_DISK_BUSY);
+    Indicator_Off(STATUS_DISK_BUSY);
     status = current_stream->close(&shared_state);
     stream_state = STREAM_STATE_CLOSED;
     return status;

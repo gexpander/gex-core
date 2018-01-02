@@ -11,7 +11,7 @@ void __attribute__((noreturn)) abort_msg(const char *msg, const char *filename, 
 {
     dbg("\r\n\033[31m%s:\033[m %s:%"PRIu32, msg, filename, line);
     vPortEnterCritical();
-    StatusLed_On(STATUS_FAULT);
+    Indicator_Effect(STATUS_FAULT);
     while(1);
 }
 

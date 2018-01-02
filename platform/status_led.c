@@ -7,13 +7,22 @@
 #include "status_led.h"
 #include "pin_utils.h"
 
-static uint32_t indicators[_INDICATOR_COUNT];
-
 static GPIO_TypeDef *led_periph;
 static uint32_t led_llpin;
 
+static uint32_t active_effect = STATUS_NONE;
+static uint32_t effect_time = 0;
+
+// counter of idle ticks since last indicator
+// used to allow or disallow heartbeat blink (to avoid interference)
+static uint32_t indicator_idle_ms = 0;
+#define IDLE_FOR_HEARTBEAT_MS 2500
+#define HB_MAX_SAFE_IVAL 500
+
+static uint32_t hb_elapsed = 0;
+
 /** Early init */
-void StatusLed_PreInit(void)
+void Indicator_PreInit(void)
 {
     bool suc = true;
     // Resolve pin
@@ -28,8 +37,18 @@ void StatusLed_PreInit(void)
     assert_param(suc);
 }
 
+static inline void led_on(void)
+{
+    LL_GPIO_SetOutputPin(led_periph, led_llpin);
+}
+
+static inline void led_off(void)
+{
+    LL_GPIO_ResetOutputPin(led_periph, led_llpin);
+}
+
 /** Set up the LED */
-void StatusLed_Init(void)
+void Indicator_Init(void)
 {
     bool suc = true;
 
@@ -42,55 +61,82 @@ void StatusLed_Init(void)
 }
 
 /** Set indicator ON */
-void StatusLed_On(enum GEX_StatusIndicator indicator)
+void Indicator_Effect(enum GEX_StatusIndicator indicator)
 {
-    indicators[indicator] = osWaitForever;
-
     if (indicator == STATUS_FAULT) {
-        // Persistent light
-        LL_GPIO_SetOutputPin(led_periph, led_llpin);
+        // Persistent light - start immediately
+        led_on();
     }
+
+    active_effect = indicator;
+    effect_time = 0;
 }
 
-/** Set indicator OFF */
-void StatusLed_Off(enum GEX_StatusIndicator indicator)
+void Indicator_Off(enum GEX_StatusIndicator indicator)
 {
-    indicators[indicator] = 0;
-    // TODO some effect
-}
-
-/** Set or reset a indicator */
-void StatusLed_Set(enum GEX_StatusIndicator indicator, bool set)
-{
-    if (set) {
-        StatusLed_On(indicator);
-    } else {
-        StatusLed_Off(indicator);
+    if (active_effect == indicator) {
+        led_off();
+        active_effect = STATUS_NONE;
+        indicator_idle_ms = 0;
     }
-}
-
-/** Turn indicator ON for a given interval */
-void StatusLed_Flash(enum GEX_StatusIndicator indicator, uint32_t ms)
-{
-    indicators[indicator] = ms;
-    // TODO
 }
 
 /** Millisecond tick */
-void StatusLed_Tick(void)
+void Indicator_Tick(void)
 {
-    for (uint32_t i = 0; i < _INDICATOR_COUNT; i++) {
-        if (indicators[i] != osWaitForever && indicators[i] != 0) {
-            if (--indicators[i]) {
-                StatusLed_Off((enum GEX_StatusIndicator) i);
+    if (active_effect == STATUS_NONE) {
+        indicator_idle_ms++;
+
+        if (hb_elapsed < HB_MAX_SAFE_IVAL && indicator_idle_ms > IDLE_FOR_HEARTBEAT_MS &&
+            (indicator_idle_ms % 10 == 0)) {
+            Indicator_Effect(STATUS_HEARTBEAT);
+        }
+    }
+
+    if (active_effect != STATUS_NONE) {
+        indicator_idle_ms = 0;
+
+        if (active_effect == STATUS_HEARTBEAT) {
+            if (effect_time == 0) led_on();
+            else if (effect_time == 50) {
+                led_off();
+                active_effect = STATUS_NONE;
             }
         }
+        else if (active_effect == STATUS_DISK_ATTACHED) {
+            if (effect_time == 0) led_on();
+            else if (effect_time == 100) led_off();
+            else if (effect_time == 200) led_on();
+            else if (effect_time == 700) {
+                led_off();
+                active_effect = STATUS_NONE;
+            }
+        }
+        else if (active_effect == STATUS_DISK_REMOVED) {
+            if (effect_time == 0) led_on();
+            else if (effect_time == 500) led_off();
+            else if (effect_time == 600) led_on();
+            else if (effect_time == 700) {
+                led_off();
+                active_effect = STATUS_NONE;
+            }
+        }
+        else if (active_effect == STATUS_DISK_BUSY) {
+            if (effect_time == 600) {
+                led_off();
+                active_effect = STATUS_NONE;
+            }
+            else if (effect_time % 200 == 0) led_on();
+            else if (effect_time % 200 == 100) led_off();
+        }
+
+        effect_time++;
     }
 }
 
 /** Heartbeat callback from the main thread */
-void StatusLed_Heartbeat(void)
+void Indicator_Heartbeat(void)
 {
-    // TODO fixme
-    LL_GPIO_TogglePin(led_periph, led_llpin);
+    hb_elapsed = 0;
+    // this is called every ~ 100 ms from the main loop
 }

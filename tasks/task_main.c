@@ -44,7 +44,7 @@ void TaskMain(void const * argument)
             startTime = now;
 
             cnt++;
-            if (cnt%5==0) StatusLed_Heartbeat();
+            Indicator_Heartbeat();
         }
 
         // if no message and it just timed out, go wait some more...

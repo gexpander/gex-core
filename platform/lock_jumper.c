@@ -12,6 +12,7 @@
 #include "framework/system_settings.h"
 #include "pin_utils.h"
 #include "lock_jumper.h"
+#include "status_led.h"
 
 static bool LockJumper_ReadPin(void);
 
@@ -61,9 +62,11 @@ static void jumper_changed(void)
     if (SystemSettings.editable) {
         // Unlock
         dbg("LOCK removed, enabling MSC!");
+        Indicator_Effect(STATUS_DISK_ATTACHED);
     } else {
         // Lock
         dbg("LOCK replaced, disabling MSC!");
+        Indicator_Effect(STATUS_DISK_REMOVED);
 
         if (SystemSettings.modified) {
             dbg("Saving settings to Flash...");
