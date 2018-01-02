@@ -23,4 +23,10 @@ static inline bool isDynAlloc(const void *obj)
            && ((uint32_t)obj < (uint32_t)__SP);
 }
 
+static inline void __delay_cycles(uint32_t cycles)
+{
+    uint32_t l = cycles/3;
+    asm volatile( "0:" "sub %[count], #1;" "bne 0b;" :[count]"+r"(l) );
+}
+
 #endif //GEX_CORTEX_UTILS_H

@@ -145,6 +145,7 @@ enum PinCmd_ {
     CMD_LOAD = 1,
     CMD_LOAD_U32_LE = 2,
     CMD_LOAD_U32_BE = 3,
+    CMD_GET_LEN = 4,
 };
 
 /** Handle a request message */
@@ -172,6 +173,10 @@ static bool Npx_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
         case CMD_LOAD_U32_BE:
             if (pp_length(pp) != priv->pixels*4) goto bad_count;
             ws2812_load_sparse(priv->port, priv->ll_pin, pp->current, priv->pixels, 1);
+            break;
+
+        case CMD_GET_LEN:
+            com_respond_u16(frame_id, priv->pixels);
             break;
 
         default:

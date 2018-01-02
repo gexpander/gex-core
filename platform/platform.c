@@ -78,6 +78,7 @@ void plat_init_resources(void)
 
     // Units supported by the platform (known to work correctly)
     // ureg_add_type(&UNIT_XYZ);
+    ureg_add_type(&UNIT_NEOPIXEL);
 
     // Free all present resources
     {
