@@ -4,7 +4,7 @@
 #define FREQ_STEP (PLAT_AHB_MHZ/20.0f)
 #define NPX_DELAY_SHORT (uint32_t)(FREQ_STEP*1.5f)
 #define NPX_DELAY_LONG  (uint32_t)(FREQ_STEP*3.5f)
-#define NPX_DELAY_SHOW  (uint32_t)(FREQ_STEP*60)
+#define NPX_DELAY_SHOW  (uint32_t)(FREQ_STEP*50)
 
 static inline __attribute__((always_inline))
 void ws2812_byte(GPIO_TypeDef *port, uint32_t ll_pin, uint8_t b)
@@ -42,10 +42,6 @@ void ws2812_load_raw(GPIO_TypeDef *port, uint32_t ll_pin, uint8_t *rgbs, uint32_
 	}
     vPortExitCritical();
     __asm_loop(NPX_DELAY_SHOW);
-
-    LL_GPIO_SetOutputPin(port, ll_pin);
-    __asm_loop(NPX_DELAY_SHORT);
-    LL_GPIO_ResetOutputPin(port, ll_pin);
 }
 
 /** Set many RGBs from uint32 stream */
@@ -72,10 +68,6 @@ void ws2812_load_sparse(GPIO_TypeDef *port, uint32_t ll_pin, uint8_t *rgbs, uint
 	}
     vPortExitCritical();
     __asm_loop(NPX_DELAY_SHOW);
-
-    LL_GPIO_SetOutputPin(port, ll_pin);
-    __asm_loop(NPX_DELAY_SHORT);
-    LL_GPIO_ResetOutputPin(port, ll_pin);
 }
 
 /** Set many RGBs */
@@ -87,8 +79,4 @@ void ws2812_clear(GPIO_TypeDef *port, uint32_t ll_pin, uint32_t count)
 	}
     vPortExitCritical();
     __asm_loop(NPX_DELAY_SHOW);
-
-    LL_GPIO_SetOutputPin(port, ll_pin);
-    __asm_loop(NPX_DELAY_SHORT);
-    LL_GPIO_ResetOutputPin(port, ll_pin);
 }
