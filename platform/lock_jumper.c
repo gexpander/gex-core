@@ -91,6 +91,7 @@ void LockJumper_Check(void)
 
     if (debo_ticks > 0) {
         if (--debo_ticks == 0) {
+            dbg("Debo finished, state %d", (int)state);
             // we've reached a change
             #if PLAT_LOCK_BTN
                 if (state == true) {

@@ -106,8 +106,8 @@ void Indicator_Tick(void)
         else if (active_effect == STATUS_DISK_ATTACHED) {
             if (effect_time == 0) led_on();
             else if (effect_time == 100) led_off();
-            else if (effect_time == 200) led_on();
-            else if (effect_time == 700) {
+            else if (effect_time == 250) led_on();
+            else if (effect_time == 750) {
                 led_off();
                 active_effect = STATUS_NONE;
             }
@@ -115,8 +115,8 @@ void Indicator_Tick(void)
         else if (active_effect == STATUS_DISK_REMOVED) {
             if (effect_time == 0) led_on();
             else if (effect_time == 500) led_off();
-            else if (effect_time == 600) led_on();
-            else if (effect_time == 700) {
+            else if (effect_time == 650) led_on();
+            else if (effect_time == 750) {
                 led_off();
                 active_effect = STATUS_NONE;
             }

@@ -167,15 +167,17 @@ static void DI_deInit(Unit *unit)
 {
     struct priv *priv = unit->data;
 
-    bool suc = true;
-    uint16_t mask = 1;
-    for (int i = 0; i < 16; i++, mask <<= 1) {
-        if (priv->pins & mask) {
-            uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
-            assert_param(suc); // this should never fail if we got this far
+    if (unit->status == E_SUCCESS) {
+        bool suc = true;
+        uint16_t mask = 1;
+        for (int i = 0; i < 16; i++, mask <<= 1) {
+            if (priv->pins & mask) {
+                uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
+                assert_param(suc); // this should never fail if we got this far
 
-            // configure the pin as analog
-            LL_GPIO_SetPinMode(priv->port, ll_pin, LL_GPIO_MODE_ANALOG);
+                // configure the pin as analog
+                LL_GPIO_SetPinMode(priv->port, ll_pin, LL_GPIO_MODE_ANALOG);
+            }
         }
     }
 

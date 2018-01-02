@@ -125,8 +125,10 @@ static void Npx_deInit(Unit *unit)
 {
     struct priv *priv = unit->data;
 
-    // configure the pin as analog
-    LL_GPIO_SetPinMode(priv->port, priv->ll_pin, LL_GPIO_MODE_ANALOG);
+    if (unit->status == E_SUCCESS) {
+        // configure the pin as analog
+        LL_GPIO_SetPinMode(priv->port, priv->ll_pin, LL_GPIO_MODE_ANALOG);
+    }
 
     // Release all resources
     rsc_teardown(unit);
