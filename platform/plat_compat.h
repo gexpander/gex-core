@@ -55,7 +55,7 @@
 
     // platform name for the version string
     #define GEX_PLATFORM "STM32F103-Bluepill"
-    #define PLAT_AHB_CLOCK 72e6
+    #define PLAT_AHB_MHZ 72
 
     // feature flags
     #define PLAT_FLASHBANKS 1
@@ -106,7 +106,7 @@
 
     // platform name for the version string
     #define GEX_PLATFORM "STM32F072-Discovery"
-    #define PLAT_AHB_CLOCK 48e6
+    #define PLAT_AHB_MHZ 48
 
     #include <stm32f0xx.h>
     #include <stm32f0xx_ll_adc.h>
@@ -153,7 +153,7 @@
 
     // platform name for the version string
     #define GEX_PLATFORM "STM32F303-Discovery"
-    #define PLAT_AHB_CLOCK 72e6
+    #define PLAT_AHB_MHZ 72
 
     #include <stm32f3xx.h>
     #include <stm32f3xx_hal.h>
@@ -203,7 +203,7 @@
 
     // platform name for the version string
     #define GEX_PLATFORM "STM32F407-Discovery"
-    #define PLAT_AHB_CLOCK 168e6
+    #define PLAT_AHB_MHZ 168
 
     #define PLAT_USB_PHYCLOCK 1
     #define PLAT_USB_OTGFS 1
