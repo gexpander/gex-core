@@ -13,8 +13,13 @@
 #include "pin_utils.h"
 #include "lock_jumper.h"
 
+static bool LockJumper_ReadPin(void);
+
 static GPIO_TypeDef *lock_periph;
 static uint32_t lock_llpin;
+
+static bool old_state = false;
+static uint32_t debo_ticks = 0;
 
 // We use macros LOCK_JUMPER_PORT, LOCK_JUMPER_PIN from plat_compat.h
 
@@ -37,7 +42,13 @@ void LockJumper_Init(void)
 
     // Configure for input
     LL_GPIO_SetPinMode(lock_periph, lock_llpin, LL_GPIO_MODE_INPUT);
-    LL_GPIO_SetPinPull(lock_periph, lock_llpin, LL_GPIO_PULL_UP);
+
+    // pull-up/down in the opposite direction of the active state
+    #if PLAT_LOCK_1CLOSED
+        LL_GPIO_SetPinPull(lock_periph, lock_llpin, LL_GPIO_PULL_DOWN);
+    #else
+        LL_GPIO_SetPinPull(lock_periph, lock_llpin, LL_GPIO_PULL_UP);
+    #endif
 
     SystemSettings.editable = (bool) LL_GPIO_IsInputPinSet(lock_periph, lock_llpin);
     dbg("Settings editable? %d", SystemSettings.editable);
@@ -49,10 +60,10 @@ static void jumper_changed(void)
 {
     if (SystemSettings.editable) {
         // Unlock
-        dbg("LOCK jumper removed, enabling MSC!");
+        dbg("LOCK removed, enabling MSC!");
     } else {
         // Lock
-        dbg("LOCK jumper replaced, disabling MSC!");
+        dbg("LOCK replaced, disabling MSC!");
 
         if (SystemSettings.modified) {
             dbg("Saving settings to Flash...");
@@ -69,26 +80,51 @@ static void jumper_changed(void)
 /** Periodic jumper check */
 void LockJumper_Check(void)
 {
-    // Debounce cooldown
-    static uint32_t cooldown = 0;
-    if (cooldown > 0) {
-        cooldown--;
-        return;
+    bool state = LockJumper_ReadPin();
+    if (state != old_state) {
+        old_state = state;
+        debo_ticks = 3;
     }
 
-    // Read the pin state
-    bool old = SystemSettings.editable;
-    LockJumper_ReadHardware();
-
-    if (old != SystemSettings.editable) {
-        // --- State changed ---
-        cooldown = 5; // 0.5s if called every 100 ms
-
-        jumper_changed();
+    if (debo_ticks > 0) {
+        if (--debo_ticks == 0) {
+            // we've reached a change
+            #if PLAT_LOCK_BTN
+                if (state == true) {
+                    SystemSettings.editable = !SystemSettings.editable;
+                    jumper_changed();
+                }
+            #else
+                SystemSettings.editable = state;
+                jumper_changed();
+            #endif
+        }
     }
 }
 
-void LockJumper_ReadHardware(void)
+/**
+ * Read the jumper / button state.
+ *
+ * @return true if the jumper is closed, or button pressed
+ */
+static bool LockJumper_ReadPin(void)
 {
-    SystemSettings.editable = (bool) LL_GPIO_IsInputPinSet(lock_periph, lock_llpin);
+    // lock jumper - start with MSC on if removed
+    #if PLAT_LOCK_1CLOSED
+        return (bool) LL_GPIO_IsInputPinSet(lock_periph, lock_llpin);
+    #else
+        return ! ((bool) LL_GPIO_IsInputPinSet(lock_periph, lock_llpin));
+    #endif
+}
+
+
+void LockJumper_CheckInitialState(void)
+{
+    #if PLAT_LOCK_BTN
+        // no static read - starts with MSC off
+        SystemSettings.editable = false;
+        old_state = false;
+    #else
+        old_state = SystemSettings.editable = ! LockJumper_ReadPin();
+    #endif
 }

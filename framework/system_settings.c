@@ -23,7 +23,7 @@ void systemsettings_init(void)
 
     // Flags
     SystemSettings.modified = false;
-    LockJumper_ReadHardware();
+    LockJumper_CheckInitialState();
 }
 
 // to binary

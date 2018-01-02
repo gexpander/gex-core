@@ -50,6 +50,8 @@
 // PLAT_NO_FLOATING_INPUTS - can't have digital inputs with no pull resistor
 // PLAT_USB_PHYCLOCK - requires special config of phy clock for USB
 // PLAT_USB_OTGFS - uses the USB OTG IP, needs different config code
+// PLAT_LOCK_BTN - use a lock button instead of a lock jumper (push to toggle)
+// PLAT_LOCK_1CLOSED - lock jumper is active (closed / button pressed) in logical 1
 
 #if defined(GEX_PLAT_F103_BLUEPILL)
 
@@ -138,8 +140,10 @@
     #define PORTS_COUNT 6
 
     // Lock jumper config
-    #define LOCK_JUMPER_PORT 'F'
-    #define LOCK_JUMPER_PIN  1 // OSC OUT, not used in BYPASS mode (receiving clock from the ST-Link MCO)
+    #define LOCK_JUMPER_PORT 'A'
+    #define LOCK_JUMPER_PIN  0
+    #define PLAT_LOCK_BTN 1 // toggle button instead of a jumper
+    #define PLAT_LOCK_1CLOSED 1 // toggle button active in log. 1
 
     // Status LED config
     #define STATUS_LED_PORT 'C'
