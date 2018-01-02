@@ -92,14 +92,13 @@ bool rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
             Resource rsc = pin2resource(port_name, (uint8_t) i, &suc);
             if (!suc) {
                 unit->status = E_BAD_CONFIG;
-
-                rsc_teardown(unit);
+//                rsc_teardown(unit);
                 return false;
             }
 
             suc = rsc_claim(unit, rsc);
             if (!suc) {
-                rsc_teardown(unit);
+//                rsc_teardown(unit);
                 return false;
             }
         }
