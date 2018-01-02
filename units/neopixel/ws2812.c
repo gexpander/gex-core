@@ -1,6 +1,9 @@
 #include "platform.h"
 #include "ws2812.h"
 
+#define PLAT_NEOPIXEL_SHORT (uint32_t)(800e-9*PLAT_AHB_CLOCK)
+#define PLAT_NEOPIXEL_LONG (uint32_t)(400e-9*PLAT_AHB_CLOCK)
+
 static //inline __attribute__((always_inline))
 void ws2812_byte(GPIO_TypeDef *port, uint32_t ll_pin, uint8_t b)
 {
@@ -9,16 +12,16 @@ void ws2812_byte(GPIO_TypeDef *port, uint32_t ll_pin, uint8_t b)
 
 		// duty cycle determines bit value
 		if (b & 0x80) {
-            __delay_cycles(20);
+            __delay_cycles(PLAT_NEOPIXEL_LONG);
             //for(uint32_t _i = 0; _i < 10; _i++) asm volatile("nop");
             LL_GPIO_ResetOutputPin(port, ll_pin);
             //for(uint32_t _i = 0; _i < 10; _i++) asm volatile("nop");
-            __delay_cycles(10);
+            __delay_cycles(PLAT_NEOPIXEL_SHORT);
 		} else {
-            __delay_cycles(10);
+            __delay_cycles(PLAT_NEOPIXEL_SHORT);
             //for(uint32_t _i = 0; _i < 5; _i++) asm volatile("nop");
             LL_GPIO_ResetOutputPin(port, ll_pin);
-            __delay_cycles(20);
+            __delay_cycles(PLAT_NEOPIXEL_LONG);
             //for(uint32_t _i = 0; _i < 10; _i++) asm volatile("nop");
 		}
 

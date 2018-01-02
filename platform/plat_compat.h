@@ -41,8 +41,6 @@
 #define TF_PARSER_TIMEOUT_TICKS 100 // Timeout for receiving & parsing a frame
 #define BULK_LST_TIMEOUT_MS     200 // timeout for the bulk transaction to expire
 
-
-
 // -------- Platform specific includes and defines ---------
 
 /// Feature flags:
@@ -57,6 +55,7 @@
 
     // platform name for the version string
     #define GEX_PLATFORM "STM32F103-Bluepill"
+    #define PLAT_AHB_CLOCK 72e6
 
     // feature flags
     #define PLAT_FLASHBANKS 1
@@ -95,9 +94,9 @@
     // Number of GPIO ports A,B,C...
     #define PORTS_COUNT 5
 
-    // Lock jumper config
-    #define LOCK_JUMPER_PORT 'C'
-    #define LOCK_JUMPER_PIN  14
+    // Lock jumper config - re-use BOOT1, closed = LOW
+    #define LOCK_JUMPER_PORT 'B'
+    #define LOCK_JUMPER_PIN  2
 
     // Status LED config
     #define STATUS_LED_PORT 'C'
@@ -107,6 +106,7 @@
 
     // platform name for the version string
     #define GEX_PLATFORM "STM32F072-Discovery"
+    #define PLAT_AHB_CLOCK 48e6
 
     #include <stm32f0xx.h>
     #include <stm32f0xx_ll_adc.h>
@@ -153,6 +153,7 @@
 
     // platform name for the version string
     #define GEX_PLATFORM "STM32F303-Discovery"
+    #define PLAT_AHB_CLOCK 72e6
 
     #include <stm32f3xx.h>
     #include <stm32f3xx_hal.h>
@@ -189,8 +190,10 @@
     #define PORTS_COUNT 6
 
     // Lock jumper config
-    #define LOCK_JUMPER_PORT 'F'
-    #define LOCK_JUMPER_PIN  1 // OSC OUT, not used in BYPASS mode (receiving clock from the ST-Link MCO)
+    #define LOCK_JUMPER_PORT 'A'
+    #define LOCK_JUMPER_PIN  0
+    #define PLAT_LOCK_BTN 1 // toggle button instead of a jumper
+    #define PLAT_LOCK_1CLOSED 1 // toggle button active in log. 1
 
     // Status LED config
     #define STATUS_LED_PORT 'E'
@@ -198,8 +201,9 @@
 
 #elif defined(GEX_PLAT_F407_DISCOVERY)
 
-// platform name for the version string
+    // platform name for the version string
     #define GEX_PLATFORM "STM32F407-Discovery"
+    #define PLAT_AHB_CLOCK 168e6
 
     #define PLAT_USB_PHYCLOCK 1
     #define PLAT_USB_OTGFS 1
@@ -239,8 +243,10 @@
     #define PORTS_COUNT 6
 
     // Lock jumper config
-    #define LOCK_JUMPER_PORT 'C'
-    #define LOCK_JUMPER_PIN  14 // completely random choice here... TBD
+    #define LOCK_JUMPER_PORT 'A'
+    #define LOCK_JUMPER_PIN  0
+    #define PLAT_LOCK_BTN 1 // toggle button instead of a jumper
+    #define PLAT_LOCK_1CLOSED 1 // toggle button active in log. 1
 
     // Status LED config
     #define STATUS_LED_PORT 'D' // orange
