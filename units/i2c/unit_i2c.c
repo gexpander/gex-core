@@ -17,6 +17,10 @@ struct priv {
     uint8_t speed; //!< 0 - Standard, 1 - Fast, 2 - Fast+
 
     I2C_TypeDef *periph;
+
+    GPIO_TypeDef *port;
+    uint32_t ll_pin_scl;
+    uint32_t ll_pin_sda;
 };
 
 // ------------------------------------------------------------------------
@@ -146,8 +150,92 @@ static bool UI2C_init(Unit *unit)
         priv->periph = I2C2;
     }
 
-    // TODO claim pins (config option to remap?)
+    // This is written for F072, other platforms will need adjustments
 
+    char portname;
+    uint8_t pin_scl;
+    uint8_t pin_sda;
+    uint32_t af_i2c;
+    uint32_t timing; // magic constant from CubeMX
+
+#if GEX_PLAT_F072_DISCOVERY
+    // scl - 6 or 8 for I2C1, 10 for I2C2
+    // sda - 7 or 9 for I2C1, 11 for I2C2
+    portname = 'B';
+
+    if (priv->periph_num == 1) {
+        pin_scl = 8;
+        pin_sda = 9;
+    } else {
+        pin_scl = 10;
+        pin_sda = 12;
+    }
+
+    af_i2c = LL_GPIO_AF_1;
+    if (priv->speed == 1)
+        timing = 0x00301D2B; // Standard
+    else if (priv->speed == 2)
+        timing = 0x0000020B; // Fast
+    else
+        timing = 0x00000001; // Fast+
+
+#elif GEX_PLAT_F103_BLUEPILL
+    #error "NO IMPL"
+#elif GEX_PLAT_F303_DISCOVERY
+    #error "NO IMPL"
+#elif GEX_PLAT_F407_DISCOVERY
+    #error "NO IMPL"
+#else
+    #error "BAD PLATFORM!"
+#endif
+
+    // first, we have to claim the pins
+    Resource r_sda = pin2resource(portname, pin_sda, &suc);
+    Resource r_scl = pin2resource(portname, pin_scl, &suc);
+    CHECK_SUC();
+    rsc_claim(unit, r_sda);
+    rsc_claim(unit, r_scl);
+    CHECK_SUC();
+
+    GPIO_TypeDef *port = port2periph(portname, &suc);
+    uint32_t ll_pin_scl = pin2ll(pin_scl, &suc);
+    uint32_t ll_pin_sda = pin2ll(pin_sda, &suc);
+    CHECK_SUC();
+
+    // configure AF
+    if (pin_scl < 8) LL_GPIO_SetAFPin_0_7(port, ll_pin_scl, af_i2c);
+    else LL_GPIO_SetAFPin_8_15(port, ll_pin_scl, af_i2c);
+
+    if (pin_sda < 8) LL_GPIO_SetAFPin_0_7(port, ll_pin_sda, af_i2c);
+    else LL_GPIO_SetAFPin_8_15(port, ll_pin_sda, af_i2c);
+
+    LL_GPIO_SetPinMode(port, ll_pin_scl, LL_GPIO_MODE_ALTERNATE);
+    LL_GPIO_SetPinMode(port, ll_pin_sda, LL_GPIO_MODE_ALTERNATE);
+
+    // set as OpenDrain (this may not be needed - TODO check)
+    LL_GPIO_SetPinOutputType(port, ll_pin_scl, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetPinOutputType(port, ll_pin_sda, LL_GPIO_OUTPUT_OPENDRAIN);
+
+
+    if (priv->periph_num == 1) {
+        __HAL_RCC_I2C1_CLK_ENABLE();
+    } else {
+        __HAL_RCC_I2C2_CLK_ENABLE();
+    }
+
+    /* Disable the selected I2Cx Peripheral */
+    LL_I2C_Disable(priv->periph);
+    LL_I2C_ConfigFilters(priv->periph,
+                         priv->anf ? LL_I2C_ANALOGFILTER_ENABLE
+                                   : LL_I2C_ANALOGFILTER_DISABLE,
+                         priv->dnf);
+
+    LL_I2C_SetTiming(priv->periph, timing);
+    LL_I2C_DisableClockStretching(priv->periph);
+    LL_I2C_Enable(priv->periph);
+
+    LL_I2C_DisableOwnAddress1(priv->periph); // OA not used
+    LL_I2C_SetMode(priv->periph, LL_I2C_MODE_I2C); // not using SMBus
 
     return true;
 }
@@ -159,7 +247,16 @@ static void UI2C_deInit(Unit *unit)
 
     // de-init the pins & peripheral only if inited correctly
     if (unit->status == E_SUCCESS) {
-        // TODO
+        LL_I2C_DeInit(priv->periph);
+
+        if (priv->periph_num == 1) {
+            __HAL_RCC_I2C1_CLK_DISABLE();
+        } else {
+            __HAL_RCC_I2C2_CLK_DISABLE();
+        }
+
+        LL_GPIO_SetPinMode(priv->port, priv->ll_pin_sda, LL_GPIO_MODE_ANALOG);
+        LL_GPIO_SetPinMode(priv->port, priv->ll_pin_scl, LL_GPIO_MODE_ANALOG);
     }
 
     // Release all resources
@@ -177,18 +274,121 @@ enum PinCmd_ {
     CMD_READ = 1,
 };
 
+static void i2c_reset(struct priv *priv)
+{
+    LL_I2C_Disable(priv->periph);
+    HAL_Delay(1);
+    LL_I2C_Enable(priv->periph);
+}
+
+static bool i2c_wait_until_flag(struct priv *priv, TF_ID frame_id, uint32_t flag,
+                                bool stop_state, const char *msg)
+{
+    uint32_t t_start = HAL_GetTick();
+    while (((priv->periph->ISR & flag)!=0) != stop_state) {
+        if (HAL_GetTick() - t_start > 10) {
+            com_respond_err(frame_id, msg);
+            i2c_reset(priv);
+            return false;
+        }
+    }
+}
+
 /** Handle a request message */
 static bool UI2C_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
     struct priv *priv = unit->data;
 
+    uint8_t addrsize; // 7 or 10
+    uint16_t addr;
+    uint32_t len;
+    uint32_t t_start;
+
     switch (command) {
-        case CMD_WRITE:
-            //
+        case CMD_WRITE:;
+            addrsize = pp_u8(pp); // 7 or 10
+            addr = pp_u16(pp);
+
+            t_start = HAL_GetTick();
+            while (LL_I2C_IsActiveFlag_BUSY(priv->periph)) {
+                if (HAL_GetTick() - t_start > 10) {
+                    com_respond_err(frame_id, "BUSY TIMEOUT");
+                    i2c_reset(priv);
+                    return false;
+                }
+            }
+//            if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_BUSY, 0, "BUSY TIMEOUT")) return false;
+
+            uint32_t chunk_remain;
+            while (pp_length(pp) > 0) {
+                len = pp_length(pp);
+                chunk_remain = (uint8_t) ((len > 255) ? 255 : len), // if more than 255, first chunk is 255
+                LL_I2C_HandleTransfer(priv->periph,
+                                      (addrsize == 7) ? addr << 1 : addr, // Address must be shifted to left by one if 7-bit mode is used. Bit 0 serves for R/W flag
+                                      (addrsize == 7) ? LL_I2C_ADDRSLAVE_7BIT : LL_I2C_ADDRSLAVE_10BIT, // translate to LL bitfields
+                                      (uint32_t) chunk_remain,
+                                      (len > 255) ? LL_I2C_MODE_RELOAD : LL_I2C_MODE_AUTOEND, // Autoend if this is the last chunk
+                                      LL_I2C_GENERATE_START_WRITE);
+
+                for (; chunk_remain > 0; chunk_remain--) {
+                    t_start = HAL_GetTick();
+                    while (!LL_I2C_IsActiveFlag_TXIS(priv->periph)) {
+                        if (HAL_GetTick() - t_start > 10) {
+                            com_respond_err(frame_id, "TXIS TIMEOUT");
+                            i2c_reset(priv);
+                            return false;
+                        }
+                    }
+
+                    uint8_t byte = pp_u8(pp);
+                    LL_I2C_TransmitData8(priv->periph, byte);
+                }
+            }
+
+            t_start = HAL_GetTick();
+            while (!LL_I2C_IsActiveFlag_STOP(priv->periph)) {
+                if (HAL_GetTick() - t_start > 10) {
+                    com_respond_err(frame_id, "STOPF TIMEOUT");
+                    i2c_reset(priv);
+                    return false;
+                }
+            }
+
             break;
 
         case CMD_READ:
-            //
+            addrsize = pp_u8(pp); // 7 or 10
+            addr = pp_u16(pp);
+            len = pp_u16(pp);
+
+            // TODO support > 255?
+            if (len > 256) {
+                com_respond_err(frame_id, "TOO LONG");
+                return false;
+            }
+
+            LL_I2C_HandleTransfer(priv->periph,
+                                  (addrsize == 7) ? addr << 1 : addr,
+                                  addrsize == 7 ? LL_I2C_ADDRSLAVE_7BIT : LL_I2C_ADDRSLAVE_10BIT,
+                                  (uint32_t) pp_length(pp),
+                                  LL_I2C_MODE_AUTOEND, // ?
+                                  LL_I2C_GENERATE_START_READ);
+
+            for (uint32_t i = 0; i < len; i++) {
+                t_start = HAL_GetTick();
+                while (!LL_I2C_IsActiveFlag_RXNE(priv->periph)) {
+                    // wait for RXNE
+                    if (HAL_GetTick() - t_start > 10) {
+                        com_respond_err(frame_id, "RX TIMEOUT");
+                        return false;
+                    }
+                }
+
+                uint8_t b = LL_I2C_ReceiveData8(priv->periph);
+                unit_tmp512[i] = b;
+            }
+
+            com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, len);
             break;
 
         default:

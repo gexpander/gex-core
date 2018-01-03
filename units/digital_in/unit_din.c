@@ -85,13 +85,13 @@ static void DI_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "port", "%c", priv->port_name);
 
     iw_comment(iw, "Pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", "%s", str_pinmask(priv->pins, unit_tmp64));
+    iw_entry(iw, "pins", "%s", str_pinmask(priv->pins, unit_tmp512));
 
     iw_comment(iw, "Pins with pull-up");
-    iw_entry(iw, "pull-up", "%s", str_pinmask(priv->pullup, unit_tmp64));
+    iw_entry(iw, "pull-up", "%s", str_pinmask(priv->pullup, unit_tmp512));
 
     iw_comment(iw, "Pins with pull-down");
-    iw_entry(iw, "pull-down", "%s", str_pinmask(priv->pulldown, unit_tmp64));
+    iw_entry(iw, "pull-down", "%s", str_pinmask(priv->pulldown, unit_tmp512));
 
 #if PLAT_NO_FLOATING_INPUTS
     iw_comment(iw, "NOTE: Pins use pull-up by default.\r\n");
@@ -206,9 +206,9 @@ static bool DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Payloa
 
     switch (command) {
         case CMD_READ:;
-            PayloadBuilder pb = pb_start((uint8_t*)unit_tmp64, 64, NULL);
+            PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 64, NULL);
             pb_u16(&pb, packed);
-            com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp64, pb_length(&pb));
+            com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, pb_length(&pb));
             break;
 
         default:

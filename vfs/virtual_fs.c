@@ -555,7 +555,7 @@ void vfs_write(uint32_t requested_sector, const uint8_t *buf, uint32_t num_secto
 
     set_init_done();
 
-    vfs_printf("vfs_write - at sector %d, count %d", requested_sector, num_sectors);
+    vfs_printf("vfs_write - at sector %d, count %d", (int)requested_sector, (int)num_sectors);
     for (i = 0; i < virtual_media_idx; i++) {
         uint32_t vm_sectors = virtual_media[i].length / VFS_SECTOR_SIZE;
         uint32_t vm_start = current_sector;
@@ -582,7 +582,7 @@ void vfs_write(uint32_t requested_sector, const uint8_t *buf, uint32_t num_secto
         // Move to the next virtual media entry
         current_sector += vm_sectors;
     }
-    if (num_sectors > 0) vfs_printf("Failed to find place for writing, remain %d secs to write.", num_sectors);
+    if (num_sectors > 0) vfs_printf("Failed to find place for writing, remain %d secs to write.", (int)num_sectors);
 }
 
 static uint32_t read_zero(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
@@ -788,7 +788,7 @@ static void set_init_done(void)
 
 bool vfs_find_file(uint32_t start_sector, vfs_filename_t *destFilename, vfs_file_t **destFile)
 {
-    vfs_printf("Looking for file at %d", start_sector);
+    vfs_printf("Looking for file at %d", (int)start_sector);
     for (int i = 0; i < 32; i++) {
         FatDirectoryEntry_t *f = &dir_current.f[i];
         if (f->attributes == VFS_FILE_ATTR_LFN) continue;

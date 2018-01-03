@@ -219,10 +219,10 @@ static error_t write_conf(void *state, const uint8_t *data, uint32_t size)
     conf_state_t *conf = state;
     conf->file_pos += size;
 
-    vfs_printf("Writing INI - RX %d bytes", size);
-    vfs_printf_nonl("\033[92m", 5);
-    vfs_printf_nonl((const char *) data, size);
-    vfs_printf_nonl("\033[0m\r\n", 6);
+    vfs_printf("Writing INI - RX %d bytes", (int)size);
+    vfs_puts("\033[92m");
+    vfs_putsn((const char *) data, size);
+    vfs_puts("\033[0m\r\n");
 
     ini_parse((const char *) data, size);
 
@@ -233,7 +233,7 @@ static error_t write_conf(void *state, const uint8_t *data, uint32_t size)
 static error_t close_conf(void *state)
 {
     conf_state_t *conf = state;
-    vfs_printf("Close INI, total bytes = %d", conf->file_pos);
+    vfs_printf("Close INI, total bytes = %d", (int)conf->file_pos);
 
     ini_parse_end();
     settings_load_ini_end();
