@@ -231,7 +231,7 @@ static bool UI2C_init(Unit *unit)
                          priv->dnf);
 
     LL_I2C_SetTiming(priv->periph, timing);
-    LL_I2C_DisableClockStretching(priv->periph);
+    //LL_I2C_DisableClockStretching(priv->periph);
     LL_I2C_Enable(priv->periph);
 
     LL_I2C_DisableOwnAddress1(priv->periph); // OA not used
@@ -272,6 +272,8 @@ static void UI2C_deInit(Unit *unit)
 enum PinCmd_ {
     CMD_WRITE = 0,
     CMD_READ = 1,
+    CMD_WRITE_ADDR = 2,
+    CMD_READ_ADDR = 3,
 };
 
 static void i2c_reset(struct priv *priv)
@@ -281,8 +283,7 @@ static void i2c_reset(struct priv *priv)
     LL_I2C_Enable(priv->periph);
 }
 
-static bool i2c_wait_until_flag(struct priv *priv, TF_ID frame_id, uint32_t flag,
-                                bool stop_state, const char *msg)
+static bool i2c_wait_until_flag(struct priv *priv, TF_ID frame_id, uint32_t flag, bool stop_state, const char *msg)
 {
     uint32_t t_start = HAL_GetTick();
     while (((priv->periph->ISR & flag)!=0) != stop_state) {
@@ -292,6 +293,7 @@ static bool i2c_wait_until_flag(struct priv *priv, TF_ID frame_id, uint32_t flag
             return false;
         }
     }
+    return true;
 }
 
 /** Handle a request message */
@@ -304,89 +306,74 @@ static bool UI2C_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Payl
     uint32_t len;
     uint32_t t_start;
 
+    addr = pp_u16(pp); // 10-bit address has the highest bit set to 1 to indicate this
+    addrsize = (uint8_t) (((addr & 0x8000) == 0) ? 7 : 10);
+    addr &= 0x3FF;
+
+    uint32_t ll_addrsize = (addrsize == 7) ? LL_I2C_ADDRSLAVE_7BIT : LL_I2C_ADDRSLAVE_10BIT;
+
+    // 7-bit address must be shifted to left for LL to use it correctly
+    if (addrsize == 7) addr <<= 1;
+
+    if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_BUSY, 0, "BUSY TIMEOUT")) return false;
+
+    uint32_t chunk_remain;
+    bool first;
+
     switch (command) {
         case CMD_WRITE:;
-            addrsize = pp_u8(pp); // 7 or 10
-            addr = pp_u16(pp);
+            // u16 address - already read
 
-            t_start = HAL_GetTick();
-            while (LL_I2C_IsActiveFlag_BUSY(priv->periph)) {
-                if (HAL_GetTick() - t_start > 10) {
-                    com_respond_err(frame_id, "BUSY TIMEOUT");
-                    i2c_reset(priv);
-                    return false;
-                }
-            }
-//            if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_BUSY, 0, "BUSY TIMEOUT")) return false;
-
-            uint32_t chunk_remain;
+            first = true;
             while (pp_length(pp) > 0) {
                 len = pp_length(pp);
-                chunk_remain = (uint8_t) ((len > 255) ? 255 : len), // if more than 255, first chunk is 255
-                LL_I2C_HandleTransfer(priv->periph,
-                                      (addrsize == 7) ? addr << 1 : addr, // Address must be shifted to left by one if 7-bit mode is used. Bit 0 serves for R/W flag
-                                      (addrsize == 7) ? LL_I2C_ADDRSLAVE_7BIT : LL_I2C_ADDRSLAVE_10BIT, // translate to LL bitfields
-                                      (uint32_t) chunk_remain,
+                chunk_remain = (uint8_t) ((len > 255) ? 255 : len); // if more than 255, first chunk is 255
+                LL_I2C_HandleTransfer(priv->periph, addr, ll_addrsize, chunk_remain,
                                       (len > 255) ? LL_I2C_MODE_RELOAD : LL_I2C_MODE_AUTOEND, // Autoend if this is the last chunk
-                                      LL_I2C_GENERATE_START_WRITE);
+                                      first ? LL_I2C_GENERATE_START_WRITE : LL_I2C_GENERATE_NOSTARTSTOP); // no start/stop condition if we're continuing
+                first = false;
 
                 for (; chunk_remain > 0; chunk_remain--) {
-                    t_start = HAL_GetTick();
-                    while (!LL_I2C_IsActiveFlag_TXIS(priv->periph)) {
-                        if (HAL_GetTick() - t_start > 10) {
-                            com_respond_err(frame_id, "TXIS TIMEOUT");
-                            i2c_reset(priv);
-                            return false;
-                        }
-                    }
+                    if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_TXIS, 1, "TXIS TIMEOUT")) return false;
 
                     uint8_t byte = pp_u8(pp);
                     LL_I2C_TransmitData8(priv->periph, byte);
                 }
             }
 
-            t_start = HAL_GetTick();
-            while (!LL_I2C_IsActiveFlag_STOP(priv->periph)) {
-                if (HAL_GetTick() - t_start > 10) {
-                    com_respond_err(frame_id, "STOPF TIMEOUT");
-                    i2c_reset(priv);
-                    return false;
-                }
-            }
+            if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_STOPF, 1, "STOPF TIMEOUT")) return false;
+            LL_I2C_ClearFlag_STOP(priv->periph);
 
             break;
 
         case CMD_READ:
-            addrsize = pp_u8(pp); // 7 or 10
-            addr = pp_u16(pp);
+            // u16 address - already read
             len = pp_u16(pp);
 
-            // TODO support > 255?
-            if (len > 256) {
-                com_respond_err(frame_id, "TOO LONG");
-                return false;
-            }
-
-            LL_I2C_HandleTransfer(priv->periph,
-                                  (addrsize == 7) ? addr << 1 : addr,
-                                  addrsize == 7 ? LL_I2C_ADDRSLAVE_7BIT : LL_I2C_ADDRSLAVE_10BIT,
-                                  (uint32_t) pp_length(pp),
-                                  LL_I2C_MODE_AUTOEND, // ?
-                                  LL_I2C_GENERATE_START_READ);
-
-            for (uint32_t i = 0; i < len; i++) {
-                t_start = HAL_GetTick();
-                while (!LL_I2C_IsActiveFlag_RXNE(priv->periph)) {
-                    // wait for RXNE
-                    if (HAL_GetTick() - t_start > 10) {
-                        com_respond_err(frame_id, "RX TIMEOUT");
-                        return false;
-                    }
+            first = true;
+            uint32_t n = 0;
+            while (len > 0) {
+                if (!first) {
+                    if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_TCR, 1, "TCR TIMEOUT")) return false;
                 }
 
-                uint8_t b = LL_I2C_ReceiveData8(priv->periph);
-                unit_tmp512[i] = b;
+                chunk_remain = (uint8_t) ((len > 255) ? 255 : len); // if more than 255, first chunk is 255
+                LL_I2C_HandleTransfer(priv->periph, addr, ll_addrsize, chunk_remain,
+                                      (len > 255) ? LL_I2C_MODE_RELOAD : LL_I2C_MODE_AUTOEND, // Autoend if this is the last chunk
+                                      first ? LL_I2C_GENERATE_START_READ : LL_I2C_GENERATE_NOSTARTSTOP); // no start/stop condition if we're continuing
+                first = false;
+                len -= chunk_remain;
+
+                for (; chunk_remain > 0; chunk_remain--) {
+                    if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_RXNE, 1, "RXNE TIMEOUT")) return false;
+
+                    uint8_t byte = LL_I2C_ReceiveData8(priv->periph);
+                    unit_tmp512[n++] = byte;
+                }
             }
+
+            if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_STOPF, 1, "STOPF TIMEOUT")) return false;
+            LL_I2C_ClearFlag_STOP(priv->periph);
 
             com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, len);
             break;
