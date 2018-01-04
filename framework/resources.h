@@ -81,13 +81,8 @@ enum hw_resource {
 
 void rsc_init_registry(void);
 
-bool rsc_claim(Unit *unit, Resource rsc);
-bool rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1);
-void rsc_teardown(Unit *unit);
-
-void rsc_free(Unit *unit, Resource rsc);
-void rsc_free_range(Unit *unit, Resource rsc0, Resource rsc1);
-
+error_t rsc_claim(Unit *unit, Resource rsc);
+error_t rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1);
 /**
  * Claim GPIOs by bitmask and port name, atomically.
  * Tear down the unit on failure.
@@ -97,6 +92,10 @@ void rsc_free_range(Unit *unit, Resource rsc0, Resource rsc1);
  * @param pins - pins, bitmask
  * @return success
  */
-bool rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins);
+error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins);
+
+void rsc_teardown(Unit *unit);
+void rsc_free(Unit *unit, Resource rsc);
+void rsc_free_range(Unit *unit, Resource rsc0, Resource rsc1);
 
 #endif //GEX_RESOURCES_H

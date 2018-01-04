@@ -100,6 +100,7 @@ static void add_unit_to_list(UlistEntry *le)
 Unit *ureg_instantiate(const char *driver_name)
 {
     bool suc = true;
+    error_t rv;
 
     // Find type in the repository
     UregEntry *re = ureg_head;
@@ -113,19 +114,19 @@ Unit *ureg_instantiate(const char *driver_name)
 
             Unit *pUnit = &le->unit;
             pUnit->driver = re->driver;
-            pUnit->status = E_LOADING;
+            pUnit->status = E_LOADING; // indeterminate default state
             pUnit->data = NULL;
             pUnit->callsign = 0;
 
-            suc = pUnit->driver->preInit(pUnit);
-            if (!suc) {
+            rv = pUnit->driver->preInit(pUnit);
+            if (rv != E_SUCCESS) {
                 // tear down what we already allocated and abort
 
                 // If it failed this early, the only plausible explanation is failed malloc,
                 // in which case the data structure is not populated and keeping the
                 // broken unit doesn't serve any purpose. Just ditch it...
 
-                dbg("!! Unit type %s failed to pre-init!", driver_name);
+                dbg("!! Unit type %s failed to pre-init! %s", driver_name, error_get_message(rv));
                 clean_failed_unit(pUnit);
                 free(le);
                 return NULL;
@@ -219,9 +220,9 @@ bool ureg_load_units(PayloadParser *pp)
 
                 dbg("Adding unit \"%s\" of type %s", pUnit->name, pUnit->driver->name);
 
-                suc = pUnit->driver->init(pUnit); // finalize the load and init the unit
-                if (pUnit->status == E_LOADING) {
-                    pUnit->status = suc ? E_SUCCESS : E_BAD_CONFIG;
+                pUnit->status = pUnit->driver->init(pUnit); // finalize the load and init the unit
+                if (pUnit->status != E_SUCCESS) {
+                    dbg("!!! error initing unit %s: %s", pUnit->name, error_get_message(pUnit->status));
                 }
             } // end unit
         }
@@ -298,7 +299,7 @@ bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restr
 }
 
 /** Load unit key-value */
-bool ureg_load_unit_ini_key(const char *restrict name,
+error_t ureg_load_unit_ini_key(const char *restrict name,
                             const char *restrict key,
                             const char *restrict value,
                             uint8_t callsign)
@@ -313,10 +314,10 @@ bool ureg_load_unit_ini_key(const char *restrict name,
 
         li = li->next;
     }
-    return false;
+    return E_NO_SUCH_UNIT;
 }
 
-/** Finalize untis init */
+/** Finalize units init. Returns true if all inited OK. */
 bool ureg_finalize_all_init(void)
 {
     dbg("Finalizing units init...");
@@ -326,18 +327,13 @@ bool ureg_finalize_all_init(void)
     while (li != NULL) {
         Unit *const pUnit = &li->unit;
 
-        bool s = pUnit->driver->init(pUnit);
-        if (!s) {
-            dbg("!!!! error initing unit %s", pUnit->name);
-            if (pUnit->status == E_LOADING) {
-                // assume it's a config error if not otherwise specified
-                pUnit->status = E_BAD_CONFIG;
-            }
-        } else {
-            pUnit->status = E_SUCCESS;
+        pUnit->status = pUnit->driver->init(pUnit);
+        if (pUnit->status != E_SUCCESS) {
+            dbg("!!! error initing unit %s: %s", pUnit->name, error_get_message(pUnit->status));
         }
 
         // try to assign unique callsigns
+        // FIXME this is wrong, sometimes leads to duplicate CS
         if (pUnit->callsign == 0) {
             pUnit->callsign = callsign++;
         } else {
@@ -346,7 +342,7 @@ bool ureg_finalize_all_init(void)
             }
         }
 
-        suc &= s;
+        suc &= (pUnit->status == E_SUCCESS);
         li = li->next;
     }
     return suc;
@@ -358,7 +354,7 @@ static void export_unit_do(UlistEntry *li, IniWriter *iw)
 
     iw_section(iw, "%s:%s@%d", pUnit->driver->name, pUnit->name, (int)pUnit->callsign);
     if (pUnit->status != E_SUCCESS) {
-        iw_comment(iw, "!!! %s", error_get_string(pUnit->status));
+        iw_comment(iw, "!!! %s", error_get_message(pUnit->status));
     }
     pUnit->driver->cfgWriteIni(pUnit, iw);
 }
@@ -445,10 +441,8 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     bool confirmed = (bool) (command & 0x80);
     command &= 0x7F;
 
-    if (!pp.ok) { dbg("!! pp not OK!"); }
-
     if (callsign == 0 || !pp.ok) {
-        com_respond_malformed_cmd(msg->frame_id);
+        com_respond_error(msg->frame_id, E_MALFORMED_COMMAND);
         return;
     }
 
@@ -456,12 +450,14 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     while (li != NULL) {
         Unit *const pUnit = &li->unit;
         if (pUnit->callsign == callsign && pUnit->status == E_SUCCESS) {
-            bool ok = pUnit->driver->handleRequest(pUnit, msg->frame_id, command, &pp);
+            error_t rv = pUnit->driver->handleRequest(pUnit, msg->frame_id, command, &pp);
 
             // send extra SUCCESS confirmation message.
             // error is expected to have already been reported.
-            if (ok && confirmed) {
-                com_respond_ok(msg->frame_id);
+            if (rv == E_SUCCESS) {
+                if (confirmed) com_respond_ok(msg->frame_id);
+            } else {
+                com_respond_error(msg->frame_id, rv);
             }
             return;
         }
@@ -469,7 +465,7 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     }
 
     // Not found
-    com_respond_snprintf(msg->frame_id, MSG_ERROR, "NO UNIT @ %"PRIu8, callsign);
+    com_respond_error(msg->frame_id, E_NO_SUCH_UNIT);
 }
 
 /** Send a response for a unit-list request */
@@ -492,7 +488,11 @@ void ureg_report_active_units(TF_ID frame_id)
 
     bool suc = true;
     uint8_t *buff = malloc_ck(msglen, &suc);
-    if (!suc) { com_respond_str(MSG_ERROR, frame_id, "OUT OF MEMORY"); return; }
+    if (!suc) {
+        com_respond_error(frame_id, E_OUT_OF_MEM);
+        return;
+    }
+
     {
         PayloadBuilder pb = pb_start(buff, msglen, NULL);
         pb_u8(&pb, (uint8_t) count); // assume we don't have more than 255 units

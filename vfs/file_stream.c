@@ -100,16 +100,16 @@ error_t stream_open(stream_type_t stream_type)
 
     // Stream must not be open already
     if (stream_state != STREAM_STATE_CLOSED) {
-        vfs_printf("!! Stream is not closed, cant open");
-        assert_param(0);
-        return E_INTERNAL;
+        trap("!! Stream is not closed, cant open");
+//        assert_param(0);
+//        return E_INTERNAL;
     }
 
     // Stream must be of a supported type
     if (stream_type >= STREAM_TYPE_COUNT) {
-        vfs_printf("!! Stream bad type");
-        assert_param(0);
-        return E_INTERNAL;
+        trap("!! Stream bad type");
+//        assert_param(0);
+//        return E_INTERNAL;
     }
 
     Indicator_Effect(STATUS_DISK_BUSY);
@@ -136,9 +136,9 @@ error_t stream_write(const uint8_t *data, uint32_t size)
 
     // Stream must be open already
     if (stream_state != STREAM_STATE_OPEN) {
-        vfs_printf("!! Stream is not open, cant write");
-        assert_param(0);
-        return E_INTERNAL;
+        trap("!! Stream is not open, cant write");
+//        assert_param(0);
+//        return E_INTERNAL;
     }
 
     // Check thread after checking state since the stream thread is
@@ -169,9 +169,9 @@ error_t stream_close(void)
 
     // Stream must not be closed already
     if (STREAM_STATE_CLOSED == stream_state) {
-        vfs_printf("!! Stream already closed");
-        assert_param(0);
-        return E_INTERNAL;
+        trap("!! Stream already closed");
+//        assert_param(0);
+//        return E_INTERNAL;
     }
 
     // Check thread after checking state since the stream thread is

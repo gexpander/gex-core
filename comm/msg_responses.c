@@ -60,7 +60,7 @@ void com_respond_str(TF_TYPE type, TF_ID frame_id, const char *str)
 
 // ---------------------------------------------------------------------------
 
-void com_respond_err(TF_ID frame_id, const char *message)
+static void respond_err(TF_ID frame_id, const char *message)
 {
     com_respond_str(MSG_ERROR, frame_id, message);
 }
@@ -68,13 +68,15 @@ void com_respond_err(TF_ID frame_id, const char *message)
 
 void com_respond_bad_cmd(TF_ID frame_id)
 {
-    com_respond_err(frame_id, "BAD COMMAND");
+    respond_err(frame_id, "BAD COMMAND");
 }
 
-
-void com_respond_malformed_cmd(TF_ID frame_id)
+void com_respond_error(TF_ID frame_id, error_t error)
 {
-    com_respond_err(frame_id, "MALFORMED PAYLOAD");
+    if (error == E_SUCCESS)
+        com_respond_ok(frame_id);
+    else
+        respond_err(frame_id, error_get_message(error));
 }
 
 // ---------------------------------------------------------------------------

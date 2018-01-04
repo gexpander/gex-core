@@ -42,7 +42,7 @@ void rsc_init_registry(void)
  * @param rsc - resource to claim
  * @return true on successful claim
  */
-bool rsc_claim(Unit *unit, Resource rsc)
+error_t rsc_claim(Unit *unit, Resource rsc)
 {
     assert_param(rsc_initialized);
     assert_param(rsc > R_NONE && rsc < R_RESOURCE_COUNT);
@@ -53,12 +53,11 @@ bool rsc_claim(Unit *unit, Resource rsc)
         dbg("ERROR!! Unit %s failed to claim resource %s, already held by %s!",
             unit->name, rsc_names[rsc], resources[rsc].owner->name);
 
-        unit->status = E_RESOURCE_NOT_AVAILABLE;
-        return false;
+        return E_RESOURCE_NOT_AVAILABLE;
     }
 
     resources[rsc].owner = unit;
-    return true;
+    return E_SUCCESS;
 }
 
 /**
@@ -69,7 +68,7 @@ bool rsc_claim(Unit *unit, Resource rsc)
  * @param rsc1 - last resource to claim
  * @return true on complete claim, false if any failed (none are claimed in that case)
  */
-bool rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1)
+error_t rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1)
 {
     assert_param(rsc_initialized);
     assert_param(rsc0 > R_NONE && rsc0 < R_RESOURCE_COUNT);
@@ -77,33 +76,25 @@ bool rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1)
     assert_param(unit != NULL);
 
     for (int i = rsc0; i <= rsc1; i++) {
-        if (!rsc_claim(unit, (Resource) i)) return false;
+       TRY(rsc_claim(unit, (Resource) i));
     }
 
-    return true;
+    return E_SUCCESS;
 }
 
-bool rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
+error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
 {
     bool suc = true;
 
     for (int i = 0; i < 16; i++) {
         if (pins & (1 << i)) {
             Resource rsc = pin2resource(port_name, (uint8_t) i, &suc);
-            if (!suc) {
-                unit->status = E_BAD_CONFIG;
-//                rsc_teardown(unit);
-                return false;
-            }
+            if (!suc) return E_BAD_CONFIG;
 
-            suc = rsc_claim(unit, rsc);
-            if (!suc) {
-//                rsc_teardown(unit);
-                return false;
-            }
+            TRY(rsc_claim(unit, rsc));
         }
     }
-    return true;
+    return E_SUCCESS;
 }
 
 /**

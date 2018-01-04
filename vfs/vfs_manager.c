@@ -941,7 +941,8 @@ static void transfer_update_state(error_t status)
 
         // Set the fail reason
         fail_reason = local_status;
-        vfs_printf("    Transfer finished, status: %i=%s\r\n", fail_reason, error_get_string(fail_reason));
+        vfs_printf("    Transfer finished, status: %i=%s\r\n", fail_reason,
+                   error_get_message(fail_reason));
     }
 
     // If this state change is not from aborting a transfer

@@ -43,7 +43,7 @@ static void Npx_writeBinary(Unit *unit, PayloadBuilder *pb)
 // ------------------------------------------------------------------------
 
 /** Parse a key-value pair from the INI file */
-static bool Npx_loadIni(Unit *unit, const char *key, const char *value)
+static error_t Npx_loadIni(Unit *unit, const char *key, const char *value)
 {
     bool suc = true;
     struct priv *priv = unit->data;
@@ -55,10 +55,11 @@ static bool Npx_loadIni(Unit *unit, const char *key, const char *value)
         priv->pixels = (uint16_t) avr_atoi(value);
     }
     else {
-        return false;
+        return E_BAD_KEY;
     }
 
-    return suc;
+    if (!suc) return E_BAD_VALUE;
+    return E_SUCCESS;
 }
 
 /** Generate INI file section for the unit */
@@ -76,22 +77,22 @@ static void Npx_writeIni(Unit *unit, IniWriter *iw)
 // ------------------------------------------------------------------------
 
 /** Allocate data structure and set defaults */
-static bool Npx_preInit(Unit *unit)
+static error_t Npx_preInit(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
-    CHECK_SUC();
+    if (!suc) return E_OUT_OF_MEM;
 
     // some defaults
     priv->pin_number = 0;
     priv->port_name = 'A';
     priv->pixels = 1;
 
-    return true;
+    return E_SUCCESS;
 }
 
 /** Finalize unit set-up */
-static bool Npx_init(Unit *unit)
+static error_t Npx_init(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data;
@@ -100,13 +101,10 @@ static bool Npx_init(Unit *unit)
     priv->ll_pin = pin2ll(priv->pin_number, &suc);
     priv->port = port2periph(priv->port_name, &suc);
     Resource rsc = pin2resource(priv->port_name, priv->pin_number, &suc);
-    if (!suc) {
-        unit->status = E_BAD_CONFIG;
-        return false;
-    }
+    if (!suc) return E_BAD_CONFIG;
 
     // --- Claim resources ---
-    if (!rsc_claim(unit, rsc)) return false;
+    TRY(rsc_claim(unit, rsc));
 
     // --- Init hardware ---
     LL_GPIO_SetPinMode(priv->port, priv->ll_pin, LL_GPIO_MODE_OUTPUT);
@@ -117,7 +115,7 @@ static bool Npx_init(Unit *unit)
 
     ws2812_clear(priv->port, priv->ll_pin, priv->pixels);
 
-    return true;
+    return E_SUCCESS;
 }
 
 /** Tear down the unit */
@@ -140,6 +138,51 @@ static void Npx_deInit(Unit *unit)
 
 // ------------------------------------------------------------------------
 
+/* Clear the strip */
+error_t UU_NEOPIXEL_Clear(Unit *unit)
+{
+    struct priv *priv = unit->data;
+    ws2812_clear(priv->port, priv->ll_pin, priv->pixels);
+    return E_SUCCESS;
+}
+
+/* Load packed */
+error_t UU_NEOPIXEL_Load(Unit *unit, const uint8_t *packed_rgb, uint32_t nbytes)
+{
+    struct priv *priv = unit->data;
+    if (nbytes != 3*priv->pixels) return E_BAD_COUNT;
+    ws2812_load_raw(priv->port, priv->ll_pin, packed_rgb, priv->pixels);
+    return E_SUCCESS;
+}
+
+/* Load U32, LE or BE */
+static error_t load_u32(Unit *unit, const uint8_t *bytes, uint32_t nbytes, bool bige)
+{
+    struct priv *priv = unit->data;
+    if (nbytes != 4*priv->pixels) return E_BAD_COUNT;
+    ws2812_load_sparse(priv->port, priv->ll_pin, bytes, priv->pixels, bige);
+    return E_SUCCESS;
+}
+
+/* Load U32, LE */
+inline error_t UU_NEOPIXEL_LoadU32LE(Unit *unit, const uint8_t *bytes, uint32_t nbytes)
+{
+    return load_u32(unit, bytes, nbytes, false);
+}
+
+/* Load U32, BE */
+inline error_t UU_NEOPIXEL_LoadU32BE(Unit *unit, const uint8_t *bytes, uint32_t nbytes)
+{
+    return load_u32(unit, bytes, nbytes, true);
+}
+
+/* Get the pixel count */
+inline uint16_t UU_NEOPIXEL_GetCount(Unit *unit)
+{
+    struct priv *priv = unit->data;
+    return priv->pixels;
+}
+
 enum PinCmd_ {
     CMD_CLEAR = 0,
     CMD_LOAD = 1,
@@ -149,46 +192,39 @@ enum PinCmd_ {
 };
 
 /** Handle a request message */
-static bool Npx_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
+static error_t Npx_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
-    (void)pp;
-
-    struct priv *priv = unit->data;
+    uint32_t len;
+    const uint8_t *bytes;
 
     switch (command) {
+        /** Clear the entire strip */
         case CMD_CLEAR:
-            ws2812_clear(priv->port, priv->ll_pin, priv->pixels);
-            break;
+            return UU_NEOPIXEL_Clear(unit);
 
-        case CMD_LOAD:
-            if (pp_length(pp) != priv->pixels*3) goto bad_count;
-            ws2812_load_raw(priv->port, priv->ll_pin, pp->current, priv->pixels);
-            break;
+        /** Load packed RGB colors (length must match the strip size) */
+        case CMD_LOAD:;
+            bytes = pp_tail(pp, &len);
+            return UU_NEOPIXEL_Load(unit, bytes, len);
 
+        /** Load sparse (uint32_t) colors, 0x00RRGGBB, little endian. */
         case CMD_LOAD_U32_LE:
-            if (pp_length(pp) != priv->pixels*4) goto bad_count;
-            ws2812_load_sparse(priv->port, priv->ll_pin, pp->current, priv->pixels, 0);
-            break;
+            bytes = pp_tail(pp, &len);
+            return UU_NEOPIXEL_LoadU32LE(unit, bytes, len);
 
+        /** Load sparse (uint32_t) colors, 0x00RRGGBB, big endian. */
         case CMD_LOAD_U32_BE:
-            if (pp_length(pp) != priv->pixels*4) goto bad_count;
-            ws2812_load_sparse(priv->port, priv->ll_pin, pp->current, priv->pixels, 1);
-            break;
+            bytes = pp_tail(pp, &len);
+            return UU_NEOPIXEL_LoadU32BE(unit, bytes, len);
 
+        /** Get the Neopixel strip length */
         case CMD_GET_LEN:
-            com_respond_u16(frame_id, priv->pixels);
-            break;
+            com_respond_u16(frame_id, UU_NEOPIXEL_GetCount(unit));
+            return E_SUCCESS;
 
         default:
-            com_respond_bad_cmd(frame_id);
-            return false;
+            return E_UNKNOWN_COMMAND;
     }
-
-    return true;
-
-bad_count:
-    com_respond_err(frame_id, "BAD PIXEL COUNT");
-    return false;
 }
 
 // ------------------------------------------------------------------------

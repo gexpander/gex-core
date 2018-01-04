@@ -99,7 +99,7 @@ bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restr
  * @param callsign - callsign (is part of the section string)
  * @return success
  */
-bool ureg_load_unit_ini_key(const char *restrict name,
+error_t ureg_load_unit_ini_key(const char *restrict name,
                             const char *restrict key,
                             const char *restrict value,
                             uint8_t callsign);

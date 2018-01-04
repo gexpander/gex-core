@@ -11,7 +11,7 @@
  * @param rgbs - packed R,G,B, R,G,B, ... array
  * @param count - number of pixels (triplets)
  */
-void ws2812_load_raw(GPIO_TypeDef *port, uint32_t ll_pin, uint8_t *rgbs, uint32_t count);
+void ws2812_load_raw(GPIO_TypeDef *port, uint32_t ll_pin, const uint8_t *rgbs, uint32_t count);
 
 /**
  * Load all pixels with BLACK (0,0,0)
@@ -30,6 +30,6 @@ void ws2812_clear(GPIO_TypeDef *port, uint32_t ll_pin, uint32_t count);
  * @param count - number of pixels
  * @param bigendian - big endian ordering
  */
-void ws2812_load_sparse(GPIO_TypeDef *port, uint32_t ll_pin, uint8_t *rgbs, uint32_t count, bool bigendian);
+void ws2812_load_sparse(GPIO_TypeDef *port, uint32_t ll_pin, const uint8_t *rgbs, uint32_t count, bool bigendian);
 
 #endif //WS2812_H

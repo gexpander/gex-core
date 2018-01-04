@@ -21,6 +21,13 @@
 
 #include "platform.h"
 
+static const char *const error_names[] = {
+#define X(name, text) STR(name),
+    X_ERROR_CODES
+#undef X
+};
+COMPILER_ASSERT(ERROR_COUNT == ELEMENTS_IN_ARRAY(error_names));
+
 static const char *const error_message[] = {
 #define X(name, text) text,
     X_ERROR_CODES
@@ -28,18 +35,33 @@ static const char *const error_message[] = {
 };
 COMPILER_ASSERT(ERROR_COUNT == ELEMENTS_IN_ARRAY(error_message));
 
-const char *error_get_string(error_t error)
+const char *error_get_message(error_t error)
 {
-    const char *msg = 0;
+    const char *msg = NULL;
 
     if (error < ERROR_COUNT) {
         msg = error_message[error];
     }
 
-    if (0 == msg) {
-        assert_param(0);
-        msg = "";
+    if (NULL == msg) {
+        return error_get_name(error);
     }
 
     return msg;
+}
+
+const char *error_get_name(error_t error)
+{
+    const char *name = 0;
+
+    if (error < ERROR_COUNT) {
+        name = error_names[error];
+    }
+
+    if (0 == name) {
+        dbg("%d", (int)error);
+        trap("MISSING ERROR NAME");
+    }
+
+    return name;
 }

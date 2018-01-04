@@ -51,7 +51,7 @@ static void DI_writeBinary(Unit *unit, PayloadBuilder *pb)
 // ------------------------------------------------------------------------
 
 /** Parse a key-value pair from the INI file */
-static bool DI_loadIni(Unit *unit, const char *key, const char *value)
+static error_t DI_loadIni(Unit *unit, const char *key, const char *value)
 {
     bool suc = true;
     struct priv *priv = unit->data;
@@ -67,13 +67,13 @@ static bool DI_loadIni(Unit *unit, const char *key, const char *value)
     }
     else if (streq(key, "pull-down")) {
         priv->pulldown = parse_pinmask(value, &suc);
-        dbg("parsinf ini, pulldown = %X", priv->pulldown);
     }
     else {
-        return false;
+        return E_BAD_KEY;
     }
 
-    return suc;
+    if (!suc) return E_BAD_VALUE;
+    return E_SUCCESS;
 }
 
 /** Generate INI file section for the unit */
@@ -101,11 +101,11 @@ static void DI_writeIni(Unit *unit, IniWriter *iw)
 // ------------------------------------------------------------------------
 
 /** Allocate data structure and set defaults */
-static bool DI_preInit(Unit *unit)
+static error_t DI_preInit(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
-    CHECK_SUC();
+    if (!suc) return E_OUT_OF_MEM;
 
     // some defaults
     priv->port_name = 'A';
@@ -113,11 +113,11 @@ static bool DI_preInit(Unit *unit)
     priv->pulldown = 0x0000;
     priv->pullup = 0x0000;
 
-    return true;
+    return E_SUCCESS;
 }
 
 /** Finalize unit set-up */
-static bool DI_init(Unit *unit)
+static error_t DI_init(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data;
@@ -127,14 +127,10 @@ static bool DI_init(Unit *unit)
 
     // --- Parse config ---
     priv->port = port2periph(priv->port_name, &suc);
-    if (!suc) {
-        unit->status = E_BAD_CONFIG;
-        return false;
-    }
+    if (!suc) return E_BAD_CONFIG;
 
     // Claim all needed pins
-    suc = rsc_claim_gpios(unit, priv->port_name, priv->pins);
-    CHECK_SUC();
+    TRY(rsc_claim_gpios(unit, priv->port_name, priv->pins));
 
     uint16_t mask = 1;
     for (int i = 0; i < 16; i++, mask <<= 1) {
@@ -158,7 +154,7 @@ static bool DI_init(Unit *unit)
         }
     }
 
-    return true;
+    return E_SUCCESS;
 }
 
 
@@ -196,7 +192,7 @@ enum PinCmd_ {
 };
 
 /** Handle a request message */
-static bool DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
+static error_t DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
     (void)pp;
 
@@ -209,14 +205,11 @@ static bool DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Payloa
             PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 64, NULL);
             pb_u16(&pb, packed);
             com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, pb_length(&pb));
-            break;
+            return E_SUCCESS;
 
         default:
-            com_respond_bad_cmd(frame_id);
-            return false;
+            return E_UNKNOWN_COMMAND;
     }
-
-    return true;
 }
 
 // ------------------------------------------------------------------------
