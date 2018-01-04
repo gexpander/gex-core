@@ -49,14 +49,13 @@ GEX_CFLAGS = \
     -D__weak="__attribute__((weak))" -D__packed="__attribute__((__packed__))"  \
     -std=gnu99 -Wfatal-errors \
     -Wall -Wextra -Wshadow \
-    -Wwrite-strings -Wold-style-definition -Winline -Wno-missing-noreturn -Wstrict-prototypes -Wreturn-type \
+    -Wwrite-strings -Wold-style-definition -Winline -Wstrict-prototypes -Wreturn-type \
     -Wredundant-decls -Wfloat-equal -Wsign-compare \
     -fno-common -ffunction-sections -fdata-sections -Wno-unused-function \
-    -MD -Wno-format-zero-length -Wno-redundant-decls -Wno-unused-parameter \
-    -Wno-discarded-qualifiers -Wno-unused-variable -Wno-inline \
-    -Wno-float-equal -Wno-implicit-fallthrough -Wno-strict-aliasing \
-    -fmerge-constants -fmerge-all-constants \
-    -fno-exceptions -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -finline-small-functions -findirect-inlining \
+    -MD -Wno-redundant-decls -Wno-unused-parameter \
+    -Wno-unused-variable -Wno-inline \
+    -fmerge-constants -fmerge-all-constants -Wno-implicit-fallthrough \
+    -fno-exceptions -finline-small-functions -findirect-inlining -Wno-strict-aliasing -Wno-float-equal -Wno-discarded-qualifiers
 
 GEX_CDEFS_BASE =  \
     -D__weak="__attribute__((weak))" \

@@ -35,7 +35,8 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
     while (1);
 }
 
-#if VERBOSE_HARDFAULT && (__CORTEX_M >= 3)
+// && (__CORTEX_M >= 3)
+#if VERBOSE_HARDFAULT
 void prvGetRegistersFromStack( uint32_t *origStack, uint32_t lr_value)
 {
 /* These are volatile to try and prevent the compiler/linker optimising them
@@ -51,7 +52,9 @@ of this function. */
     volatile uint32_t stacked_pc; /* Program counter. */
     volatile uint32_t stacked_psr;/* Program status register. */
 
+#if (__CORTEX_M >= 3)
     uint32_t cfsr, hfsr, dfsr;
+
     uint32_t bus_fault_address;
     uint32_t memmanage_fault_address;
 
@@ -60,6 +63,7 @@ of this function. */
     cfsr = SCB->CFSR;
     hfsr = SCB->HFSR;
     dfsr = SCB->DFSR;
+#endif
 
     stacked_r0 = origStack[0];
     stacked_r1 = origStack[1];
@@ -100,6 +104,7 @@ of this function. */
             (exc>=16)?"IRQ":"Unknown"
     );
 
+#if (__CORTEX_M >= 3)
     PRINTF("\r\n- FSR/FAR:\r\n");
     PRINTF(" CFSR = \033[36m0x%08"PRIX32"\033[m\r\n", cfsr);
     PRINTF("      UsageFault: \033[31;1m%s%s%s%s%s%s%s\033[m\r\n"
@@ -151,8 +156,9 @@ of this function. */
     if (cfsr & 0x8000) PRINTF(" BFAR = \033[33m0x%08"PRIX32"\033[m\r\n", bus_fault_address);
     PRINTF("\r\n- Misc\r\n");
     PRINTF(" LR/EXC_RETURN= %s0x%08"PRIX32"\033[m\n", REDPTR(lr_value), lr_value);
+#endif
 
-    StatusLed_On(STATUS_FAULT);
+    Indicator_Effect(STATUS_FAULT);
     while (1);
 }
 #endif
@@ -162,19 +168,32 @@ of this function. */
 */
 void  __attribute__((naked)) HardFault_Handler(void)
 {
-#if VERBOSE_HARDFAULT && (__CORTEX_M >= 3)
-    __asm volatile
-    (
-    " tst lr, #4                                                \n"
-        " ite eq                                                    \n"
-        " mrseq r0, msp                                             \n"
-        " mrsne r0, psp                                             \n"
-        " ldr r1, [r0, #24]                                         \n"
-        " mov r2, lr                                                \n"
-        " ldr r3, handler2_address_const                            \n"
-        " bx r3                                                     \n"
-        " handler2_address_const: .word prvGetRegistersFromStack    \n"
-    );
+#if VERBOSE_HARDFAULT
+//    __asm volatile
+//    (
+//        " tst lr, #4                                                \n"
+//        " ite eq                                                    \n"
+//        " mrseq r0, msp                                             \n"
+//        " mrsne r0, psp                                             \n"
+//        " ldr r1, [r0, #24]                                         \n"
+//        " mov r2, lr                                                \n"
+//        " ldr r3, handler2_address_const                            \n"
+//        " bx r3                                                     \n"
+//        " handler2_address_const: .word prvGetRegistersFromStack    \n"
+//    );
+//
+    __asm volatile(  ".syntax unified\n"
+        "MOVS   R0, #4  \n"
+        "MOV    R1, LR  \n"
+        "TST    R0, R1  \n"
+        "BEQ    _MSP    \n"
+        "MRS    R0, PSP \n"
+        "B      prvGetRegistersFromStack      \n"
+        "_MSP:  \n"
+        "MRS    R0, MSP \n"
+        "B      prvGetRegistersFromStack      \n"
+        ".syntax divided\n") ;
+
 #endif
 
     PRINTF(tFAULT" HARD FAULT\r\n\r\n");

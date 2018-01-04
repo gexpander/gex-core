@@ -270,7 +270,7 @@ void settings_load_ini_begin(void)
 
 void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value)
 {
-    //dbg("[%s] %s = %s", section, key, value);
+    dbg("[%s] %s = %s", section, key, value);
     static char namebuf[INI_KEY_MAX];
 
     // SYSTEM and UNITS files must be separate.
