@@ -62,7 +62,7 @@ static error_t DO_loadIni(Unit *unit, const char *key, const char *value)
     else if (streq(key, "initial")) {
         priv->initial = parse_pinmask(value, &suc);
     }
-    else if (streq(key, "opendrain")) {
+    else if (streq(key, "open-drain")) {
         priv->open_drain = parse_pinmask(value, &suc);
     }
     else {
@@ -88,7 +88,7 @@ static void DO_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "initial", "%s", str_pinmask(priv->initial, unit_tmp512));
 
     iw_comment(iw, "Open-drain pins");
-    iw_entry(iw, "opendrain", "%s", str_pinmask(priv->open_drain, unit_tmp512));
+    iw_entry(iw, "open-drain", "%s", str_pinmask(priv->open_drain, unit_tmp512));
 }
 
 // ------------------------------------------------------------------------
@@ -234,6 +234,15 @@ error_t UU_DO_Toggle(Unit *unit, uint16_t packed)
     return E_SUCCESS;
 }
 
+error_t UU_DO_GetPinCount(Unit *unit, uint8_t *count)
+{
+    CHECK_TYPE(unit, &UNIT_DOUT);
+    struct priv *priv = unit->data;
+
+    uint32_t packed = port_pack(0xFFFF, priv->pins);
+    *count = (uint8_t)(32 - __CLZ(packed));
+    return E_SUCCESS;
+}
 
 enum PinCmd_ {
     CMD_WRITE = 0,
