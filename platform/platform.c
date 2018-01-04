@@ -16,6 +16,8 @@
 
 void plat_init_resources(void)
 {
+    uint32_t rv = 0;
+
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -50,23 +52,19 @@ void plat_init_resources(void)
 
     // Claim resources not available due to board layout or internal usage
     {
-        bool ok = true;
-
         // HAL timebase
-        ok &= rsc_claim(&UNIT_SYSTEM, R_TIM1);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_TIM1);
         // HSE crystal
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PD0);
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PD1);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PD0);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PD1);
         // SWD
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA13);
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA14);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA13);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA14);
         // USB
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA11);
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA12);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA11);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA12);
         // BOOT pin(s)
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
-
-        assert_param(ok);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
     }
 #elif defined(GEX_PLAT_F072_DISCOVERY)
     // Platform STM32F073RBT
@@ -105,23 +103,19 @@ void plat_init_resources(void)
 
     // Claim resources not available due to board layout or internal usage
     {
-        bool ok = true;
-
         // HAL timebase
-        ok &= rsc_claim(&UNIT_SYSTEM, R_TIM1);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_TIM1);
         // HSE crystal
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PF0);
-        //ok &= rsc_claim(&UNIT_SYSTEM, R_PF1); // - not used in BYPASS mode
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PF0);
+        //rv |= rsc_claim(&UNIT_SYSTEM, R_PF1); // - not used in BYPASS mode
         // SWD
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA13);
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA14);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA13);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA14);
         // USB
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA11);
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA12);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA11);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA12);
         // BOOT pin(s)
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
-
-        assert_param(ok);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
     }
 #elif defined(GEX_PLAT_F303_DISCOVERY)
     // Platform STM32F303VCT
@@ -162,23 +156,19 @@ void plat_init_resources(void)
 
     // Claim resources not available due to board layout or internal usage
     {
-        bool ok = true;
-
         // HAL timebase
-        ok &= rsc_claim(&UNIT_SYSTEM, R_TIM1);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_TIM1);
         // HSE crystal
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PF0);
-        //ok &= rsc_claim(&UNIT_SYSTEM, R_PF1); // - not used in BYPASS mode
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PF0);
+        //rv |= rsc_claim(&UNIT_SYSTEM, R_PF1); // - not used in BYPASS mode
         // SWD
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA13);
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA14);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA13);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA14);
         // USB
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA11);
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA12);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA11);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA12);
         // BOOT pin(s)
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
-
-        assert_param(ok);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
     }
 #elif defined(GEX_PLAT_F407_DISCOVERY)
     // Platform STM32F407VGT
@@ -218,26 +208,24 @@ void plat_init_resources(void)
 
     // Claim resources not available due to board layout or internal usage
     {
-        bool ok = true;
-
         // HAL timebase
-        ok &= rsc_claim(&UNIT_SYSTEM, R_TIM1);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_TIM1);
         // HSE crystal
         // H0 and H1
         // SWD
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA13);
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA14);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA13);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA14);
         // USB
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA11);
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PA12);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA11);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PA12);
         // BOOT pin(s)
-        ok &= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
-
-        assert_param(ok);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
     }
 #else
     #error "BAD PLATFORM!"
 #endif
+
+    assert_param(rv == 0);
 }
 
 

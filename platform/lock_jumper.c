@@ -33,8 +33,7 @@ void LockJumper_Init(void)
     Resource rsc = pin2resource(LOCK_JUMPER_PORT, LOCK_JUMPER_PIN, &suc);
     assert_param(suc);
 
-    suc &= rsc_claim(&UNIT_SYSTEM, rsc);
-    assert_param(suc);
+    assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, rsc));
 
     // Resolve pin
     lock_periph = port2periph(LOCK_JUMPER_PORT, &suc);

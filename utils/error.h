@@ -29,7 +29,7 @@
 // fields: name, msg. If msg is NULL, name as string will be used instead.
 #define X_ERROR_CODES \
     /* Shared errors */  \
-    X(SUCCESS, NULL) /* operation succeeded / unit loaded */ \
+    X(SUCCESS, NULL) /* operation succeeded / unit loaded. Must be 0 */ \
     X(FAILURE, NULL) /* generic error */   \
     X(INTERNAL_ERROR, NULL) /* a bug */    \
     X(LOADING, NULL) /* unit is loading */ \
