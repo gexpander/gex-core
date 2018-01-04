@@ -295,7 +295,7 @@ static bool i2c_wait_until_flag(struct priv *priv, uint32_t flag, bool stop_stat
     return true;
 }
 
-static bool UU_I2C_Write(Unit *unit, uint16_t addr, const uint8_t *bytes, uint32_t bcount)
+bool UU_I2C_Write(Unit *unit, uint16_t addr, const uint8_t *bytes, uint32_t bcount)
 {
     struct priv *priv = unit->data;
 
@@ -337,7 +337,7 @@ static bool UU_I2C_Write(Unit *unit, uint16_t addr, const uint8_t *bytes, uint32
     return true;
 }
 
-static bool UU_I2C_Read(Unit *unit, uint16_t addr, uint8_t *dest, uint32_t bcount)
+bool UU_I2C_Read(Unit *unit, uint16_t addr, uint8_t *dest, uint32_t bcount)
 {
     struct priv *priv = unit->data;
 
@@ -387,6 +387,33 @@ static bool UU_I2C_Read(Unit *unit, uint16_t addr, uint8_t *dest, uint32_t bcoun
     return true;
 }
 
+bool UU_I2C_ReadReg(Unit *unit, uint16_t addr, uint8_t regnum, uint8_t *dest, uint32_t width)
+{
+    if (!UU_I2C_Write(unit, addr, &regnum, 1)) {
+        return false;
+    }
+
+    // we read the register as if it was a unsigned integer
+    if (!UU_I2C_Read(unit, addr, (uint8_t *) unit_tmp512, width)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool UU_I2C_WriteReg(Unit *unit, uint16_t addr, uint8_t regnum, const uint8_t *bytes, uint32_t width)
+{
+    PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 512, NULL);
+    pb_u8(&pb, regnum);
+    pb_buf(&pb, bytes, width);
+
+    if (!UU_I2C_Write(unit, addr, (uint8_t *) unit_tmp512, pb_length(&pb))) {
+        return false;
+    }
+
+    return true;
+}
+
 /** Handle a request message */
 static bool UI2C_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
@@ -427,17 +454,10 @@ static bool UI2C_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Payl
             regnum = pp_u8(pp); // register number
             size = pp_u8(pp); // total number of bytes to read (allows use of auto-increment)
 
-            if (!UU_I2C_Write(unit, addr, &regnum, 1)) {
-                com_respond_err(frame_id, "REG ADDR TX FAIL");
+            if (!UU_I2C_ReadReg(unit, addr, regnum, (uint8_t *) unit_tmp512, size)) {
+                com_respond_err(frame_id, "READ REG FAIL");
                 return false;
             }
-
-            // we read the register as if it was a unsigned integer
-            if (!UU_I2C_Read(unit, addr, (uint8_t *) unit_tmp512, size)) {
-                com_respond_err(frame_id, "REG VAL RX FAIL");
-                return false;
-            }
-            // and pass it to PC to handle
             com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, size);
             break;
 
@@ -445,13 +465,10 @@ static bool UI2C_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Payl
             addr = pp_u16(pp);
             regnum = pp_u8(pp); // register number
 
-            PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 512, NULL);
-            pb_u8(&pb, regnum);
             const uint8_t *tail = pp_tail(pp, &size);
-            pb_buf(&pb, tail, size);
 
-            if (!UU_I2C_Write(unit, addr, (uint8_t *) unit_tmp512, pb_length(&pb))) {
-                com_respond_err(frame_id, "REG WRT FAIL");
+            if (!UU_I2C_WriteReg(unit, addr, regnum, tail, size)) {
+                com_respond_err(frame_id, "WRITE REG FAIL");
                 return false;
             }
             break;
