@@ -49,4 +49,13 @@ error_t UU_NEOPIXEL_LoadU32LE(Unit *unit, const uint8_t *bytes, uint32_t nbytes)
  */
 error_t UU_NEOPIXEL_LoadU32BE(Unit *unit, const uint8_t *bytes, uint32_t nbytes);
 
+/**
+ * Get number of pixels on the strip
+ *
+ * @param unit
+ * @param count - destination for the count value
+ * @return success
+ */
+error_t UU_NEOPIXEL_GetCount(Unit *unit, uint16_t *count);
+
 #endif //U_NEOPIXEL_H

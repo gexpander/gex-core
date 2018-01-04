@@ -11,6 +11,11 @@
 #include "utils/payload_builder.h"
 #include "utils/payload_parser.h"
 
+#define CHECK_TYPE(_unit, _driver) do { \
+    if ((_unit->driver) != (_driver)) \
+        return E_BAD_UNIT_TYPE; \
+} while (0)
+
 extern char unit_tmp512[512]; // temporary static buffer - not expected to be accessed asynchronously
 // TODO add mutex?
 

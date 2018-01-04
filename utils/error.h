@@ -41,6 +41,7 @@
     X(NO_SUCH_UNIT, NULL) \
     X(OVERRUN, NULL) /* used in bulk transfer */ \
     X(PROTOCOL_BREACH, NULL) /* eating with the wrong spoon */  \
+    X(BAD_UNIT_TYPE, NULL) \
     \
     /* VFS user errors (those are meant to be shown to user) */ \
     X(ERROR_DURING_TRANSFER, "Error during transfer") \

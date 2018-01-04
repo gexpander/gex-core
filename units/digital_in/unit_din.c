@@ -187,6 +187,14 @@ static void DI_deInit(Unit *unit)
 
 // ------------------------------------------------------------------------
 
+error_t UU_DI_Read(Unit *unit, uint16_t *packed)
+{
+    CHECK_TYPE(unit, &UNIT_DIN);
+    struct priv *priv = unit->data;
+    *packed = port_pack((uint16_t) priv->port->IDR, priv->pins);
+    return E_SUCCESS;
+}
+
 enum PinCmd_ {
     CMD_READ = 0,
 };
@@ -194,14 +202,12 @@ enum PinCmd_ {
 /** Handle a request message */
 static error_t DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
-    (void)pp;
-
-    struct priv *priv = unit->data;
-
-    uint16_t packed = port_pack((uint16_t) priv->port->IDR, priv->pins);
+    uint16_t packed = 0;
 
     switch (command) {
         case CMD_READ:;
+            TRY(UU_DI_Read(unit, &packed));
+
             PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 64, NULL);
             pb_u16(&pb, packed);
             com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, pb_length(&pb));

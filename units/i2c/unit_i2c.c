@@ -293,6 +293,8 @@ static error_t i2c_wait_until_flag(struct priv *priv, uint32_t flag, bool stop_s
 
 error_t UU_I2C_Write(Unit *unit, uint16_t addr, const uint8_t *bytes, uint32_t bcount)
 {
+    CHECK_TYPE(unit, &UNIT_I2C);
+
     struct priv *priv = unit->data;
 
     uint8_t addrsize = (uint8_t) (((addr & 0x8000) == 0) ? 7 : 10);
@@ -326,6 +328,8 @@ error_t UU_I2C_Write(Unit *unit, uint16_t addr, const uint8_t *bytes, uint32_t b
 
 error_t UU_I2C_Read(Unit *unit, uint16_t addr, uint8_t *dest, uint32_t bcount)
 {
+    CHECK_TYPE(unit, &UNIT_I2C);
+
     struct priv *priv = unit->data;
 
     uint8_t addrsize = (uint8_t) (((addr & 0x8000) == 0) ? 7 : 10);
@@ -370,6 +374,8 @@ error_t UU_I2C_ReadReg(Unit *unit, uint16_t addr, uint8_t regnum, uint8_t *dest,
 
 error_t UU_I2C_WriteReg(Unit *unit, uint16_t addr, uint8_t regnum, const uint8_t *bytes, uint32_t width)
 {
+    CHECK_TYPE(unit, &UNIT_I2C);
+
     // we have to insert the address first - needs a buffer (XXX realistically the buffer needs 1-4 bytes + addr)
     PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 512, NULL);
     pb_u8(&pb, regnum);

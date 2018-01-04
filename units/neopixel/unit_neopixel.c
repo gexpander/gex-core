@@ -141,6 +141,8 @@ static void Npx_deInit(Unit *unit)
 /* Clear the strip */
 error_t UU_NEOPIXEL_Clear(Unit *unit)
 {
+    CHECK_TYPE(unit, &UNIT_NEOPIXEL);
+
     struct priv *priv = unit->data;
     ws2812_clear(priv->port, priv->ll_pin, priv->pixels);
     return E_SUCCESS;
@@ -149,6 +151,8 @@ error_t UU_NEOPIXEL_Clear(Unit *unit)
 /* Load packed */
 error_t UU_NEOPIXEL_Load(Unit *unit, const uint8_t *packed_rgb, uint32_t nbytes)
 {
+    CHECK_TYPE(unit, &UNIT_NEOPIXEL);
+
     struct priv *priv = unit->data;
     if (nbytes != 3*priv->pixels) return E_BAD_COUNT;
     ws2812_load_raw(priv->port, priv->ll_pin, packed_rgb, priv->pixels);
@@ -158,6 +162,8 @@ error_t UU_NEOPIXEL_Load(Unit *unit, const uint8_t *packed_rgb, uint32_t nbytes)
 /* Load U32, LE or BE */
 static error_t load_u32(Unit *unit, const uint8_t *bytes, uint32_t nbytes, bool bige)
 {
+    CHECK_TYPE(unit, &UNIT_NEOPIXEL);
+
     struct priv *priv = unit->data;
     if (nbytes != 4*priv->pixels) return E_BAD_COUNT;
     ws2812_load_sparse(priv->port, priv->ll_pin, bytes, priv->pixels, bige);
@@ -177,10 +183,13 @@ inline error_t UU_NEOPIXEL_LoadU32BE(Unit *unit, const uint8_t *bytes, uint32_t 
 }
 
 /* Get the pixel count */
-inline uint16_t UU_NEOPIXEL_GetCount(Unit *unit)
+error_t UU_NEOPIXEL_GetCount(Unit *unit, uint16_t *count)
 {
+    CHECK_TYPE(unit, &UNIT_NEOPIXEL);
+
     struct priv *priv = unit->data;
-    return priv->pixels;
+    *count = priv->pixels;
+    return E_SUCCESS;
 }
 
 enum PinCmd_ {
@@ -218,8 +227,10 @@ static error_t Npx_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pa
             return UU_NEOPIXEL_LoadU32BE(unit, bytes, len);
 
         /** Get the Neopixel strip length */
-        case CMD_GET_LEN:
-            com_respond_u16(frame_id, UU_NEOPIXEL_GetCount(unit));
+        case CMD_GET_LEN:;
+            uint16_t count;
+            TRY(UU_NEOPIXEL_GetCount(unit, &count));
+            com_respond_u16(frame_id, count);
             return E_SUCCESS;
 
         default:

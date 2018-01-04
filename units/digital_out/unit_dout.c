@@ -179,6 +179,60 @@ static void DO_deInit(Unit *unit)
 
 // ------------------------------------------------------------------------
 
+error_t UU_DO_Write(Unit *unit, uint16_t packed)
+{
+    CHECK_TYPE(unit, &UNIT_DOUT);
+
+    struct priv *priv = unit->data;
+    uint16_t mask = priv->pins;
+    uint16_t spread = port_spread(packed, mask);
+
+    uint16_t set = spread;
+    uint16_t reset = ((~spread) & mask);
+    priv->port->BSRR = set | (reset << 16);
+    return E_SUCCESS;
+}
+
+error_t UU_DO_Set(Unit *unit, uint16_t packed)
+{
+    CHECK_TYPE(unit, &UNIT_DOUT);
+
+    struct priv *priv = unit->data;
+    uint16_t mask = priv->pins;
+    uint16_t spread = port_spread(packed, mask);
+
+    priv->port->BSRR = spread;
+    return E_SUCCESS;
+}
+
+error_t UU_DO_Clear(Unit *unit, uint16_t packed)
+{
+    CHECK_TYPE(unit, &UNIT_DOUT);
+
+    struct priv *priv = unit->data;
+    uint16_t mask = priv->pins;
+    uint16_t spread = port_spread(packed, mask);
+
+    priv->port->BSRR = (spread<<16);
+    return E_SUCCESS;
+}
+
+error_t UU_DO_Toggle(Unit *unit, uint16_t packed)
+{
+    CHECK_TYPE(unit, &UNIT_DOUT);
+
+    struct priv *priv = unit->data;
+    uint16_t mask = priv->pins;
+    uint16_t spread = port_spread(packed, mask);
+
+    uint16_t flipped = (uint16_t) (~priv->port->ODR) & mask;
+    uint16_t set = flipped & spread;
+    uint16_t reset = ((~flipped) & mask) & spread;
+    priv->port->BSRR = set | (reset<<16);
+    return E_SUCCESS;
+}
+
+
 enum PinCmd_ {
     CMD_WRITE = 0,
     CMD_SET = 1,
@@ -193,32 +247,18 @@ static error_t DO_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
 
     uint16_t packed = pp_u16(pp);
 
-    uint16_t mask = priv->pins;
-    uint16_t spread = port_spread(packed, mask);
-
-    uint16_t set, reset;
-
     switch (command) {
-        case CMD_WRITE:;
-            set = spread;
-            reset = (~spread) & mask;
-            priv->port->BSRR = set | (reset<<16);
-            return E_SUCCESS;
+        case CMD_WRITE:
+            return UU_DO_Write(unit, packed);
 
         case CMD_SET:
-            priv->port->BSRR = spread;
-            return E_SUCCESS;
+            return UU_DO_Set(unit, packed);
 
         case CMD_CLEAR:
-            priv->port->BSRR = (spread<<16);
-            return E_SUCCESS;
+            return UU_DO_Clear(unit, packed);
 
-        case CMD_TOGGLE:;
-            spread = (uint16_t) (~priv->port->ODR) & mask;
-            set = spread;
-            reset = (~spread) & mask;
-            priv->port->BSRR = set | (reset<<16);
-            return E_SUCCESS;
+        case CMD_TOGGLE:
+            return UU_DO_Toggle(unit, packed);
 
         default:
             return E_UNKNOWN_COMMAND;
