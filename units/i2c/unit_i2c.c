@@ -272,8 +272,8 @@ static void UI2C_deInit(Unit *unit)
 enum PinCmd_ {
     CMD_WRITE = 0,
     CMD_READ = 1,
-    CMD_WRITE_ADDR = 2,
-    CMD_READ_ADDR = 3,
+    CMD_WRITE_REG = 2,
+    CMD_READ_REG = 3,
 };
 
 static void i2c_reset(struct priv *priv)
@@ -283,16 +283,107 @@ static void i2c_reset(struct priv *priv)
     LL_I2C_Enable(priv->periph);
 }
 
-static bool i2c_wait_until_flag(struct priv *priv, TF_ID frame_id, uint32_t flag, bool stop_state, const char *msg)
+static bool i2c_wait_until_flag(struct priv *priv, uint32_t flag, bool stop_state)
 {
     uint32_t t_start = HAL_GetTick();
     while (((priv->periph->ISR & flag)!=0) != stop_state) {
         if (HAL_GetTick() - t_start > 10) {
-            com_respond_err(frame_id, msg);
             i2c_reset(priv);
             return false;
         }
     }
+    return true;
+}
+
+static bool UU_I2C_Write(Unit *unit, uint16_t addr, const uint8_t *bytes, uint32_t bcount)
+{
+    struct priv *priv = unit->data;
+
+    uint8_t addrsize = (uint8_t) (((addr & 0x8000) == 0) ? 7 : 10);
+    addr &= 0x3FF;
+    uint32_t ll_addrsize = (addrsize == 7) ? LL_I2C_ADDRSLAVE_7BIT : LL_I2C_ADDRSLAVE_10BIT;
+    if (addrsize == 7) addr <<= 1; // 7-bit address must be shifted to left for LL to use it correctly
+
+    if (!i2c_wait_until_flag(priv, I2C_ISR_BUSY, 0)) {
+        dbg("BUSY TOUT");
+        return false;
+    }
+
+    bool first = true;
+    while (bcount > 0) {
+        uint32_t len = bcount;
+        uint32_t chunk_remain = (uint8_t) ((len > 255) ? 255 : len); // if more than 255, first chunk is 255
+        LL_I2C_HandleTransfer(priv->periph, addr, ll_addrsize, chunk_remain,
+                              (len > 255) ? LL_I2C_MODE_RELOAD : LL_I2C_MODE_AUTOEND, // Autoend if this is the last chunk
+                              first ? LL_I2C_GENERATE_START_WRITE : LL_I2C_GENERATE_NOSTARTSTOP); // no start/stop condition if we're continuing
+        first = false;
+        bcount -= chunk_remain;
+
+        for (; chunk_remain > 0; chunk_remain--) {
+            if (!i2c_wait_until_flag(priv, I2C_ISR_TXIS, 1)) {
+                dbg("TXIS TOUT, remain %d", (int)chunk_remain);
+                return false;
+            }
+            uint8_t byte = *bytes++;
+            LL_I2C_TransmitData8(priv->periph, byte);
+        }
+    }
+
+    if (!i2c_wait_until_flag(priv, I2C_ISR_STOPF, 1)) {
+        dbg("STOPF TOUT");
+        return false;
+    }
+    LL_I2C_ClearFlag_STOP(priv->periph);
+    return true;
+}
+
+static bool UU_I2C_Read(Unit *unit, uint16_t addr, uint8_t *dest, uint32_t bcount)
+{
+    struct priv *priv = unit->data;
+
+    uint8_t addrsize = (uint8_t) (((addr & 0x8000) == 0) ? 7 : 10);
+    addr &= 0x3FF;
+    uint32_t ll_addrsize = (addrsize == 7) ? LL_I2C_ADDRSLAVE_7BIT : LL_I2C_ADDRSLAVE_10BIT;
+    if (addrsize == 7) addr <<= 1; // 7-bit address must be shifted to left for LL to use it correctly
+
+    if (!i2c_wait_until_flag(priv, I2C_ISR_BUSY, 0)) {
+        dbg("BUSY TOUT");
+        return false;
+    }
+
+    bool first = true;
+    uint32_t n = 0;
+    while (bcount > 0) {
+        if (!first) {
+            if (!i2c_wait_until_flag(priv, I2C_ISR_TCR, 1)) {
+                dbg("TCR TOUT");
+                return false;
+            }
+        }
+
+        uint8_t chunk_remain = (uint8_t) ((bcount > 255) ? 255 : bcount); // if more than 255, first chunk is 255
+        LL_I2C_HandleTransfer(priv->periph, addr, ll_addrsize, chunk_remain,
+                              (bcount > 255) ? LL_I2C_MODE_RELOAD : LL_I2C_MODE_AUTOEND, // Autoend if this is the last chunk
+                              first ? LL_I2C_GENERATE_START_READ : LL_I2C_GENERATE_NOSTARTSTOP); // no start/stop condition if we're continuing
+        first = false;
+        bcount -= chunk_remain;
+
+        for (; chunk_remain > 0; chunk_remain--) {
+            if (!i2c_wait_until_flag(priv, I2C_ISR_RXNE, 1)) {
+                dbg("RXNE TOUT");
+                return false;
+            }
+
+            uint8_t byte = LL_I2C_ReceiveData8(priv->periph);
+            *dest++ = byte;
+        }
+    }
+
+    if (!i2c_wait_until_flag(priv, I2C_ISR_STOPF, 1)) {
+        dbg("STOPF TOUT");
+        return false;
+    }
+    LL_I2C_ClearFlag_STOP(priv->periph);
     return true;
 }
 
@@ -301,81 +392,68 @@ static bool UI2C_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Payl
 {
     struct priv *priv = unit->data;
 
-    uint8_t addrsize; // 7 or 10
     uint16_t addr;
     uint32_t len;
-    uint32_t t_start;
 
-    addr = pp_u16(pp); // 10-bit address has the highest bit set to 1 to indicate this
-    addrsize = (uint8_t) (((addr & 0x8000) == 0) ? 7 : 10);
-    addr &= 0x3FF;
+    // 10-bit address has the highest bit set to 1 to indicate this
 
-    uint32_t ll_addrsize = (addrsize == 7) ? LL_I2C_ADDRSLAVE_7BIT : LL_I2C_ADDRSLAVE_10BIT;
-
-    // 7-bit address must be shifted to left for LL to use it correctly
-    if (addrsize == 7) addr <<= 1;
-
-    if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_BUSY, 0, "BUSY TIMEOUT")) return false;
-
-    uint32_t chunk_remain;
-    bool first;
+    uint8_t regnum; // register number
+    uint32_t size; // register width
 
     switch (command) {
-        case CMD_WRITE:;
-            // u16 address - already read
+        case CMD_WRITE:
+            addr = pp_u16(pp);
+            const uint8_t *bb = pp_tail(pp, &len);
 
-            first = true;
-            while (pp_length(pp) > 0) {
-                len = pp_length(pp);
-                chunk_remain = (uint8_t) ((len > 255) ? 255 : len); // if more than 255, first chunk is 255
-                LL_I2C_HandleTransfer(priv->periph, addr, ll_addrsize, chunk_remain,
-                                      (len > 255) ? LL_I2C_MODE_RELOAD : LL_I2C_MODE_AUTOEND, // Autoend if this is the last chunk
-                                      first ? LL_I2C_GENERATE_START_WRITE : LL_I2C_GENERATE_NOSTARTSTOP); // no start/stop condition if we're continuing
-                first = false;
-
-                for (; chunk_remain > 0; chunk_remain--) {
-                    if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_TXIS, 1, "TXIS TIMEOUT")) return false;
-
-                    uint8_t byte = pp_u8(pp);
-                    LL_I2C_TransmitData8(priv->periph, byte);
-                }
+            if (!UU_I2C_Write(unit, addr, bb, len)) {
+                com_respond_err(frame_id, "TX FAIL");
+                return false;
             }
-
-            if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_STOPF, 1, "STOPF TIMEOUT")) return false;
-            LL_I2C_ClearFlag_STOP(priv->periph);
-
             break;
 
         case CMD_READ:
-            // u16 address - already read
+            addr = pp_u16(pp);
             len = pp_u16(pp);
 
-            first = true;
-            uint32_t n = 0;
-            while (len > 0) {
-                if (!first) {
-                    if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_TCR, 1, "TCR TIMEOUT")) return false;
-                }
+            if (!UU_I2C_Read(unit, addr, (uint8_t *) unit_tmp512, len)) {
+                com_respond_err(frame_id, "RX FAIL");
+                return false;
+            }
+            com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, len);
+            break;
 
-                chunk_remain = (uint8_t) ((len > 255) ? 255 : len); // if more than 255, first chunk is 255
-                LL_I2C_HandleTransfer(priv->periph, addr, ll_addrsize, chunk_remain,
-                                      (len > 255) ? LL_I2C_MODE_RELOAD : LL_I2C_MODE_AUTOEND, // Autoend if this is the last chunk
-                                      first ? LL_I2C_GENERATE_START_READ : LL_I2C_GENERATE_NOSTARTSTOP); // no start/stop condition if we're continuing
-                first = false;
-                len -= chunk_remain;
+        case CMD_READ_REG:;
+            addr = pp_u16(pp);
+            regnum = pp_u8(pp); // register number
+            size = pp_u8(pp); // total number of bytes to read (allows use of auto-increment)
 
-                for (; chunk_remain > 0; chunk_remain--) {
-                    if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_RXNE, 1, "RXNE TIMEOUT")) return false;
-
-                    uint8_t byte = LL_I2C_ReceiveData8(priv->periph);
-                    unit_tmp512[n++] = byte;
-                }
+            if (!UU_I2C_Write(unit, addr, &regnum, 1)) {
+                com_respond_err(frame_id, "REG ADDR TX FAIL");
+                return false;
             }
 
-            if (!i2c_wait_until_flag(priv, frame_id, I2C_ISR_STOPF, 1, "STOPF TIMEOUT")) return false;
-            LL_I2C_ClearFlag_STOP(priv->periph);
+            // we read the register as if it was a unsigned integer
+            if (!UU_I2C_Read(unit, addr, (uint8_t *) unit_tmp512, size)) {
+                com_respond_err(frame_id, "REG VAL RX FAIL");
+                return false;
+            }
+            // and pass it to PC to handle
+            com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, size);
+            break;
 
-            com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, len);
+        case CMD_WRITE_REG:
+            addr = pp_u16(pp);
+            regnum = pp_u8(pp); // register number
+
+            PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 512, NULL);
+            pb_u8(&pb, regnum);
+            const uint8_t *tail = pp_tail(pp, &size);
+            pb_buf(&pb, tail, size);
+
+            if (!UU_I2C_Write(unit, addr, (uint8_t *) unit_tmp512, pb_length(&pb))) {
+                com_respond_err(frame_id, "REG WRT FAIL");
+                return false;
+            }
             break;
 
         default:
