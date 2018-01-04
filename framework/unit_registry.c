@@ -74,6 +74,7 @@ static void free_le_unit(UlistEntry *le)
 {
     Unit *const pUnit = &le->unit;
 
+    assert_param(pUnit->data);
     pUnit->driver->deInit(pUnit);
     // Name is not expected to be freed by the deInit() function
     // - was alloc'd in the settings load loop

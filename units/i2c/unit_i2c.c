@@ -193,24 +193,24 @@ static error_t UI2C_init(Unit *unit)
     TRY(rsc_claim(unit, r_sda));
     TRY(rsc_claim(unit, r_scl));
 
-    GPIO_TypeDef *port = port2periph(portname, &suc);
+    priv->port = port2periph(portname, &suc);
     uint32_t ll_pin_scl = pin2ll(pin_scl, &suc);
     uint32_t ll_pin_sda = pin2ll(pin_sda, &suc);
     if (!suc) return E_BAD_CONFIG;
 
     // configure AF
-    if (pin_scl < 8) LL_GPIO_SetAFPin_0_7(port, ll_pin_scl, af_i2c);
-    else LL_GPIO_SetAFPin_8_15(port, ll_pin_scl, af_i2c);
+    if (pin_scl < 8) LL_GPIO_SetAFPin_0_7(priv->port, ll_pin_scl, af_i2c);
+    else LL_GPIO_SetAFPin_8_15(priv->port, ll_pin_scl, af_i2c);
 
-    if (pin_sda < 8) LL_GPIO_SetAFPin_0_7(port, ll_pin_sda, af_i2c);
-    else LL_GPIO_SetAFPin_8_15(port, ll_pin_sda, af_i2c);
+    if (pin_sda < 8) LL_GPIO_SetAFPin_0_7(priv->port, ll_pin_sda, af_i2c);
+    else LL_GPIO_SetAFPin_8_15(priv->port, ll_pin_sda, af_i2c);
 
-    LL_GPIO_SetPinMode(port, ll_pin_scl, LL_GPIO_MODE_ALTERNATE);
-    LL_GPIO_SetPinMode(port, ll_pin_sda, LL_GPIO_MODE_ALTERNATE);
+    LL_GPIO_SetPinMode(priv->port, ll_pin_scl, LL_GPIO_MODE_ALTERNATE);
+    LL_GPIO_SetPinMode(priv->port, ll_pin_sda, LL_GPIO_MODE_ALTERNATE);
 
     // set as OpenDrain (this may not be needed - TODO check)
-    LL_GPIO_SetPinOutputType(port, ll_pin_scl, LL_GPIO_OUTPUT_OPENDRAIN);
-    LL_GPIO_SetPinOutputType(port, ll_pin_sda, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetPinOutputType(priv->port, ll_pin_scl, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetPinOutputType(priv->port, ll_pin_sda, LL_GPIO_OUTPUT_OPENDRAIN);
 
 
     if (priv->periph_num == 1) {
@@ -243,6 +243,9 @@ static void UI2C_deInit(Unit *unit)
 
     // de-init the pins & peripheral only if inited correctly
     if (unit->status == E_SUCCESS) {
+        assert_param(priv->periph);
+        assert_param(priv->port);
+
         LL_I2C_DeInit(priv->periph);
 
         if (priv->periph_num == 1) {

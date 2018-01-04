@@ -164,6 +164,8 @@ static void DI_deInit(Unit *unit)
     struct priv *priv = unit->data;
 
     if (unit->status == E_SUCCESS) {
+        assert_param(priv->port);
+
         bool suc = true;
         uint16_t mask = 1;
         for (int i = 0; i < 16; i++, mask <<= 1) {

@@ -155,6 +155,8 @@ static void DO_deInit(Unit *unit)
 
     // de-init the pins only if inited correctly
     if (unit->status == E_SUCCESS) {
+        assert_param(priv->port);
+
         bool suc = true;
         uint16_t mask = 1;
         for (int i = 0; i < 16; i++, mask <<= 1) {
