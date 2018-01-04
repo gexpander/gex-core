@@ -81,13 +81,13 @@ static void DO_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "port", "%c", priv->port_name);
 
     iw_comment(iw, "Pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", "%s", str_pinmask(priv->pins, unit_tmp64));
+    iw_entry(iw, "pins", "%s", str_pinmask(priv->pins, unit_tmp512));
 
     iw_comment(iw, "Initially high pins");
-    iw_entry(iw, "initial", "%s", str_pinmask(priv->initial, unit_tmp64));
+    iw_entry(iw, "initial", "%s", str_pinmask(priv->initial, unit_tmp512));
 
     iw_comment(iw, "Open-drain pins");
-    iw_entry(iw, "opendrain", "%s", str_pinmask(priv->open_drain, unit_tmp64));
+    iw_entry(iw, "opendrain", "%s", str_pinmask(priv->open_drain, unit_tmp512));
 }
 
 // ------------------------------------------------------------------------

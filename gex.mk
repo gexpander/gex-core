@@ -10,6 +10,7 @@ GEX_SRC_DIR = \
     User/units/test \
     User/units/digital_out \
     User/units/digital_in \
+    User/units/i2c \
     User/TinyFrame \
     User/CWPack \
     User/tasks
@@ -83,7 +84,7 @@ GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DDEBUG_VFS=0 \
     -DDEBUG_FLASH_WRITE=0 \
     -DVERBOSE_HARDFAULT=1 \
-    -DUSE_STACK_MONITOR=1 \
+    -DUSE_STACK_MONITOR=0 \
     -DUSE_DEBUG_UART=1
 
 endif

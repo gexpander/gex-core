@@ -66,7 +66,7 @@ struct PayloadParser_ {
 // --- utilities ---
 
 /** Get remaining length */
-#define pp_length(pp) ((pp)->end - (pp)->current)
+#define pp_length(pp) (uint32_t)((pp)->end - (pp)->current)
 
 /** Reset the current pointer to start */
 #define pp_rewind(pp) do { pp->current = pp->start; } while (0)

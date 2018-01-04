@@ -11,6 +11,7 @@
 #include "units/digital_out/unit_dout.h"
 #include "units/digital_in/unit_din.h"
 #include "units/neopixel/unit_neopixel.h"
+#include "units/i2c/unit_i2c.h"
 #include "units/test/unit_test.h"
 
 void plat_init_resources(void)
@@ -22,8 +23,6 @@ void plat_init_resources(void)
     __HAL_RCC_GPIOE_CLK_ENABLE();
 
     // --- Common unit drivers ---
-    ureg_add_type(&UNIT_DOUT);
-    ureg_add_type(&UNIT_DIN);
 
     #if HAVE_TEST_UNIT
         ureg_add_type(&UNIT_TEST);
@@ -35,7 +34,6 @@ void plat_init_resources(void)
     // Platform STM32F103C8T6 Bluepill ($4 board from eBay)
 
     // Units supported by the platform (known to work correctly)
-    ureg_add_type(&UNIT_NEOPIXEL);
 
     // free all present resources
     {
@@ -77,8 +75,10 @@ void plat_init_resources(void)
     __HAL_RCC_GPIOF_CLK_ENABLE();
 
     // Units supported by the platform (known to work correctly)
-    // ureg_add_type(&UNIT_XYZ);
+    ureg_add_type(&UNIT_DOUT);
+    ureg_add_type(&UNIT_DIN);
     ureg_add_type(&UNIT_NEOPIXEL);
+    ureg_add_type(&UNIT_I2C);
 
     // Free all present resources
     {

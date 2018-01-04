@@ -31,9 +31,13 @@ extern "C" {
 #if DEBUG_VFS
 #define vfs_printf(...)  do { dbg(__VA_ARGS__); } while(0)
 #define vfs_printf_nonl(...)  do { PRINTF(__VA_ARGS__); } while(0)
+#define vfs_puts(buf)  do { PUTS(buf); } while(0)
+#define vfs_putsn(buf, n)  do { PUTSN(buf, n); } while(0)
 #else
 #define vfs_printf(...) do { } while(0)
 #define vfs_printf_nonl(...)  do { } while(0)
+#define vfs_puts(buf)  do { } while(0)
+#define vfs_putsn(buf, n)  do { } while(0)
 #endif
 
 #define VFS_CLUSTER_SIZE        0x1000

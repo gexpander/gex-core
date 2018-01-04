@@ -11,7 +11,8 @@
 #include "utils/payload_builder.h"
 #include "utils/payload_parser.h"
 
-extern char unit_tmp64[64]; // temporary static buffer
+extern char unit_tmp512[512]; // temporary static buffer - not expected to be accessed asynchronously
+// TODO add mutex?
 
 typedef struct unit Unit;
 typedef struct unit_driver UnitDriver;
