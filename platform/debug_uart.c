@@ -13,10 +13,8 @@
 void DebugUart_Init(void)
 {
     // Debug UART
-    bool ok = true;
-    ok &= rsc_claim(&UNIT_SYSTEM, R_USART2);
-    ok &= rsc_claim(&UNIT_SYSTEM, R_PA2);
-    assert_param(ok);
+    assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, R_USART2));
+    assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, R_PA2));
 }
 
 /** Init the hardware peripheral - this is called early in the boot process */

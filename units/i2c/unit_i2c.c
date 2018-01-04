@@ -55,7 +55,7 @@ static void UI2C_writeBinary(Unit *unit, PayloadBuilder *pb)
 // ------------------------------------------------------------------------
 
 /** Parse a key-value pair from the INI file */
-static bool UI2C_loadIni(Unit *unit, const char *key, const char *value)
+static error_t UI2C_loadIni(Unit *unit, const char *key, const char *value)
 {
     bool suc = true;
     struct priv *priv = unit->data;
@@ -73,10 +73,11 @@ static bool UI2C_loadIni(Unit *unit, const char *key, const char *value)
         priv->speed = (uint8_t) avr_atoi(value);
     }
     else {
-        return false;
+        return E_BAD_KEY;
     }
 
-    return suc;
+    if (!suc) return E_BAD_VALUE;
+    return E_SUCCESS;
 }
 
 /** Generate INI file section for the unit */
@@ -100,11 +101,11 @@ static void UI2C_writeIni(Unit *unit, IniWriter *iw)
 // ------------------------------------------------------------------------
 
 /** Allocate data structure and set defaults */
-static bool UI2C_preInit(Unit *unit)
+static error_t UI2C_preInit(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
-    CHECK_SUC();
+    if (!suc) return E_OUT_OF_MEM;
 
     // some defaults
     priv->periph_num = 1;
@@ -112,41 +113,36 @@ static bool UI2C_preInit(Unit *unit)
     priv->anf = true;
     priv->dnf = 0;
 
-    return true;
+    return E_SUCCESS;
 }
 
 /** Finalize unit set-up */
-static bool UI2C_init(Unit *unit)
+static error_t UI2C_init(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data;
 
     if (!(priv->periph_num >= 1 && priv->periph_num <= 2)) {
-        unit->status = E_BAD_CONFIG;
-        dbg("!! Bad I2C periph");
-        return false;
+        dbg("!! Bad I2C periph"); // TODO report
+        return E_BAD_CONFIG;
     }
 
     if (!(priv->speed >= 1 && priv->speed <= 3)) {
-        unit->status = E_BAD_CONFIG;
         dbg("!! Bad I2C speed");
-        return false;
+        return E_BAD_CONFIG;
     }
 
     if (priv->dnf > 15) {
-        unit->status = E_BAD_CONFIG;
         dbg("!! Bad I2C DNF bw");
-        return false;
+        return E_BAD_CONFIG;
     }
 
     // assign and claim the peripheral
     if (priv->periph_num == 1) {
-        suc = rsc_claim(unit, R_I2C1);
-        CHECK_SUC();
+        TRY(rsc_claim(unit, R_I2C1));
         priv->periph = I2C1;
     } else {
-        suc = rsc_claim(unit, R_I2C2);
-        CHECK_SUC();
+        TRY(rsc_claim(unit, R_I2C2));
         priv->periph = I2C2;
     }
 
@@ -192,15 +188,15 @@ static bool UI2C_init(Unit *unit)
     // first, we have to claim the pins
     Resource r_sda = pin2resource(portname, pin_sda, &suc);
     Resource r_scl = pin2resource(portname, pin_scl, &suc);
-    CHECK_SUC();
-    rsc_claim(unit, r_sda);
-    rsc_claim(unit, r_scl);
-    CHECK_SUC();
+    if (!suc) return E_BAD_CONFIG;
+
+    TRY(rsc_claim(unit, r_sda));
+    TRY(rsc_claim(unit, r_scl));
 
     GPIO_TypeDef *port = port2periph(portname, &suc);
     uint32_t ll_pin_scl = pin2ll(pin_scl, &suc);
     uint32_t ll_pin_sda = pin2ll(pin_sda, &suc);
-    CHECK_SUC();
+    if (!suc) return E_BAD_CONFIG;
 
     // configure AF
     if (pin_scl < 8) LL_GPIO_SetAFPin_0_7(port, ll_pin_scl, af_i2c);
@@ -237,7 +233,7 @@ static bool UI2C_init(Unit *unit)
     LL_I2C_DisableOwnAddress1(priv->periph); // OA not used
     LL_I2C_SetMode(priv->periph, LL_I2C_MODE_I2C); // not using SMBus
 
-    return true;
+    return E_SUCCESS;
 }
 
 /** Tear down the unit */
@@ -283,19 +279,19 @@ static void i2c_reset(struct priv *priv)
     LL_I2C_Enable(priv->periph);
 }
 
-static bool i2c_wait_until_flag(struct priv *priv, uint32_t flag, bool stop_state)
+static error_t i2c_wait_until_flag(struct priv *priv, uint32_t flag, bool stop_state)
 {
     uint32_t t_start = HAL_GetTick();
     while (((priv->periph->ISR & flag)!=0) != stop_state) {
         if (HAL_GetTick() - t_start > 10) {
             i2c_reset(priv);
-            return false;
+            return E_HW_TIMEOUT;
         }
     }
-    return true;
+    return E_SUCCESS;
 }
 
-bool UU_I2C_Write(Unit *unit, uint16_t addr, const uint8_t *bytes, uint32_t bcount)
+error_t UU_I2C_Write(Unit *unit, uint16_t addr, const uint8_t *bytes, uint32_t bcount)
 {
     struct priv *priv = unit->data;
 
@@ -304,10 +300,7 @@ bool UU_I2C_Write(Unit *unit, uint16_t addr, const uint8_t *bytes, uint32_t bcou
     uint32_t ll_addrsize = (addrsize == 7) ? LL_I2C_ADDRSLAVE_7BIT : LL_I2C_ADDRSLAVE_10BIT;
     if (addrsize == 7) addr <<= 1; // 7-bit address must be shifted to left for LL to use it correctly
 
-    if (!i2c_wait_until_flag(priv, I2C_ISR_BUSY, 0)) {
-        dbg("BUSY TOUT");
-        return false;
-    }
+    TRY(i2c_wait_until_flag(priv, I2C_ISR_BUSY, 0));
 
     bool first = true;
     while (bcount > 0) {
@@ -320,24 +313,18 @@ bool UU_I2C_Write(Unit *unit, uint16_t addr, const uint8_t *bytes, uint32_t bcou
         bcount -= chunk_remain;
 
         for (; chunk_remain > 0; chunk_remain--) {
-            if (!i2c_wait_until_flag(priv, I2C_ISR_TXIS, 1)) {
-                dbg("TXIS TOUT, remain %d", (int)chunk_remain);
-                return false;
-            }
+            TRY(i2c_wait_until_flag(priv, I2C_ISR_TXIS, 1));
             uint8_t byte = *bytes++;
             LL_I2C_TransmitData8(priv->periph, byte);
         }
     }
 
-    if (!i2c_wait_until_flag(priv, I2C_ISR_STOPF, 1)) {
-        dbg("STOPF TOUT");
-        return false;
-    }
+    TRY(i2c_wait_until_flag(priv, I2C_ISR_STOPF, 1));
     LL_I2C_ClearFlag_STOP(priv->periph);
-    return true;
+    return E_SUCCESS;
 }
 
-bool UU_I2C_Read(Unit *unit, uint16_t addr, uint8_t *dest, uint32_t bcount)
+error_t UU_I2C_Read(Unit *unit, uint16_t addr, uint8_t *dest, uint32_t bcount)
 {
     struct priv *priv = unit->data;
 
@@ -346,19 +333,12 @@ bool UU_I2C_Read(Unit *unit, uint16_t addr, uint8_t *dest, uint32_t bcount)
     uint32_t ll_addrsize = (addrsize == 7) ? LL_I2C_ADDRSLAVE_7BIT : LL_I2C_ADDRSLAVE_10BIT;
     if (addrsize == 7) addr <<= 1; // 7-bit address must be shifted to left for LL to use it correctly
 
-    if (!i2c_wait_until_flag(priv, I2C_ISR_BUSY, 0)) {
-        dbg("BUSY TOUT");
-        return false;
-    }
+    TRY(i2c_wait_until_flag(priv, I2C_ISR_BUSY, 0));
 
     bool first = true;
-    uint32_t n = 0;
     while (bcount > 0) {
         if (!first) {
-            if (!i2c_wait_until_flag(priv, I2C_ISR_TCR, 1)) {
-                dbg("TCR TOUT");
-                return false;
-            }
+            TRY(i2c_wait_until_flag(priv, I2C_ISR_TCR, 1));
         }
 
         uint8_t chunk_remain = (uint8_t) ((bcount > 255) ? 255 : bcount); // if more than 255, first chunk is 255
@@ -369,116 +349,84 @@ bool UU_I2C_Read(Unit *unit, uint16_t addr, uint8_t *dest, uint32_t bcount)
         bcount -= chunk_remain;
 
         for (; chunk_remain > 0; chunk_remain--) {
-            if (!i2c_wait_until_flag(priv, I2C_ISR_RXNE, 1)) {
-                dbg("RXNE TOUT");
-                return false;
-            }
+            TRY(i2c_wait_until_flag(priv, I2C_ISR_RXNE, 1));
 
             uint8_t byte = LL_I2C_ReceiveData8(priv->periph);
             *dest++ = byte;
         }
     }
 
-    if (!i2c_wait_until_flag(priv, I2C_ISR_STOPF, 1)) {
-        dbg("STOPF TOUT");
-        return false;
-    }
+    TRY(i2c_wait_until_flag(priv, I2C_ISR_STOPF, 1));
     LL_I2C_ClearFlag_STOP(priv->periph);
-    return true;
+    return E_SUCCESS;
 }
 
-bool UU_I2C_ReadReg(Unit *unit, uint16_t addr, uint8_t regnum, uint8_t *dest, uint32_t width)
+error_t UU_I2C_ReadReg(Unit *unit, uint16_t addr, uint8_t regnum, uint8_t *dest, uint32_t width)
 {
-    if (!UU_I2C_Write(unit, addr, &regnum, 1)) {
-        return false;
-    }
-
-    // we read the register as if it was a unsigned integer
-    if (!UU_I2C_Read(unit, addr, (uint8_t *) unit_tmp512, width)) {
-        return false;
-    }
-
-    return true;
+    TRY(UU_I2C_Write(unit, addr, &regnum, 1));
+    TRY(UU_I2C_Read(unit, addr, dest, width));
+    return E_SUCCESS;
 }
 
-bool UU_I2C_WriteReg(Unit *unit, uint16_t addr, uint8_t regnum, const uint8_t *bytes, uint32_t width)
+error_t UU_I2C_WriteReg(Unit *unit, uint16_t addr, uint8_t regnum, const uint8_t *bytes, uint32_t width)
 {
+    // we have to insert the address first - needs a buffer (XXX realistically the buffer needs 1-4 bytes + addr)
     PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 512, NULL);
     pb_u8(&pb, regnum);
     pb_buf(&pb, bytes, width);
 
-    if (!UU_I2C_Write(unit, addr, (uint8_t *) unit_tmp512, pb_length(&pb))) {
-        return false;
-    }
-
-    return true;
+    TRY(UU_I2C_Write(unit, addr, (uint8_t *) unit_tmp512, pb_length(&pb)));
+    return E_SUCCESS;
 }
 
 /** Handle a request message */
-static bool UI2C_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
+static error_t UI2C_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
-    struct priv *priv = unit->data;
-
     uint16_t addr;
     uint32_t len;
+    uint8_t regnum;
+    uint32_t size;
 
-    // 10-bit address has the highest bit set to 1 to indicate this
-
-    uint8_t regnum; // register number
-    uint32_t size; // register width
+    // NOTE: 10-bit addresses must have the highest bit set to 1 for indication (0x8000 | addr)
 
     switch (command) {
+        /** Write byte(s) - addr:u16, byte(s)  */
         case CMD_WRITE:
             addr = pp_u16(pp);
             const uint8_t *bb = pp_tail(pp, &len);
 
-            if (!UU_I2C_Write(unit, addr, bb, len)) {
-                com_respond_err(frame_id, "TX FAIL");
-                return false;
-            }
-            break;
+            return UU_I2C_Write(unit, addr, bb, len);
 
+        /** Read byte(s) - addr:u16, len:u16 */
         case CMD_READ:
             addr = pp_u16(pp);
             len = pp_u16(pp);
 
-            if (!UU_I2C_Read(unit, addr, (uint8_t *) unit_tmp512, len)) {
-                com_respond_err(frame_id, "RX FAIL");
-                return false;
-            }
+            TRY(UU_I2C_Read(unit, addr, (uint8_t *) unit_tmp512, len));
             com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, len);
-            break;
+            return E_SUCCESS;
 
+        /** Read register(s) - addr:u16, reg:u8, size:u16 */
         case CMD_READ_REG:;
             addr = pp_u16(pp);
             regnum = pp_u8(pp); // register number
-            size = pp_u8(pp); // total number of bytes to read (allows use of auto-increment)
+            size = pp_u16(pp); // total number of bytes to read (allows use of auto-increment)
 
-            if (!UU_I2C_ReadReg(unit, addr, regnum, (uint8_t *) unit_tmp512, size)) {
-                com_respond_err(frame_id, "READ REG FAIL");
-                return false;
-            }
+            TRY(UU_I2C_ReadReg(unit, addr, regnum, (uint8_t *) unit_tmp512, size));
             com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, size);
-            break;
+            return E_SUCCESS;
 
+        /** Write a register - addr:u16, reg:u8, byte(s) */
         case CMD_WRITE_REG:
             addr = pp_u16(pp);
             regnum = pp_u8(pp); // register number
-
             const uint8_t *tail = pp_tail(pp, &size);
 
-            if (!UU_I2C_WriteReg(unit, addr, regnum, tail, size)) {
-                com_respond_err(frame_id, "WRITE REG FAIL");
-                return false;
-            }
-            break;
+            return UU_I2C_WriteReg(unit, addr, regnum, tail, size);
 
         default:
-            com_respond_bad_cmd(frame_id);
-            return false;
+            return E_UNKNOWN_COMMAND;
     }
-
-    return true;
 }
 
 // ------------------------------------------------------------------------

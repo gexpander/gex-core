@@ -308,8 +308,9 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
             namebuf[csptr - nameptr - 1] = 0;
             uint8_t cs = (uint8_t) avr_atoi(csptr + 1);
 
-            bool res = ureg_load_unit_ini_key(namebuf, key, value, cs);
-            if (!res) dbg("!! error loading %s@%d.%s = %s", namebuf, (int)cs, key, value);
+            error_t rv = ureg_load_unit_ini_key(namebuf, key, value, cs);
+            if (rv != E_SUCCESS)
+                dbg("!! error loading %s@%d.%s = %s - error %s", namebuf, (int)cs, key, value, error_get_message(rv));
         } else {
             dbg("! Bad config key: [%s] %s = %s", section, key, value);
         }

@@ -32,14 +32,9 @@ static void Tst_writeBinary(Unit *unit, PayloadBuilder *pb)
 // ------------------------------------------------------------------------
 
 /** Parse a key-value pair from the INI file */
-static bool Tst_loadIni(Unit *unit, const char *key, const char *value)
+static error_t Tst_loadIni(Unit *unit, const char *key, const char *value)
 {
-    bool suc = true;
-    struct priv *priv = unit->data;
-
-    //
-
-    return suc;
+    return E_BAD_KEY;
 }
 
 /** Generate INI file section for the unit */
@@ -53,26 +48,26 @@ static void Tst_writeIni(Unit *unit, IniWriter *iw)
 // ------------------------------------------------------------------------
 
 /** Allocate data structure and set defaults */
-static bool Tst_preInit(Unit *unit)
+static error_t Tst_preInit(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
-    CHECK_SUC();
+    if (!suc) return E_OUT_OF_MEM;
 
     //
 
-    return true;
+    return E_SUCCESS;
 }
 
 /** Finalize unit set-up */
-static bool Tst_init(Unit *unit)
+static error_t Tst_init(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data;
 
     //
 
-    return true;
+    return E_SUCCESS;
 }
 
 /** Tear down the unit */
@@ -124,22 +119,18 @@ static void bw_dump(struct bulk_write *bulk, const uint8_t *chunk, uint32_t len)
 }
 
 /** Handle a request message */
-static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
+static error_t Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
-    (void)pp;
-
-    struct priv *priv = unit->data;
-
     switch (command) {
         case CMD_PING:
             com_respond_ok(frame_id);
-            break;
+            return E_SUCCESS;
 
         case CMD_ECHO:;
             uint32_t len;
             const uint8_t *data = pp_tail(pp, &len);
             com_respond_buf(frame_id, MSG_SUCCESS, data, len);
-            break;
+            return E_SUCCESS;
 
         case CMD_BULKREAD:;
             BulkRead *br = malloc(sizeof(struct bulk_read));
@@ -150,7 +141,7 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
             br->read = br_longtext;
 
             bulkread_start(comm, br);
-            break;
+            return E_SUCCESS;
 
         case CMD_BULKWRITE:;
             BulkWrite *bw = malloc(sizeof(struct bulk_write));
@@ -161,14 +152,11 @@ static bool Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Paylo
             bw->write = bw_dump;
 
             bulkwrite_start(comm, bw);
-            break;
+            return E_SUCCESS;
 
         default:
-            com_respond_bad_cmd(frame_id);
-            return false;
+            return E_UNKNOWN_COMMAND;
     }
-
-    return true;
 }
 
 // ------------------------------------------------------------------------

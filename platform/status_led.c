@@ -56,8 +56,7 @@ void Indicator_Init(void)
     Resource rsc = pin2resource(STATUS_LED_PORT, STATUS_LED_PIN, &suc);
     assert_param(suc);
 
-    suc &= rsc_claim(&UNIT_SYSTEM, rsc);
-    assert_param(suc);
+    assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, rsc));
 }
 
 /** Set indicator ON */

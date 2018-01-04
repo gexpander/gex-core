@@ -48,7 +48,7 @@ struct unit_driver {
     /**
      * Pre-init: allocate data object, init defaults
      */
-    bool (*preInit)(Unit *unit);
+    error_t (*preInit)(Unit *unit);
 
     /**
      * Load settings from binary storage, parse and store them in the data object.
@@ -73,11 +73,10 @@ struct unit_driver {
      * @param key - key from the INI file
      * @param value - value from the ini file; strings have already removed quotes and replaced escape sequences with ASCII as needed
      */
-    bool (*cfgLoadIni)(Unit *unit, const char *key, const char *value);
+    error_t (*cfgLoadIni)(Unit *unit, const char *key, const char *value);
 
     /**
      * Export settings to a INI file.
-     * Capacity will likely be 512 bytes, do not waste space!
      *
      * @param buffer - destination buffer
      * @param capacity - buffer size
@@ -88,7 +87,7 @@ struct unit_driver {
     /**
      * Finalize the init sequence, validate settings, enable peripherals and prepare for operation
      */
-    bool (*init)(Unit *unit);
+    error_t (*init)(Unit *unit);
 
     /**
      * De-initialize the unit: de-init peripheral, free resources, free data object...
@@ -99,7 +98,7 @@ struct unit_driver {
     /**
      * Handle an incoming request. Return true if command was OK.
      */
-    bool (*handleRequest)(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp);
+    error_t (*handleRequest)(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp);
 };
 
 /**

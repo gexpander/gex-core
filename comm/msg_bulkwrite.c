@@ -28,9 +28,9 @@ static TF_Result bulkwrite_lst(TinyFrame *tf, TF_Msg *msg)
         goto close;
     }
     else if (msg->type == MSG_BULK_DATA || msg->type == MSG_BULK_END) {
-        // if past len, say we're done and close
+        // if past len, speak up
         if (bulk->offset >= bulk->len) {
-            com_respond_err(bulk->frame_id, "WRITE OVERRUN");
+            com_respond_error(bulk->frame_id, E_OVERRUN);
             goto close;
         }
 
