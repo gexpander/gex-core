@@ -12,13 +12,14 @@
 /** Private data structure */
 struct priv {
     uint8_t periph_num; //!< 1 or 2
-    uint16_t prescaller; //!< Clock prescaller, stored as the dividing factor
+    uint8_t remap;      //!< SPI remap option
 
+    uint16_t prescaller; //!< Clock prescaller, stored as the dividing factor
     bool cpol;          //!< CPOL setting
     bool cpha;          //!< CPHA setting
     bool tx_only;       //!< If true, Enable only the MOSI line
-    bool lsb_first;     //!< Option to send LSB first
 
+    bool lsb_first;     //!< Option to send LSB first
     char ssn_port_name; //!< SSN port
     uint16_t ssn_pins;  //!< SSN pin mask
 
@@ -43,6 +44,7 @@ static void USPI_loadBinary(Unit *unit, PayloadParser *pp)
 
     priv->periph_num = pp_u8(pp);
     priv->prescaller = pp_u16(pp);
+    priv->remap = pp_u8(pp);
 
     priv->cpol = pp_bool(pp);
     priv->cpha = pp_bool(pp);
@@ -62,6 +64,7 @@ static void USPI_writeBinary(Unit *unit, PayloadBuilder *pb)
 
     pb_u8(pb, priv->periph_num);
     pb_u16(pb, priv->prescaller);
+    pb_u8(pb, priv->remap);
 
     pb_bool(pb, priv->cpol);
     pb_bool(pb, priv->cpha);
@@ -82,6 +85,9 @@ static error_t USPI_loadIni(Unit *unit, const char *key, const char *value)
 
     if (streq(key, "device")) {
         priv->periph_num = (uint8_t) avr_atoi(value);
+    }
+    if (streq(key, "remap")) {
+        priv->remap = (uint8_t) avr_atoi(value);
     }
     else if (streq(key, "prescaller")) {
         priv->prescaller = (uint16_t ) avr_atoi(value);
@@ -117,8 +123,13 @@ static void USPI_writeIni(Unit *unit, IniWriter *iw)
 {
     struct priv *priv = unit->data;
 
+    // TODO show a legend for peripherals and remaps
+
     iw_comment(iw, "Peripheral number (SPIx)");
     iw_entry(iw, "device", "%d", (int)priv->periph_num);
+
+    iw_comment(iw, "SPI port remap (0,1,...)");
+    iw_entry(iw, "remap", "%d", (int)priv->remap);
 
     iw_comment(iw, "Prescaller: 2,4,8,...,256");
     iw_entry(iw, "prescaller", "%d", (int)priv->prescaller);
@@ -154,6 +165,7 @@ static error_t USPI_preInit(Unit *unit)
     // some defaults
     priv->periph_num = 1;
     priv->prescaller = 64;
+    priv->remap = 0;
 
     priv->cpol = 0;
     priv->cpha = 0;
@@ -201,7 +213,60 @@ static error_t USPI_init(Unit *unit)
 
     // TODO
 #if GEX_PLAT_F072_DISCOVERY
-    #error "NO IMPL"
+
+    // SPI1 - many options
+    // sck, miso, mosi, af
+
+    if (priv->periph_num == 1) {
+        // SPI1
+        if (priv->remap == 0) {
+            spi_portname = 'A';
+            af_spi = LL_GPIO_AF_0;
+            pin_sck = 5;
+            pin_miso = 6;
+            pin_mosi = 7;
+        }
+        else if (priv->remap == 1) {
+            spi_portname = 'B';
+            af_spi = LL_GPIO_AF_0;
+            pin_sck = 3;
+            pin_miso = 4;
+            pin_mosi = 5;
+        }
+        else if (priv->remap == 2) {
+            // large packages only
+            spi_portname = 'E';
+            af_spi = LL_GPIO_AF_1;
+            pin_sck = 13;
+            pin_miso = 14;
+            pin_mosi = 15;
+        }
+        else {
+            return E_BAD_CONFIG;
+        }
+    }
+    else {
+        // SPI2
+        if (priv->remap == 0) {
+            spi_portname = 'B';
+            af_spi = LL_GPIO_AF_0;
+            pin_sck = 13;
+            pin_miso = 14;
+            pin_mosi = 15;
+        }
+        else if (priv->remap == 1) {
+            // NOTE: the's also a incomplete remap in PB and PC
+            spi_portname = 'D';
+            af_spi = LL_GPIO_AF_0;
+            pin_sck = 1;
+            pin_miso = 3;
+            pin_mosi = 4;
+        }
+        else {
+            return E_BAD_CONFIG;
+        }
+    }
+
 #elif GEX_PLAT_F103_BLUEPILL
     #error "NO IMPL"
 #elif GEX_PLAT_F303_DISCOVERY
