@@ -13,6 +13,7 @@
 #include "units/neopixel/unit_neopixel.h"
 #include "units/i2c/unit_i2c.h"
 #include "units/test/unit_test.h"
+#include "units/spi/unit_spi.h"
 
 void plat_init_resources(void)
 {
@@ -77,6 +78,7 @@ void plat_init_resources(void)
     ureg_add_type(&UNIT_DIN);
     ureg_add_type(&UNIT_NEOPIXEL);
     ureg_add_type(&UNIT_I2C);
+    ureg_add_type(&UNIT_SPI);
 
     // Free all present resources
     {

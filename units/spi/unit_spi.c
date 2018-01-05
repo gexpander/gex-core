@@ -417,27 +417,72 @@ static void USPI_deInit(Unit *unit)
 
 // ------------------------------------------------------------------------
 
+
+error_t UU_SPI_Multicast(Unit *unit, uint16_t slaves,
+                     const uint8_t *request,
+                     uint32_t req_len)
+{
+    //
+
+    return E_NOT_IMPLEMENTED;
+}
+
+error_t UU_SPI_Write(Unit *unit, uint8_t slave_num,
+                     const uint8_t *request,
+                     uint8_t *response,
+                     uint32_t req_len,
+                     uint32_t resp_skip,
+                     uint32_t resp_len)
+{
+    //
+
+    return E_NOT_IMPLEMENTED;
+}
+
+
 enum PinCmd_ {
     CMD_WRITE = 0,
+    CMD_MULTICAST = 1,
 };
 
 /** Handle a request message */
 static error_t USPI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
-    uint16_t addr;
-    uint32_t len;
-    uint8_t regnum;
-    uint32_t size;
+    uint8_t slave;
+    uint16_t slaves;
+    uint16_t req_len;
+    uint16_t resp_skip;
+    uint16_t resp_len;
+    const uint8_t *bb;
 
-    // NOTE: 10-bit addresses must have the highest bit set to 1 for indication (0x8000 | addr)
+    uint32_t len;
 
     switch (command) {
-        /** Write byte(s) - addr:u16, byte(s)  */
+        /** Write and read byte(s) - slave_num:u8, req_len:u16, resp_skip:u16, resp_len:u16, byte(s)  */
         case CMD_WRITE:
-            addr = pp_u16(pp);
-            const uint8_t *bb = pp_tail(pp, &len);
+            slave = pp_u8(pp);
+            req_len = pp_u16(pp);
+            resp_skip = pp_u16(pp);
+            resp_len = pp_u16(pp);
 
-            return UU_SPI_Write(unit, addr, bb, len); // TODo implement function + SPI pins mapping
+            bb = pp_tail(pp, &len);
+
+            TRY(UU_SPI_Write(unit, slave,
+                             bb, (uint8_t *) unit_tmp512,
+                             req_len, resp_skip, resp_len));
+
+            com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, resp_len);
+            return E_SUCCESS;
+
+        /** Write byte(s) to multiple slaves - slaves:u16, req_len:u16, byte(s)  */
+        case CMD_MULTICAST:
+            slaves = pp_u16(pp);
+            req_len = pp_u16(pp);
+
+            bb = pp_tail(pp, &len);
+
+            TRY(UU_SPI_Multicast(unit, slaves, bb, req_len));
+            return E_SUCCESS;
 
         default:
             return E_UNKNOWN_COMMAND;

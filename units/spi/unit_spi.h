@@ -30,7 +30,7 @@ extern const UnitDriver UNIT_SPI;
  * |<-- resp_len -->|
  *
  * @param unit - SPI unit
- * @param slave_num - slave number (SS pin index)
+ * @param slave_num - slave number (SS pin index, counted from least significant bit)
  * @param request - request bytes buffer
  * @param response - response bytes buffer
  * @param req_len - number of bytes in the request. Will be right-padded with zeros.
@@ -44,5 +44,20 @@ error_t UU_SPI_Write(Unit *unit, uint8_t slave_num,
                      uint32_t req_len,
                      uint32_t resp_skip,
                      uint32_t resp_len);
+
+/**
+ * Write to multiple slaves at once.
+ * This is similar to UU_SPI_Write, but performs no read and works only if the device
+ * is configured as tx-only.
+ *
+ * @param unit - SPI unit
+ * @param slaves - bitmap of slaves to write (packed bits representing the SSN pins)
+ * @param request - request bytes buffer
+ * @param req_len - length of the request buffer
+ * @return success
+ */
+error_t UU_SPI_Multicast(Unit *unit, uint16_t slaves,
+                         const uint8_t *request,
+                         uint32_t req_len);
 
 #endif //GEX_F072_UNIT_SPI_H
