@@ -127,4 +127,12 @@ void ureg_deliver_unit_request(TF_Msg *msg);
  */
 void ureg_report_active_units(TF_ID frame_id);
 
+/**
+ * Get unit holding a resource, or NULL.
+ *
+ * @param resource
+ * @return unit
+ */
+Unit *ureg_get_rsc_owner(Resource resource);
+
 #endif //GEX_UNIT_REGISTRY_H

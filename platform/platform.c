@@ -83,13 +83,13 @@ void plat_init_resources(void)
     // Free all present resources
     {
         rsc_free(NULL, R_ADC1);
-        rsc_free(NULL, R_CAN1);
-        rsc_free_range(NULL, R_COMP1, R_COMP2);
+//        rsc_free(NULL, R_CAN1);
+//        rsc_free_range(NULL, R_COMP1, R_COMP2);
         rsc_free(NULL, R_DAC1);
-        rsc_free(NULL, R_HDMI_CEC);
-        rsc_free(NULL, R_TSC);
+//        rsc_free(NULL, R_HDMI_CEC);
+//        rsc_free(NULL, R_TSC);
         rsc_free_range(NULL, R_I2C1, R_I2C2);
-        rsc_free_range(NULL, R_I2S1, R_I2S2);
+//        rsc_free_range(NULL, R_I2S1, R_I2S2);
         rsc_free_range(NULL, R_SPI1, R_SPI2);
         rsc_free_range(NULL, R_TIM1, R_TIM3);
         rsc_free_range(NULL, R_TIM6, R_TIM7);
@@ -131,18 +131,18 @@ void plat_init_resources(void)
     // Free all present resources
     {
         rsc_free_range(NULL, R_ADC1, R_ADC4);
-        rsc_free(NULL, R_CAN1);
-        rsc_free_range(NULL, R_COMP1, R_COMP7);
-        rsc_free(NULL, R_HDMI_CEC);
+//        rsc_free(NULL, R_CAN1);
+//        rsc_free_range(NULL, R_COMP1, R_COMP7);
+//        rsc_free(NULL, R_HDMI_CEC);
         rsc_free(NULL, R_DAC1);
         rsc_free_range(NULL, R_I2C1, R_I2C2);
         rsc_free_range(NULL, R_I2S2, R_I2S3);
-        rsc_free_range(NULL, R_OPAMP1, R_OPAMP4);
+//        rsc_free_range(NULL, R_OPAMP1, R_OPAMP4);
         rsc_free_range(NULL, R_SPI1, R_SPI3);
         rsc_free_range(NULL, R_TIM1, R_TIM4);
         rsc_free_range(NULL, R_TIM6, R_TIM8);
         rsc_free_range(NULL, R_TIM15, R_TIM17);
-        rsc_free(NULL, R_TSC);
+//        rsc_free(NULL, R_TSC);
         rsc_free_range(NULL, R_USART1, R_USART5);
 
         rsc_free_range(NULL, R_PA0, R_PA15);
@@ -184,15 +184,15 @@ void plat_init_resources(void)
     // Free all present resources
     {
         rsc_free_range(NULL, R_ADC1, R_ADC3);
-        rsc_free_range(NULL, R_CAN1, R_CAN2);
-        rsc_free_range(NULL, R_COMP1, R_COMP7);
+//        rsc_free_range(NULL, R_CAN1, R_CAN2);
+//        rsc_free_range(NULL, R_COMP1, R_COMP7);
         rsc_free(NULL, R_DAC1);
-        rsc_free(NULL, R_DCMI);
-        rsc_free(NULL, R_ETH);
-        rsc_free(NULL, R_FSMC);
+//        rsc_free(NULL, R_DCMI);
+//        rsc_free(NULL, R_ETH);
+//        rsc_free(NULL, R_FSMC);
         rsc_free_range(NULL, R_I2C1, R_I2C3);
         rsc_free_range(NULL, R_I2S2, R_I2S3);
-        rsc_free(NULL, R_SDIO);
+//        rsc_free(NULL, R_SDIO);
         rsc_free_range(NULL, R_SPI1, R_SPI3);
         rsc_free_range(NULL, R_TIM1, R_TIM14);
         rsc_free_range(NULL, R_USART1, R_USART3);

@@ -530,3 +530,15 @@ void ureg_report_active_units(TF_ID frame_id)
     }
     free(buff);
 }
+
+Unit *ureg_get_rsc_owner(Resource resource)
+{
+    UlistEntry *li = ulist_head;
+    while (li != NULL) {
+        if (RSC_IS_HELD(li->unit.resources, resource)) {
+            return &li->unit;
+        }
+        li = li->next;
+    }
+    return NULL;
+}

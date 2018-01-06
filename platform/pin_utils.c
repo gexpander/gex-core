@@ -208,17 +208,17 @@ char * str_pinmask(uint16_t pins, char *buffer)
         } else {
             if (on) {
                 if (!first) {
-                    b += sprintf(b, ",");
+                    b += SPRINTF(b, ",");
                 }
                 if (start == (uint32_t)(i+1)) {
-                    b += sprintf(b, "%"PRIu32, start);
+                    b += SPRINTF(b, "%"PRIu32, start);
                 }
                 else if (start == (uint32_t)(i+2)) {
                     // exception for 2-long ranges - don't show as range
-                    b += sprintf(b, "%"PRIu32",%"PRIu32, start, i + 1);
+                    b += SPRINTF(b, "%"PRIu32",%"PRIu32, start, i + 1);
                 }
                 else {
-                    b += sprintf(b, "%"PRIu32"-%"PRIu32, start, i + 1);
+                    b += SPRINTF(b, "%"PRIu32"-%"PRIu32, start, i + 1);
                 }
                 first = false;
                 on = false;

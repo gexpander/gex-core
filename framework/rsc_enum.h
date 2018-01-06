@@ -7,7 +7,30 @@
 
 // X macro: Resource name,
 #define XX_RESOURCES \
-    X(NONE) \
+    X(SPI1) X(SPI2) X(SPI3) \
+    X(I2C1) X(I2C2) X(I2C3) \
+    X(ADC1) X(ADC2) X(ADC3) X(ADC4) \
+    X(DAC1) X(DAC2) \
+    X(USART1) X(USART2) X(USART3) X(USART4) X(USART5) X(USART6) \
+    X(TIM1) X(TIM2) X(TIM3) X(TIM4) X(TIM5) \
+    X(TIM6) X(TIM7) X(TIM8) X(TIM9) X(TIM10) X(TIM11) X(TIM12) X(TIM13) X(TIM14) \
+    X(TIM15) X(TIM16) X(TIM17) \
+    X(DMA1) X(DMA2)
+
+// Resources not used anywhere:
+// X(I2S1) X(I2S2) X(I2S3)
+// X(OPAMP1) X(OPAMP2) X(OPAMP3) X(OPAMP4)
+// X(CAN1) X(CAN2)
+// X(TSC)
+// X(DCMI)
+// X(ETH)
+// X(FSMC)
+// X(SDIO)
+// X(RNG) X(LCD)
+// X(HDMI_CEC)
+// X(COMP1) X(COMP2) X(COMP3) X(COMP4) X(COMP5) X(COMP6) X(COMP7)
+
+#define XX_RESOURCES_GPIO \
     X(PA0) X(PA1) X(PA2) X(PA3) X(PA4) X(PA5) X(PA6) X(PA7) \
     X(PA8) X(PA9) X(PA10) X(PA11) X(PA12) X(PA13) X(PA14) X(PA15) \
     X(PB0) X(PB1) X(PB2) X(PB3) X(PB4) X(PB5) X(PB6) X(PB7) \
@@ -20,26 +43,6 @@
     X(PE8) X(PE9) X(PE10) X(PE11) X(PE12) X(PE13) X(PE14) X(PE15) \
     X(PF0) X(PF1) X(PF2) X(PF3) X(PF4) X(PF5) X(PF6) X(PF7) \
     X(PF8) X(PF9) X(PF10) X(PF11) X(PF12) X(PF13) X(PF14) X(PF15) \
-    X(SPI1) X(SPI2) X(SPI3) \
-    X(I2C1) X(I2C2) X(I2C3) \
-    X(I2S1) X(I2S2) X(I2S3) \
-    X(ADC1) X(ADC2) X(ADC3) X(ADC4) \
-    X(OPAMP1) X(OPAMP2) X(OPAMP3) X(OPAMP4) \
-    X(DAC1) X(DAC2) \
-    X(CAN1) X(CAN2) \
-    X(TSC) \
-    X(DCMI) \
-    X(ETH) \
-    X(FSMC) \
-    X(SDIO) \
-    X(COMP1) X(COMP2) X(COMP3) X(COMP4) X(COMP5) X(COMP6) X(COMP7) \
-    X(HDMI_CEC) \
-    X(USART1) X(USART2) X(USART3) X(USART4) X(USART5) X(USART6) \
-    X(TIM1) X(TIM2) X(TIM3) X(TIM4) X(TIM5) \
-    X(TIM6) X(TIM7) X(TIM8) X(TIM9) X(TIM10) X(TIM11) X(TIM12) X(TIM13) X(TIM14) \
-    X(TIM15) X(TIM16) X(TIM17) \
-    X(DMA1) X(DMA2) \
-    X(RNG) X(LCD)
 
 // GPIOs are allocated whenever the pin is needed
 //  (e.g. when used for SPI, the R_SPI resource as well as the corresponding R_GPIO resources must be claimed)
@@ -70,8 +73,20 @@ typedef enum hw_resource Resource;
 enum hw_resource {
 #define X(res_name) R_##res_name,
     XX_RESOURCES
+    XX_RESOURCES_GPIO
 #undef X
-    R_RESOURCE_COUNT
+    R_NONE,
+    RESOURCE_COUNT = R_NONE,
 };
+
+#define RSCMAP_LEN ((RESOURCE_COUNT/8)+1)
+
+typedef uint8_t ResourceMap[RSCMAP_LEN];
+
+#define RSC_IS_FREE(rscmap, rsc) (0 == (rscmap[((rsc)>>3)&0xFF] & (1<<((rsc)&0x7))))
+#define RSC_IS_HELD(rscmap, rsc) (!RSC_IS_FREE(rscmap, rsc))
+#define RSC_CLAIM(rscmap, rsc)   do { rscmap[((rsc)>>3)&0xFF] |= (1<<((rsc)&0x7)); } while(0)
+#define RSC_FREE(rscmap, rsc)   do { rscmap[((rsc)>>3)&0xFF] &= ~(1<<((rsc)&0x7)); } while(0)
+
 
 #endif //GEX_F072_RSC_ENUM_H

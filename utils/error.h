@@ -58,7 +58,7 @@
     X(BAD_KEY, "Unexpected config key") \
     X(BAD_VALUE, "Bad config value") \
     X(OUT_OF_MEM, "Not enough RAM") \
-    X(RESOURCE_NOT_AVAILABLE, "Required pin / peripheral not available")
+    X(RESOURCE_NOT_AVAILABLE, NULL)
 
 // Keep in sync with the list error_message
 typedef enum {

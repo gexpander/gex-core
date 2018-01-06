@@ -42,6 +42,9 @@ struct unit {
 
     /** If RSC not avail. error is caught, the resource is stored here. */
     Resource failed_rsc;
+
+    /** Bit-map of held resources */
+    ResourceMap resources;
 };
 
 /**
