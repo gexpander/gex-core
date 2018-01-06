@@ -24,6 +24,21 @@ const char *const rsc_names[] = {
 #undef X
 };
 
+/** Get rsc name */
+const char * rsc_get_name(Resource rsc)
+{
+    assert_param(rsc < R_RESOURCE_COUNT);
+    return rsc_names[rsc];
+}
+
+/** Get rsc owner name */
+const char * rsc_get_owner_name(Resource rsc)
+{
+    assert_param(rsc < R_RESOURCE_COUNT);
+    if (resources[rsc].owner == NULL) return "NULL";
+    return resources[rsc].owner->name;
+}
+
 /**
  * Initialize the resources registry
  */
@@ -51,7 +66,11 @@ error_t rsc_claim(Unit *unit, Resource rsc)
     if (resources[rsc].owner) {
         //TODO properly report to user
         dbg("ERROR!! Unit %s failed to claim resource %s, already held by %s!",
-            unit->name, rsc_names[rsc], resources[rsc].owner->name);
+            unit->name,
+            rsc_get_name(rsc),
+            rsc_get_owner_name(rsc));
+
+        unit->failed_rsc = rsc;
 
         return E_RESOURCE_NOT_AVAILABLE;
     }

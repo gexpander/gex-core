@@ -10,6 +10,7 @@
 #include "utils/ini_writer.h"
 #include "utils/payload_builder.h"
 #include "utils/payload_parser.h"
+#include "rsc_enum.h"
 
 #define CHECK_TYPE(_unit, _driver) do { \
     if ((_unit->driver) != (_driver)) \
@@ -33,11 +34,14 @@ struct unit {
      */
     void *data;
 
+    /** Unit call sign for messages */
+    uint8_t callsign;
+
     /** Unit init status */
     error_t status;
 
-    /** Unit call sign for messages */
-    uint8_t callsign;
+    /** If RSC not avail. error is caught, the resource is stored here. */
+    Resource failed_rsc;
 };
 
 /**

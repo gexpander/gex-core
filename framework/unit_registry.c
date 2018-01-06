@@ -355,7 +355,14 @@ static void export_unit_do(UlistEntry *li, IniWriter *iw)
 
     iw_section(iw, "%s:%s@%d", pUnit->driver->name, pUnit->name, (int)pUnit->callsign);
     if (pUnit->status != E_SUCCESS) {
-        iw_comment(iw, "!!! %s", error_get_message(pUnit->status));
+        // special message for failed unit die to resource
+        if (pUnit->status == E_RESOURCE_NOT_AVAILABLE) {
+            iw_comment(iw, "!!! %s not available, already held by %s",
+                       rsc_get_name(pUnit->failed_rsc),
+                       rsc_get_owner_name(pUnit->failed_rsc));
+        } else {
+            iw_comment(iw, "!!! %s", error_get_message(pUnit->status));
+        }
     }
     pUnit->driver->cfgWriteIni(pUnit, iw);
 }
