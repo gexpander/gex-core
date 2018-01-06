@@ -86,7 +86,7 @@ static error_t USPI_loadIni(Unit *unit, const char *key, const char *value)
     if (streq(key, "device")) {
         priv->periph_num = (uint8_t) avr_atoi(value);
     }
-    if (streq(key, "remap")) {
+    else if (streq(key, "remap")) {
         priv->remap = (uint8_t) avr_atoi(value);
     }
     else if (streq(key, "prescaller")) {
