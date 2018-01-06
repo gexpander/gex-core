@@ -211,6 +211,7 @@ void rsc_teardown(Unit *unit)
     assert_param(rsc_initialized);
     assert_param(unit != NULL);
 
+    dbg("Tearing down unit %s", unit->name);
     deinit_unit_pins(unit);
 
     for (uint32_t i = 0; i < RSCMAP_LEN; i++) {

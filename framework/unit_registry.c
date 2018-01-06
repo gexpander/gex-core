@@ -42,6 +42,7 @@ static int32_t unit_count = -1;
 
 void ureg_add_type(const UnitDriver *driver)
 {
+    bool suc = true;
     assert_param(driver != NULL);
     assert_param(driver->name != NULL);
 
@@ -57,7 +58,9 @@ void ureg_add_type(const UnitDriver *driver)
     assert_param(driver->deInit != NULL);
     assert_param(driver->handleRequest != NULL);
 
-    UregEntry *re = malloc_s(sizeof(UregEntry));
+    UregEntry *re = calloc_ck(1, sizeof(UregEntry), &suc);
+    assert_param(suc);
+
     re->driver = driver;
     re->next = NULL;
 
@@ -108,7 +111,7 @@ Unit *ureg_instantiate(const char *driver_name)
     while (re != NULL) {
         if (streq(re->driver->name, driver_name)) {
             // Create new list entry
-            UlistEntry *le = malloc_ck(sizeof(UlistEntry), &suc);
+            UlistEntry *le = calloc_ck(1, sizeof(UlistEntry), &suc);
             CHECK_SUC();
 
             le->next = NULL;
@@ -512,7 +515,7 @@ void ureg_report_active_units(TF_ID frame_id)
     msglen += count; // one byte per message for the callsign
 
     bool suc = true;
-    uint8_t *buff = malloc_ck(msglen, &suc);
+    uint8_t *buff = calloc_ck(1, msglen, &suc);
     if (!suc) {
         com_respond_error(frame_id, E_OUT_OF_MEM);
         return;
