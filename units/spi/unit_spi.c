@@ -2,6 +2,7 @@
 // Created by MightyPork on 2018/01/02.
 //
 
+#include <framework/system_settings.h>
 #include "comm/messages.h"
 #include "unit_base.h"
 #include "utils/avrlibc.h"
@@ -123,14 +124,27 @@ static void USPI_writeIni(Unit *unit, IniWriter *iw)
 {
     struct priv *priv = unit->data;
 
-    // TODO show a legend for peripherals and remaps
-
+    iw_cmt_newline(iw);
     iw_comment(iw, "Peripheral number (SPIx)");
     iw_entry(iw, "device", "%d", (int)priv->periph_num);
 
-    iw_comment(iw, "SPI port remap (0,1,...)");
+    // TODO show a legend for peripherals and remaps
+    iw_comment(iw, "Pin mappings (SCK,MISO,MOSI)");
+#if GEX_PLAT_F072_DISCOVERY
+    iw_comment(iw, " SPI1: (0) A5,A6,A7     (1) B3,B4,B5  (2) E13,E14,E15");
+    iw_comment(iw, " SPI2: (0) B13,B14,B15  (1) D1,D3,D4");
+#elif GEX_PLAT_F103_BLUEPILL
+    #error "NO IMPL"
+#elif GEX_PLAT_F303_DISCOVERY
+    #error "NO IMPL"
+#elif GEX_PLAT_F407_DISCOVERY
+    #error "NO IMPL"
+#else
+    #error "BAD PLATFORM!"
+#endif
     iw_entry(iw, "remap", "%d", (int)priv->remap);
 
+    iw_cmt_newline(iw);
     iw_comment(iw, "Prescaller: 2,4,8,...,256");
     iw_entry(iw, "prescaller", "%d", (int)priv->prescaller);
 
@@ -146,10 +160,11 @@ static void USPI_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Use LSB-first bit order");
     iw_entry(iw, "lsb-first", str_yn(priv->lsb_first));
 
-    iw_comment(iw, "Slave Select port name");
+    iw_cmt_newline(iw);
+    iw_comment(iw, "SS port name");
     iw_entry(iw, "port", "%c", priv->ssn_port_name);
 
-    iw_comment(iw, "Slave select pins (comma separated, supports ranges)");
+    iw_comment(iw, "SS pins (comma separated, supports ranges)");
     iw_entry(iw, "pins", "%s", str_pinmask(priv->ssn_pins, unit_tmp512));
 }
 
