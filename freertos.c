@@ -84,6 +84,9 @@ osStaticMutexDef_t mutTinyFrameTxControlBlock;
 osSemaphoreId semVcomTxReadyHandle;
 osStaticSemaphoreDef_t semVcomTxReadyControlBlock;
 
+osMutexId mutScratchBufferHandle;
+osStaticMutexDef_t mutScratchBufferControlBlock;
+
 /* USER CODE BEGIN Variables */
 
 /* USER CODE END Variables */
@@ -141,6 +144,9 @@ void MX_FREERTOS_Init(void) {
   /* definition and creation of mutTinyFrameTx */
   osMutexStaticDef(mutTinyFrameTx, &mutTinyFrameTxControlBlock);
   mutTinyFrameTxHandle = osMutexCreate(osMutex(mutTinyFrameTx));
+
+  osMutexStaticDef(mutScratchBuffer, &mutScratchBufferControlBlock);
+  mutScratchBufferHandle = osMutexCreate(osMutex(mutScratchBuffer));
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */

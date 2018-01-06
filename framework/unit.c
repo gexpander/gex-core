@@ -6,7 +6,7 @@
 #include "unit.h"
 #include "resources.h"
 
-char unit_tmp512[512];
+char unit_tmp512[UNIT_TMP_LEN];
 
 // Abort partly inited unit
 void clean_failed_unit(Unit *unit)

@@ -380,7 +380,7 @@ error_t UU_I2C_WriteReg(Unit *unit, uint16_t addr, uint8_t regnum, const uint8_t
     CHECK_TYPE(unit, &UNIT_I2C);
 
     // we have to insert the address first - needs a buffer (XXX realistically the buffer needs 1-4 bytes + addr)
-    PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 512, NULL);
+    PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, UNIT_TMP_LEN, NULL);
     pb_u8(&pb, regnum);
     pb_buf(&pb, bytes, width);
 

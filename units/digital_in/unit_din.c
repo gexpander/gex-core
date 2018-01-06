@@ -210,7 +210,7 @@ static error_t DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
         case CMD_READ:;
             TRY(UU_DI_Read(unit, &packed));
 
-            PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 64, NULL);
+            PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, UNIT_TMP_LEN, NULL);
             pb_u16(&pb, packed);
             com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, pb_length(&pb));
             return E_SUCCESS;

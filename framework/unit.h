@@ -16,7 +16,7 @@
         return E_BAD_UNIT_TYPE; \
 } while (0)
 
-extern char unit_tmp512[512]; // temporary static buffer - not expected to be accessed asynchronously
+extern char unit_tmp512[UNIT_TMP_LEN]; // temporary static buffer - not expected to be accessed asynchronously
 // TODO add mutex?
 
 typedef struct unit Unit;

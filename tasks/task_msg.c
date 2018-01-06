@@ -26,6 +26,7 @@ void TaskMessaging(const void * argument)
         xQueueReceive(queRxDataHandle, &slot, osWaitForever);
         assert_param(slot.len>0 && slot.len<=64); // check the len is within bounds
 
+        // We need thr scratch buffer for many unit command handlers
         TF_Accept(comm, slot.data, slot.len);
 
 #if USE_STACK_MONITOR

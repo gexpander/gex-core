@@ -223,6 +223,8 @@ static void ini_preamble(IniWriter *iw, const char *filename)
     iw_comment(iw, "Close the LOCK jumper to save them to Flash.");
 }
 
+extern osMutexId mutScratchBufferHandle;
+
 /**
  * Write system settings to INI (without section)
  */
@@ -230,7 +232,11 @@ void settings_build_units_ini(IniWriter *iw)
 {
     ini_preamble(iw, "UNITS.INI");
 
-    ureg_build_ini(iw);
+    assert_param(osOK == osMutexWait(mutScratchBufferHandle, 5000));
+    {
+        ureg_build_ini(iw);
+    }
+    assert_param(osOK == osMutexRelease(mutScratchBufferHandle));
 }
 
 /**
