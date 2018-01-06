@@ -13,6 +13,7 @@
 
 void rsc_init_registry(void);
 
+error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin);
 error_t rsc_claim(Unit *unit, Resource rsc);
 error_t rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1);
 /**

@@ -75,4 +75,7 @@ uint16_t port_pack(uint16_t spread, uint16_t mask);
  */
 void deinit_unit_pins(Unit *unit);
 
+error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t af);
+error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port_dest, uint32_t mode, uint32_t otype);
+
 #endif //GEX_PIN_UTILS_H

@@ -136,6 +136,15 @@ error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
     return E_SUCCESS;
 }
 
+error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin)
+{
+    bool suc = true;
+    Resource rsc = pin2resource(port_name,  pin, &suc);
+    if (!suc) return E_BAD_CONFIG;
+    TRY(rsc_claim(unit, rsc));
+    return E_SUCCESS;
+}
+
 /**
  * Free a resource for other use
  *

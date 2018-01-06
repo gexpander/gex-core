@@ -21,9 +21,9 @@ struct priv {
 
     I2C_TypeDef *periph;
 
-    GPIO_TypeDef *port;
-    uint32_t ll_pin_scl;
-    uint32_t ll_pin_sda;
+//    GPIO_TypeDef *port;
+//    uint32_t ll_pin_scl;
+//    uint32_t ll_pin_sda;
 };
 
 // ------------------------------------------------------------------------
@@ -40,6 +40,10 @@ static void UI2C_loadBinary(Unit *unit, PayloadParser *pp)
     priv->anf = pp_bool(pp);
     priv->dnf = pp_u8(pp);
     priv->speed = pp_u8(pp);
+
+    if (version >= 1) {
+        priv->remap = pp_u8(pp);
+    }
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -47,12 +51,13 @@ static void UI2C_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_u8(pb, 0); // version
+    pb_u8(pb, 1); // version
 
     pb_u8(pb, priv->periph_num);
     pb_bool(pb, priv->anf);
     pb_u8(pb, priv->dnf);
     pb_u8(pb, priv->speed);
+    pb_u8(pb, priv->remap);
 }
 
 // ------------------------------------------------------------------------
@@ -229,32 +234,11 @@ static error_t UI2C_init(Unit *unit)
 #endif
 
     // first, we have to claim the pins
-    Resource r_sda = pin2resource(portname, pin_sda, &suc);
-    Resource r_scl = pin2resource(portname, pin_scl, &suc);
-    if (!suc) return E_BAD_CONFIG;
+    TRY(rsc_claim_pin(unit, portname, pin_sda));
+    TRY(rsc_claim_pin(unit, portname, pin_scl));
 
-    TRY(rsc_claim(unit, r_sda));
-    TRY(rsc_claim(unit, r_scl));
-
-    priv->port = port2periph(portname, &suc);
-    priv->ll_pin_scl = pin2ll(pin_scl, &suc);
-    priv->ll_pin_sda = pin2ll(pin_sda, &suc);
-    if (!suc) return E_BAD_CONFIG;
-
-    // configure AF
-    if (pin_scl < 8) LL_GPIO_SetAFPin_0_7(priv->port, priv->ll_pin_scl, af_i2c);
-    else LL_GPIO_SetAFPin_8_15(priv->port, priv->ll_pin_scl, af_i2c);
-
-    if (pin_sda < 8) LL_GPIO_SetAFPin_0_7(priv->port, priv->ll_pin_sda, af_i2c);
-    else LL_GPIO_SetAFPin_8_15(priv->port, priv->ll_pin_sda, af_i2c);
-
-    LL_GPIO_SetPinMode(priv->port, priv->ll_pin_scl, LL_GPIO_MODE_ALTERNATE);
-    LL_GPIO_SetPinMode(priv->port, priv->ll_pin_sda, LL_GPIO_MODE_ALTERNATE);
-
-    // set as OpenDrain (this may not be needed - TODO check)
-    LL_GPIO_SetPinOutputType(priv->port, priv->ll_pin_scl, LL_GPIO_OUTPUT_OPENDRAIN);
-    LL_GPIO_SetPinOutputType(priv->port, priv->ll_pin_sda, LL_GPIO_OUTPUT_OPENDRAIN);
-
+    configure_gpio_alternate(portname, pin_sda, af_i2c);
+    configure_gpio_alternate(portname, pin_scl, af_i2c);
 
     if (priv->periph_num == 1) {
         __HAL_RCC_I2C1_CLK_ENABLE();
@@ -265,8 +249,7 @@ static error_t UI2C_init(Unit *unit)
     /* Disable the selected I2Cx Peripheral */
     LL_I2C_Disable(priv->periph);
     LL_I2C_ConfigFilters(priv->periph,
-                         priv->anf ? LL_I2C_ANALOGFILTER_ENABLE
-                                   : LL_I2C_ANALOGFILTER_DISABLE,
+                         (priv->anf ? LL_I2C_ANALOGFILTER_ENABLE : LL_I2C_ANALOGFILTER_DISABLE),
                          priv->dnf);
 
     LL_I2C_SetTiming(priv->periph, timing);

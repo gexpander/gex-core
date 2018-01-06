@@ -25,12 +25,7 @@ struct priv {
     uint16_t ssn_pins;  //!< SSN pin mask
 
     SPI_TypeDef *periph;
-
     GPIO_TypeDef *ssn_port;
-    GPIO_TypeDef *spi_port;
-    uint32_t ll_pin_miso;
-    uint32_t ll_pin_mosi;
-    uint32_t ll_pin_sck;
 };
 
 // ------------------------------------------------------------------------
@@ -291,34 +286,13 @@ static error_t USPI_init(Unit *unit)
 #endif
 
     // first, we have to claim the pins
-    Resource r_mosi = pin2resource(spi_portname, pin_mosi, &suc);
-    Resource r_miso = pin2resource(spi_portname, pin_miso, &suc);
-    Resource r_sck = pin2resource(spi_portname, pin_sck, &suc);
-    if (!suc) return E_BAD_CONFIG;
+    TRY(rsc_claim_pin(unit, spi_portname, pin_mosi));
+    TRY(rsc_claim_pin(unit, spi_portname, pin_miso));
+    TRY(rsc_claim_pin(unit, spi_portname, pin_sck));
 
-    TRY(rsc_claim(unit, r_mosi));
-    TRY(rsc_claim(unit, r_miso));
-    TRY(rsc_claim(unit, r_sck));
-
-    priv->spi_port = port2periph(spi_portname, &suc);
-    priv->ll_pin_mosi = pin2ll(pin_mosi, &suc);
-    priv->ll_pin_miso = pin2ll(pin_miso, &suc);
-    priv->ll_pin_sck = pin2ll(pin_sck, &suc);
-    if (!suc) return E_BAD_CONFIG;
-
-    // configure AF
-    if (pin_mosi < 8) LL_GPIO_SetAFPin_0_7(priv->spi_port, priv->ll_pin_mosi, af_spi);
-    else LL_GPIO_SetAFPin_8_15(priv->spi_port, priv->ll_pin_mosi, af_spi);
-
-    if (pin_miso < 8) LL_GPIO_SetAFPin_0_7(priv->spi_port, priv->ll_pin_miso, af_spi);
-    else LL_GPIO_SetAFPin_8_15(priv->spi_port, priv->ll_pin_miso, af_spi);
-
-    if (pin_sck < 8) LL_GPIO_SetAFPin_0_7(priv->spi_port, priv->ll_pin_sck, af_spi);
-    else LL_GPIO_SetAFPin_8_15(priv->spi_port, priv->ll_pin_sck, af_spi);
-
-    LL_GPIO_SetPinMode(priv->spi_port, priv->ll_pin_mosi, LL_GPIO_MODE_ALTERNATE);
-    LL_GPIO_SetPinMode(priv->spi_port, priv->ll_pin_miso, LL_GPIO_MODE_ALTERNATE);
-    LL_GPIO_SetPinMode(priv->spi_port, priv->ll_pin_sck, LL_GPIO_MODE_ALTERNATE);
+    configure_gpio_alternate(spi_portname, pin_mosi, af_spi);
+    configure_gpio_alternate(spi_portname, pin_miso, af_spi);
+    configure_gpio_alternate(spi_portname, pin_sck, af_spi);
 
     if (priv->periph_num == 1) {
         __HAL_RCC_SPI1_CLK_ENABLE();
@@ -328,22 +302,10 @@ static error_t USPI_init(Unit *unit)
 
     // configure SSN GPIOs
     {
-        priv->ssn_port = port2periph(priv->ssn_port_name, &suc);
-        if (!suc) return E_BAD_CONFIG;
-
         // Claim all needed pins
         TRY(rsc_claim_gpios(unit, priv->ssn_port_name, priv->ssn_pins));
-
-        uint16_t mask = 1;
-        for (int i = 0; i < 16; i++, mask <<= 1) {
-            if (priv->ssn_pins & mask) {
-                uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
-                LL_GPIO_SetPinMode(priv->ssn_port, ll_pin, LL_GPIO_MODE_OUTPUT);
-                LL_GPIO_SetPinOutputType(priv->ssn_port, ll_pin, LL_GPIO_OUTPUT_PUSHPULL);
-                LL_GPIO_SetPinSpeed(priv->ssn_port, ll_pin, LL_GPIO_SPEED_FREQ_HIGH);
-            }
-        }
-
+        TRY(configure_sparse_pins(priv->ssn_port_name, priv->ssn_pins, &priv->ssn_port,
+                                  LL_GPIO_MODE_OUTPUT, LL_GPIO_OUTPUT_PUSHPULL));
         // Set the initial state - all high
         priv->ssn_port->ODR &= priv->ssn_pins;
     }
@@ -359,21 +321,10 @@ static error_t USPI_init(Unit *unit)
         dbg("Presc is %d", (int) presc);
         LL_SPI_SetBaudRatePrescaler(priv->periph, presc);
 
-        LL_SPI_SetClockPolarity(priv->periph, priv->cpol ?
-                                              LL_SPI_POLARITY_HIGH :
-                                              LL_SPI_POLARITY_LOW);
-
-        LL_SPI_SetClockPhase(priv->periph, priv->cpha ?
-                                           LL_SPI_PHASE_1EDGE :
-                                           LL_SPI_PHASE_2EDGE);
-
-        LL_SPI_SetTransferDirection(priv->periph, priv->tx_only ?
-                                                  LL_SPI_HALF_DUPLEX_TX :
-                                                  LL_SPI_FULL_DUPLEX);
-
-        LL_SPI_SetTransferBitOrder(priv->periph, priv->lsb_first ?
-                                                 LL_SPI_LSB_FIRST :
-                                                 LL_SPI_MSB_FIRST);
+        LL_SPI_SetClockPolarity(priv->periph,     priv->cpol ? LL_SPI_POLARITY_HIGH : LL_SPI_POLARITY_LOW);
+        LL_SPI_SetClockPhase(priv->periph,        priv->cpha ? LL_SPI_PHASE_1EDGE : LL_SPI_PHASE_2EDGE);
+        LL_SPI_SetTransferDirection(priv->periph, priv->tx_only ? LL_SPI_HALF_DUPLEX_TX : LL_SPI_FULL_DUPLEX);
+        LL_SPI_SetTransferBitOrder(priv->periph,  priv->lsb_first ? LL_SPI_LSB_FIRST : LL_SPI_MSB_FIRST);
 
         // TODO data size?
 
