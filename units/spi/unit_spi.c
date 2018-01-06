@@ -3,6 +3,7 @@
 //
 
 #include <framework/system_settings.h>
+#include <stm32f072xb.h>
 #include "comm/messages.h"
 #include "unit_base.h"
 #include "utils/avrlibc.h"
@@ -307,7 +308,7 @@ static error_t USPI_init(Unit *unit)
         TRY(configure_sparse_pins(priv->ssn_port_name, priv->ssn_pins, &priv->ssn_port,
                                   LL_GPIO_MODE_OUTPUT, LL_GPIO_OUTPUT_PUSHPULL));
         // Set the initial state - all high
-        priv->ssn_port->ODR &= priv->ssn_pins;
+        priv->ssn_port->BSRR = priv->ssn_pins;
     }
 
     // Configure SPI - must be configured under reset
@@ -318,15 +319,16 @@ static error_t USPI_init(Unit *unit)
         if (lz < 23) lz = 23;
         if (lz > 30) lz = 30;
         presc = (32 - lz - 2);
-        dbg("Presc is %d", (int) presc);
-        LL_SPI_SetBaudRatePrescaler(priv->periph, presc);
+        LL_SPI_SetBaudRatePrescaler(priv->periph, (presc<<SPI_CR1_BR_Pos)&SPI_CR1_BR_Msk);
 
         LL_SPI_SetClockPolarity(priv->periph,     priv->cpol ? LL_SPI_POLARITY_HIGH : LL_SPI_POLARITY_LOW);
         LL_SPI_SetClockPhase(priv->periph,        priv->cpha ? LL_SPI_PHASE_1EDGE : LL_SPI_PHASE_2EDGE);
         LL_SPI_SetTransferDirection(priv->periph, priv->tx_only ? LL_SPI_HALF_DUPLEX_TX : LL_SPI_FULL_DUPLEX);
         LL_SPI_SetTransferBitOrder(priv->periph,  priv->lsb_first ? LL_SPI_LSB_FIRST : LL_SPI_MSB_FIRST);
 
-        // TODO data size?
+        LL_SPI_SetNSSMode(priv->periph, LL_SPI_NSS_SOFT);
+        LL_SPI_SetDataWidth(priv->periph, LL_SPI_DATAWIDTH_8BIT);
+        LL_SPI_SetRxFIFOThreshold(priv->periph, LL_SPI_RX_FIFO_TH_QUARTER); // trigger RXNE on 1 byte
 
         LL_SPI_SetMode(priv->periph, LL_SPI_MODE_MASTER);
     }
@@ -363,31 +365,102 @@ static void USPI_deInit(Unit *unit)
 
 // ------------------------------------------------------------------------
 
+static error_t spi_wait_until_flag(struct priv *priv, uint32_t flag, bool stop_state)
+{
+    uint32_t t_start = HAL_GetTick();
+    while (((priv->periph->SR & flag) != 0) != stop_state) {
+        if (HAL_GetTick() - t_start > 10) {
+            return E_HW_TIMEOUT;
+        }
+    }
+    return E_SUCCESS;
+}
+
+/**
+ * Perform a low level SPI transfer
+ *
+ * @param priv - private object of the SPI unit
+ * @param request - request buffer
+ * @param response - response buffer
+ * @param req_len - request len
+ * @param resp_skip - response skip bytes
+ * @param resp_len - response len
+ * @return success
+ */
+static error_t xfer_do(struct priv *priv, const uint8_t *request,
+                       uint8_t *response,
+                       uint32_t req_len,
+                       uint32_t resp_skip,
+                       uint32_t resp_len)
+{
+    // TODO this is slow, use DMA
+
+    if (response == NULL) resp_len = 0;
+
+    // avoid skip causing stretch beyond tx window if nothing is to be read back
+    if (resp_len == 0) resp_skip = 0;
+
+    // in tx only mode, return zeros
+    if (priv->tx_only && resp_len>0) {
+        memset(response, 0, resp_len);
+    }
+
+    uint8_t tb;
+    uint32_t end = MAX(req_len, resp_len + resp_skip);
+    for (uint32_t i = 0; i < end; i++) {
+        if (i < req_len) tb = *request++;
+        else tb = 0;
+
+        TRY(spi_wait_until_flag(priv, SPI_SR_TXE, true));
+        LL_SPI_TransmitData8(priv->periph, tb);
+
+        if (!priv->tx_only) {
+            TRY(spi_wait_until_flag(priv, SPI_SR_RXNE, true));
+            uint8_t rb = LL_SPI_ReceiveData8(priv->periph);
+
+            if (resp_skip > 0) resp_skip--;
+            else if (resp_len > 0) {
+                resp_len--;
+                *response++ = rb;
+            }
+        }
+    }
+    return E_SUCCESS;
+}
 
 error_t UU_SPI_Multicast(Unit *unit, uint16_t slaves,
-                     const uint8_t *request,
-                     uint32_t req_len)
+                     const uint8_t *request, uint32_t req_len)
 {
-    //
+    struct priv *priv= unit->data;
+    uint16_t mask = port_spread(slaves, priv->ssn_pins);
+    priv->ssn_port->BRR = mask;
+    {
+        TRY(xfer_do(priv, request, NULL, req_len, 0, 0));
+    }
+    priv->ssn_port->BSRR = mask;
 
-    return E_NOT_IMPLEMENTED;
+    return E_SUCCESS;
 }
 
 error_t UU_SPI_Write(Unit *unit, uint8_t slave_num,
-                     const uint8_t *request,
-                     uint8_t *response,
-                     uint32_t req_len,
-                     uint32_t resp_skip,
-                     uint32_t resp_len)
+                     const uint8_t *request, uint8_t *response,
+                     uint32_t req_len, uint32_t resp_skip, uint32_t resp_len)
 {
-    //
+    struct priv *priv= unit->data;
 
-    return E_NOT_IMPLEMENTED;
+    uint16_t mask = port_spread((uint16_t) (1 << slave_num), priv->ssn_pins);
+    priv->ssn_port->BRR = mask;
+    {
+        TRY(xfer_do(priv, request, response, req_len, resp_len, resp_skip));
+    }
+    priv->ssn_port->BSRR = mask;
+
+    return E_SUCCESS;
 }
 
 
 enum PinCmd_ {
-    CMD_WRITE = 0,
+    CMD_QUERY = 0,
     CMD_MULTICAST = 1,
 };
 
@@ -405,9 +478,8 @@ static error_t USPI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 
     switch (command) {
         /** Write and read byte(s) - slave_num:u8, req_len:u16, resp_skip:u16, resp_len:u16, byte(s)  */
-        case CMD_WRITE:
+        case CMD_QUERY:
             slave = pp_u8(pp);
-            req_len = pp_u16(pp);
             resp_skip = pp_u16(pp);
             resp_len = pp_u16(pp);
 
@@ -415,19 +487,21 @@ static error_t USPI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 
             TRY(UU_SPI_Write(unit, slave,
                              bb, (uint8_t *) unit_tmp512,
-                             req_len, resp_skip, resp_len));
+                             len, resp_skip, resp_len));
 
-            com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, resp_len);
+            // no response if we aren't reading
+            if (resp_len > 0) {
+                com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, resp_len);
+            }
             return E_SUCCESS;
 
         /** Write byte(s) to multiple slaves - slaves:u16, req_len:u16, byte(s)  */
         case CMD_MULTICAST:
             slaves = pp_u16(pp);
-            req_len = pp_u16(pp);
 
             bb = pp_tail(pp, &len);
 
-            TRY(UU_SPI_Multicast(unit, slaves, bb, req_len));
+            TRY(UU_SPI_Multicast(unit, slaves, bb, len));
             return E_SUCCESS;
 
         default:
