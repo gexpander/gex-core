@@ -124,7 +124,6 @@ static void USPI_writeIni(Unit *unit, IniWriter *iw)
 {
     struct priv *priv = unit->data;
 
-    iw_cmt_newline(iw);
     iw_comment(iw, "Peripheral number (SPIx)");
     iw_entry(iw, "device", "%d", (int)priv->periph_num);
 
@@ -228,7 +227,6 @@ static error_t USPI_init(Unit *unit)
 
     // TODO
 #if GEX_PLAT_F072_DISCOVERY
-
     // SPI1 - many options
     // sck, miso, mosi, af
 
@@ -394,8 +392,6 @@ static void USPI_deInit(Unit *unit)
     // de-init the pins & peripheral only if inited correctly
     if (unit->status == E_SUCCESS) {
         assert_param(priv->periph);
-        assert_param(priv->spi_port);
-        assert_param(priv->ssn_port);
 
         LL_SPI_DeInit(priv->periph);
 
@@ -403,22 +399,6 @@ static void USPI_deInit(Unit *unit)
             __HAL_RCC_SPI1_CLK_DISABLE();
         } else {
             __HAL_RCC_SPI2_CLK_DISABLE();
-        }
-
-        LL_GPIO_SetPinMode(priv->spi_port, priv->ll_pin_mosi, LL_GPIO_MODE_ANALOG);
-        LL_GPIO_SetPinMode(priv->spi_port, priv->ll_pin_mosi, LL_GPIO_MODE_ANALOG);
-        LL_GPIO_SetPinMode(priv->spi_port, priv->ll_pin_sck, LL_GPIO_MODE_ANALOG);
-
-        // de-init all SSN pins
-        bool suc = true;
-        uint16_t mask = 1;
-        for (int i = 0; i < 16; i++, mask <<= 1) {
-            if (priv->ssn_pins & mask) {
-                uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
-                assert_param(suc);
-                // configure the pin as analog
-                LL_GPIO_SetPinMode(priv->ssn_port, ll_pin, LL_GPIO_MODE_ANALOG);
-            }
         }
     }
 

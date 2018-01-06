@@ -355,14 +355,22 @@ static void export_unit_do(UlistEntry *li, IniWriter *iw)
 
     iw_section(iw, "%s:%s@%d", pUnit->driver->name, pUnit->name, (int)pUnit->callsign);
     if (pUnit->status != E_SUCCESS) {
-        // special message for failed unit die to resource
-        if (pUnit->status == E_RESOURCE_NOT_AVAILABLE) {
-            iw_comment(iw, "!!! %s not available, already held by %s",
-                       rsc_get_name(pUnit->failed_rsc),
-                       rsc_get_owner_name(pUnit->failed_rsc));
-        } else {
-            iw_comment(iw, "!!! %s", error_get_message(pUnit->status));
+        // temporarily force comments ON
+        bool sc = SystemSettings.ini_comments;
+        SystemSettings.ini_comments = true;
+        {
+            // special message for failed unit die to resource
+            if (pUnit->status == E_RESOURCE_NOT_AVAILABLE) {
+                iw_comment(iw, "!!! %s not available, already held by %s",
+                           rsc_get_name(pUnit->failed_rsc),
+                           rsc_get_owner_name(pUnit->failed_rsc));
+            }
+            else {
+                iw_comment(iw, "!!! %s", error_get_message(pUnit->status));
+            }
+            iw_cmt_newline(iw);
         }
+        SystemSettings.ini_comments = sc;
     }
     pUnit->driver->cfgWriteIni(pUnit, iw);
 }
@@ -540,5 +548,9 @@ Unit *ureg_get_rsc_owner(Resource resource)
         }
         li = li->next;
     }
+
+    if (RSC_IS_HELD(UNIT_SYSTEM.resources, resource)) return &UNIT_SYSTEM;
+    if (RSC_IS_HELD(UNIT_PLATFORM.resources, resource)) return &UNIT_PLATFORM;
+
     return NULL;
 }

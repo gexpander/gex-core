@@ -68,4 +68,11 @@ uint16_t port_spread(uint16_t packed, uint16_t mask);
  */
 uint16_t port_pack(uint16_t spread, uint16_t mask);
 
+/**
+ * Set all GPIO resources held by unit to analog
+ *
+ * @param unit - holding unit
+ */
+void deinit_unit_pins(Unit *unit);
+
 #endif //GEX_PIN_UTILS_H

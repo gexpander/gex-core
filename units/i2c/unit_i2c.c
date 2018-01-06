@@ -2,6 +2,7 @@
 // Created by MightyPork on 2018/01/02.
 //
 
+#include <framework/system_settings.h>
 #include "comm/messages.h"
 #include "unit_base.h"
 #include "utils/avrlibc.h"
@@ -12,6 +13,8 @@
 /** Private data structure */
 struct priv {
     uint8_t periph_num; //!< 1 or 2
+    uint8_t remap;      //!< I2C remap option
+
     bool anf;    //!< Enable analog noise filter
     uint8_t dnf; //!< Enable digital noise filter (1-15 ... max spike width)
     uint8_t speed; //!< 0 - Standard, 1 - Fast, 2 - Fast+
@@ -63,6 +66,9 @@ static error_t UI2C_loadIni(Unit *unit, const char *key, const char *value)
     if (streq(key, "device")) {
         priv->periph_num = (uint8_t) avr_atoi(value);
     }
+    else if (streq(key, "remap")) {
+        priv->remap = (uint8_t) avr_atoi(value);
+    }
     else if (streq(key, "analog-filter")) {
         priv->anf = str_parse_yn(value, &suc);
     }
@@ -88,6 +94,22 @@ static void UI2C_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Peripheral number (I2Cx)");
     iw_entry(iw, "device", "%d", (int)priv->periph_num);
 
+    iw_comment(iw, "Pin mappings (SCL,SDA)");
+#if GEX_PLAT_F072_DISCOVERY
+    iw_comment(iw, " I2C1: (0) B6,B7    (1) B8,B9");
+    iw_comment(iw, " I2C2: (0) B10,B11  (1) B13,B14");
+#elif GEX_PLAT_F103_BLUEPILL
+    #error "NO IMPL"
+#elif GEX_PLAT_F303_DISCOVERY
+    #error "NO IMPL"
+#elif GEX_PLAT_F407_DISCOVERY
+    #error "NO IMPL"
+#else
+    #error "BAD PLATFORM!"
+#endif
+    iw_entry(iw, "remap", "%d", (int)priv->remap);
+
+    iw_cmt_newline(iw);
     iw_comment(iw, "Speed: 1-Standard, 2-Fast, 3-Fast+");
     iw_entry(iw, "speed", "%d", (int)priv->speed);
 
@@ -157,17 +179,38 @@ static error_t UI2C_init(Unit *unit)
 #if GEX_PLAT_F072_DISCOVERY
     // scl - 6 or 8 for I2C1, 10 for I2C2
     // sda - 7 or 9 for I2C1, 11 for I2C2
-    portname = 'B';
-
     if (priv->periph_num == 1) {
-        pin_scl = 8;
-        pin_sda = 9;
+        // I2C1
+        if (priv->remap == 0) {
+            af_i2c = LL_GPIO_AF_1;
+            portname = 'B';
+            pin_scl = 6;
+            pin_sda = 7;
+        } else if (priv->remap == 1) {
+            af_i2c = LL_GPIO_AF_1;
+            portname = 'B';
+            pin_scl = 8;
+            pin_sda = 9;
+        } else {
+            return E_BAD_CONFIG;
+        }
     } else {
-        pin_scl = 10;
-        pin_sda = 12;
+        // I2C2
+        if (priv->remap == 0) {
+            af_i2c = LL_GPIO_AF_1;
+            portname = 'B';
+            pin_scl = 10;
+            pin_sda = 11;
+        } else if (priv->remap == 1) {
+            af_i2c = LL_GPIO_AF_5;
+            portname = 'B';
+            pin_scl = 13;
+            pin_sda = 14;
+        } else {
+            return E_BAD_CONFIG;
+        }
     }
 
-    af_i2c = LL_GPIO_AF_1;
     if (priv->speed == 1)
         timing = 0x00301D2B; // Standard
     else if (priv->speed == 2)
@@ -244,7 +287,6 @@ static void UI2C_deInit(Unit *unit)
     // de-init the pins & peripheral only if inited correctly
     if (unit->status == E_SUCCESS) {
         assert_param(priv->periph);
-        assert_param(priv->port);
 
         LL_I2C_DeInit(priv->periph);
 
@@ -253,9 +295,6 @@ static void UI2C_deInit(Unit *unit)
         } else {
             __HAL_RCC_I2C2_CLK_DISABLE();
         }
-
-        LL_GPIO_SetPinMode(priv->port, priv->ll_pin_sda, LL_GPIO_MODE_ANALOG);
-        LL_GPIO_SetPinMode(priv->port, priv->ll_pin_scl, LL_GPIO_MODE_ANALOG);
     }
 
     // Release all resources

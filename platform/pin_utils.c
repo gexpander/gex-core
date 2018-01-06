@@ -260,3 +260,14 @@ uint16_t port_pack(uint16_t spread, uint16_t mask)
     }
     return result;
 }
+
+void deinit_unit_pins(Unit *unit)
+{
+    for (uint32_t rsc = R_PA0; rsc <= R_PF0; rsc++) {
+        if (RSC_IS_HELD(unit->resources, rsc)) {
+            GPIO_TypeDef *port = port_periphs[(rsc-R_PA0) / 16];
+            uint32_t ll_pin = ll_pins[(rsc-R_PA0)%16];
+            LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ANALOG);
+        }
+    }
+}
