@@ -125,18 +125,14 @@ static error_t DO_init(Unit *unit)
     // Claim all needed pins
     TRY(rsc_claim_gpios(unit, priv->port_name, priv->pins));
 
-    uint16_t mask = 1;
-    for (int i = 0; i < 16; i++, mask <<= 1) {
-        if (priv->pins & mask) {
+    for (int i = 0; i < 16; i++) {
+        if (priv->pins & (1 << i)) {
             uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
 
             // --- Init hardware ---
             LL_GPIO_SetPinMode(priv->port, ll_pin, LL_GPIO_MODE_OUTPUT);
-
-            LL_GPIO_SetPinOutputType(priv->port, ll_pin, (priv->open_drain & mask) ?
-                                                         LL_GPIO_OUTPUT_OPENDRAIN :
-                                                         LL_GPIO_OUTPUT_PUSHPULL);
-
+            LL_GPIO_SetPinOutputType(priv->port, ll_pin,
+                                     (priv->open_drain & (1 << i)) ? LL_GPIO_OUTPUT_OPENDRAIN : LL_GPIO_OUTPUT_PUSHPULL);
             LL_GPIO_SetPinSpeed(priv->port, ll_pin, LL_GPIO_SPEED_FREQ_HIGH);
         }
     }
@@ -236,8 +232,6 @@ enum PinCmd_ {
 /** Handle a request message */
 static error_t DO_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
-    struct priv *priv = unit->data;
-
     uint16_t packed = pp_u16(pp);
 
     switch (command) {
