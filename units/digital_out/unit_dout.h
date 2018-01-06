@@ -9,4 +9,14 @@
 
 extern const UnitDriver UNIT_DOUT;
 
+error_t UU_DO_Write(Unit *unit, uint16_t packed);
+
+error_t UU_DO_Set(Unit *unit, uint16_t packed);
+
+error_t UU_DO_Clear(Unit *unit, uint16_t packed);
+
+error_t UU_DO_Toggle(Unit *unit, uint16_t packed);
+
+error_t UU_DO_GetPinCount(Unit *unit, uint8_t *count);
+
 #endif //U_DOUT_H

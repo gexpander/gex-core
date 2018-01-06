@@ -9,10 +9,11 @@
 
 // -------- Static buffers ---------
 #define TSK_STACK_MAIN      220 // USB / VFS task stack size
-#define TSK_STACK_MSG       200 // TF message handler task stack size
+#define TSK_STACK_MSG       220 // TF message handler task stack size
 #define TSK_STACK_JOBRUNNER 80 // Job runner task stack size
 
-#define BULKREAD_MAX_CHUNK  256 // Bulk read buffer
+#define BULK_READ_BUF_LEN 256   // Buffer for TF bulk reads
+#define UNIT_TMP_LEN      512   // Buffer for bulk read and varions internal unit operations
 
 #define FLASH_SAVE_BUF_LEN  256 // Static buffer for saving to flash
 

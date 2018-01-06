@@ -42,6 +42,7 @@
     X(OVERRUN, NULL) /* used in bulk transfer */ \
     X(PROTOCOL_BREACH, NULL) /* eating with the wrong spoon */  \
     X(BAD_UNIT_TYPE, NULL) \
+    X(NOT_IMPLEMENTED, NULL) \
     \
     /* VFS user errors (those are meant to be shown to user) */ \
     X(ERROR_DURING_TRANSFER, "Error during transfer") \
@@ -57,7 +58,7 @@
     X(BAD_KEY, "Unexpected config key") \
     X(BAD_VALUE, "Bad config value") \
     X(OUT_OF_MEM, "Not enough RAM") \
-    X(RESOURCE_NOT_AVAILABLE, "Required pin / peripheral not available")
+    X(RESOURCE_NOT_AVAILABLE, NULL)
 
 // Keep in sync with the list error_message
 typedef enum {

@@ -42,6 +42,7 @@ static int32_t unit_count = -1;
 
 void ureg_add_type(const UnitDriver *driver)
 {
+    bool suc = true;
     assert_param(driver != NULL);
     assert_param(driver->name != NULL);
 
@@ -57,7 +58,9 @@ void ureg_add_type(const UnitDriver *driver)
     assert_param(driver->deInit != NULL);
     assert_param(driver->handleRequest != NULL);
 
-    UregEntry *re = malloc_s(sizeof(UregEntry));
+    UregEntry *re = calloc_ck(1, sizeof(UregEntry), &suc);
+    assert_param(suc);
+
     re->driver = driver;
     re->next = NULL;
 
@@ -108,7 +111,7 @@ Unit *ureg_instantiate(const char *driver_name)
     while (re != NULL) {
         if (streq(re->driver->name, driver_name)) {
             // Create new list entry
-            UlistEntry *le = malloc_ck(sizeof(UlistEntry), &suc);
+            UlistEntry *le = calloc_ck(1, sizeof(UlistEntry), &suc);
             CHECK_SUC();
 
             le->next = NULL;
@@ -355,7 +358,22 @@ static void export_unit_do(UlistEntry *li, IniWriter *iw)
 
     iw_section(iw, "%s:%s@%d", pUnit->driver->name, pUnit->name, (int)pUnit->callsign);
     if (pUnit->status != E_SUCCESS) {
-        iw_comment(iw, "!!! %s", error_get_message(pUnit->status));
+        // temporarily force comments ON
+        bool sc = SystemSettings.ini_comments;
+        SystemSettings.ini_comments = true;
+        {
+            // special message for failed unit die to resource
+            if (pUnit->status == E_RESOURCE_NOT_AVAILABLE) {
+                iw_comment(iw, "!!! %s not available, already held by %s",
+                           rsc_get_name(pUnit->failed_rsc),
+                           rsc_get_owner_name(pUnit->failed_rsc));
+            }
+            else {
+                iw_comment(iw, "!!! %s", error_get_message(pUnit->status));
+            }
+            iw_cmt_newline(iw);
+        }
+        SystemSettings.ini_comments = sc;
     }
     pUnit->driver->cfgWriteIni(pUnit, iw);
 }
@@ -431,42 +449,51 @@ uint32_t ureg_get_num_units(void)
     return (uint32_t) unit_count;
 }
 
+extern osMutexId mutScratchBufferHandle;
+
 /** Deliver message to it's destination unit */
 void ureg_deliver_unit_request(TF_Msg *msg)
 {
-    PayloadParser pp = pp_start(msg->data, msg->len, NULL);
-    uint8_t callsign = pp_u8(&pp);
-    uint8_t command = pp_u8(&pp);
+    // we must claim the scratch buffer because it's used by many units internally
+    assert_param(osOK == osMutexWait(mutScratchBufferHandle, 5000));
+    {
+        PayloadParser pp = pp_start(msg->data, msg->len, NULL);
+        uint8_t callsign = pp_u8(&pp);
+        uint8_t command = pp_u8(&pp);
 
-    // highest bit indicates user wants an extra confirmation on success
-    bool confirmed = (bool) (command & 0x80);
-    command &= 0x7F;
+        // highest bit indicates user wants an extra confirmation on success
+        bool confirmed = (bool) (command & 0x80);
+        command &= 0x7F;
 
-    if (callsign == 0 || !pp.ok) {
-        com_respond_error(msg->frame_id, E_MALFORMED_COMMAND);
-        return;
-    }
-
-    UlistEntry *li = ulist_head;
-    while (li != NULL) {
-        Unit *const pUnit = &li->unit;
-        if (pUnit->callsign == callsign && pUnit->status == E_SUCCESS) {
-            error_t rv = pUnit->driver->handleRequest(pUnit, msg->frame_id, command, &pp);
-
-            // send extra SUCCESS confirmation message.
-            // error is expected to have already been reported.
-            if (rv == E_SUCCESS) {
-                if (confirmed) com_respond_ok(msg->frame_id);
-            } else {
-                com_respond_error(msg->frame_id, rv);
-            }
-            return;
+        if (callsign == 0 || !pp.ok) {
+            com_respond_error(msg->frame_id, E_MALFORMED_COMMAND);
+            goto quit;
         }
-        li = li->next;
-    }
 
-    // Not found
-    com_respond_error(msg->frame_id, E_NO_SUCH_UNIT);
+        UlistEntry *li = ulist_head;
+        while (li != NULL) {
+            Unit *const pUnit = &li->unit;
+            if (pUnit->callsign == callsign && pUnit->status == E_SUCCESS) {
+                error_t rv = pUnit->driver->handleRequest(pUnit, msg->frame_id, command, &pp);
+
+                // send extra SUCCESS confirmation message.
+                // error is expected to have already been reported.
+                if (rv == E_SUCCESS) {
+                    if (confirmed) com_respond_ok(msg->frame_id);
+                }
+                else {
+                    com_respond_error(msg->frame_id, rv);
+                }
+                goto quit;
+            }
+            li = li->next;
+        }
+
+        // Not found
+        com_respond_error(msg->frame_id, E_NO_SUCH_UNIT);
+    }
+    quit:
+    assert_param(osOK == osMutexRelease(mutScratchBufferHandle));
 }
 
 /** Send a response for a unit-list request */
@@ -488,7 +515,7 @@ void ureg_report_active_units(TF_ID frame_id)
     msglen += count; // one byte per message for the callsign
 
     bool suc = true;
-    uint8_t *buff = malloc_ck(msglen, &suc);
+    uint8_t *buff = calloc_ck(1, msglen, &suc);
     if (!suc) {
         com_respond_error(frame_id, E_OUT_OF_MEM);
         return;
@@ -513,4 +540,20 @@ void ureg_report_active_units(TF_ID frame_id)
         com_respond_buf(frame_id, MSG_SUCCESS, buff, msglen);
     }
     free(buff);
+}
+
+Unit *ureg_get_rsc_owner(Resource resource)
+{
+    UlistEntry *li = ulist_head;
+    while (li != NULL) {
+        if (RSC_IS_HELD(li->unit.resources, resource)) {
+            return &li->unit;
+        }
+        li = li->next;
+    }
+
+    if (RSC_IS_HELD(UNIT_SYSTEM.resources, resource)) return &UNIT_SYSTEM;
+    if (RSC_IS_HELD(UNIT_PLATFORM.resources, resource)) return &UNIT_PLATFORM;
+
+    return NULL;
 }

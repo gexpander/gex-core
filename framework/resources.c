@@ -6,32 +6,57 @@
 #include "unit.h"
 #include "resources.h"
 #include "pin_utils.h"
+#include "unit_registry.h"
 
 static bool rsc_initialized = false;
 
-// This takes quite a lot of space, we could use u8 and IDs instead if needed
-struct resouce_slot {
-    const char *name;
-    Unit *owner;
-} __attribute__((packed));
+static ResourceMap global_rscmap;
 
-static struct resouce_slot resources[R_RESOURCE_COUNT];
+// here are the resource names for better debugging
 
-// here are the resource names for better debugging (could also be removed if absolutely necessary)
+// this list doesn't include GPIO names, they can be easily generated
 const char *const rsc_names[] = {
 #define X(res_name) #res_name,
     XX_RESOURCES
 #undef X
 };
 
+/** Get rsc name */
+const char * rsc_get_name(Resource rsc)
+{
+    assert_param(rsc < RESOURCE_COUNT);
+
+    static char gpionamebuf[4];
+    if (rsc >= R_PA0) {
+        // we assume the returned value is not stored anywhere
+        // and is directly used in a sprintf call.
+        uint8_t index = rsc - R_PA0;
+        SNPRINTF(gpionamebuf, 4, "%c%d", 'A'+(index/16), index%16);
+        return gpionamebuf;
+    }
+
+    return rsc_names[rsc];
+}
+
+/** Get rsc owner name */
+const char * rsc_get_owner_name(Resource rsc)
+{
+    assert_param(rsc < RESOURCE_COUNT);
+
+    Unit *pUnit = ureg_get_rsc_owner(rsc);
+    if (pUnit == NULL) return "NULL";
+    return pUnit->name;
+}
+
 /**
  * Initialize the resources registry
  */
 void rsc_init_registry(void)
 {
-    for (int i = 0; i < R_RESOURCE_COUNT; i++) {
-        resources[i].owner = &UNIT_PLATFORM;
+    for(uint32_t i = 0; i < RSCMAP_LEN; i++) {
+        UNIT_PLATFORM.resources[i] = global_rscmap[i] = 0xFF;
     }
+
     rsc_initialized = true;
 }
 
@@ -45,18 +70,31 @@ void rsc_init_registry(void)
 error_t rsc_claim(Unit *unit, Resource rsc)
 {
     assert_param(rsc_initialized);
-    assert_param(rsc > R_NONE && rsc < R_RESOURCE_COUNT);
+    assert_param(rsc < RESOURCE_COUNT);
     assert_param(unit != NULL);
 
-    if (resources[rsc].owner) {
-        //TODO properly report to user
+    dbg("%s claims %s", unit->name, rsc_get_name(rsc));
+
+    if (RSC_IS_HELD(global_rscmap, rsc)) {
+        // this whole branch is just reporting the error
+
+        Unit *holder = ureg_get_rsc_owner(rsc);
+        assert_param(holder != NULL);
+
         dbg("ERROR!! Unit %s failed to claim resource %s, already held by %s!",
-            unit->name, rsc_names[rsc], resources[rsc].owner->name);
+            unit->name,
+            rsc_get_name(rsc),
+            holder->name);
+
+        unit->failed_rsc = rsc;
 
         return E_RESOURCE_NOT_AVAILABLE;
     }
 
-    resources[rsc].owner = unit;
+    // must claim both in global and in unit
+    RSC_CLAIM(global_rscmap, rsc);
+    RSC_CLAIM(unit->resources, rsc);
+
     return E_SUCCESS;
 }
 
@@ -71,8 +109,9 @@ error_t rsc_claim(Unit *unit, Resource rsc)
 error_t rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1)
 {
     assert_param(rsc_initialized);
-    assert_param(rsc0 > R_NONE && rsc0 < R_RESOURCE_COUNT);
-    assert_param(rsc1 > R_NONE && rsc1 < R_RESOURCE_COUNT);
+    assert_param(rsc0 < RESOURCE_COUNT);
+    assert_param(rsc1 < RESOURCE_COUNT);
+    assert_param(rsc0 <= rsc1);
     assert_param(unit != NULL);
 
     for (int i = rsc0; i <= rsc1; i++) {
@@ -97,6 +136,15 @@ error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
     return E_SUCCESS;
 }
 
+error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin)
+{
+    bool suc = true;
+    Resource rsc = pin2resource(port_name,  pin, &suc);
+    if (!suc) return E_BAD_CONFIG;
+    TRY(rsc_claim(unit, rsc));
+    return E_SUCCESS;
+}
+
 /**
  * Free a resource for other use
  *
@@ -106,11 +154,31 @@ error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
 void rsc_free(Unit *unit, Resource rsc)
 {
     assert_param(rsc_initialized);
-    assert_param(rsc > R_NONE && rsc < R_RESOURCE_COUNT);
+    assert_param(rsc < RESOURCE_COUNT);
 
-    if (unit == NULL || resources[rsc].owner == unit) {
-        resources[rsc].owner = NULL;
+    dbg("Free resource %s", rsc_get_name(rsc));
+
+    if (RSC_IS_FREE(global_rscmap, rsc)) return;
+
+    // free it in any unit that holds it
+    if (unit) {
+        if (RSC_IS_HELD(unit->resources, rsc)) {
+            RSC_FREE(unit->resources, rsc);
+        }
+    } else {
+        // Try to free it in any unit that may hold it
+        unit = ureg_get_rsc_owner(rsc);
+        if (unit == NULL) {
+            // try one of the built-in ones
+            if (RSC_IS_HELD(UNIT_SYSTEM.resources, rsc)) unit = &UNIT_SYSTEM;
+            else if (RSC_IS_HELD(UNIT_PLATFORM.resources, rsc)) unit = &UNIT_PLATFORM;
+        }
+
+        if (unit != NULL) RSC_FREE(unit->resources, rsc);
     }
+
+    // also free it in the global map
+    RSC_FREE(global_rscmap, rsc);
 }
 
 /**
@@ -123,18 +191,18 @@ void rsc_free(Unit *unit, Resource rsc)
 void rsc_free_range(Unit *unit, Resource rsc0, Resource rsc1)
 {
     assert_param(rsc_initialized);
-    assert_param(rsc0 > R_NONE && rsc0 < R_RESOURCE_COUNT);
-    assert_param(rsc1 > R_NONE && rsc1 < R_RESOURCE_COUNT);
+    assert_param(rsc0 < RESOURCE_COUNT);
+    assert_param(rsc1 < RESOURCE_COUNT);
+    assert_param(rsc0 <= rsc1);
 
     for (int i = rsc0; i <= rsc1; i++) {
-        if (unit == NULL || resources[i].owner == unit) {
-            resources[i].owner = NULL;
-        }
+        rsc_free(unit, (Resource) i);
     }
 }
 
 /**
- * Tear down a unit - release all resources owned by the unit
+ * Tear down a unit - release all resources owned by the unit.
+ * Also de-init all GPIOs
  *
  * @param unit - unit to tear down; free only resources claimed by this unit
  */
@@ -143,9 +211,11 @@ void rsc_teardown(Unit *unit)
     assert_param(rsc_initialized);
     assert_param(unit != NULL);
 
-    for (int i = R_NONE+1; i < R_RESOURCE_COUNT; i++) {
-        if (resources[i].owner == unit) {
-            resources[i].owner = NULL;
-        }
+    dbg("Tearing down unit %s", unit->name);
+    deinit_unit_pins(unit);
+
+    for (uint32_t i = 0; i < RSCMAP_LEN; i++) {
+        global_rscmap[i] &= ~unit->resources[i];
+        unit->resources[i] = 0;
     }
 }

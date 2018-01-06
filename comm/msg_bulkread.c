@@ -11,7 +11,7 @@
 #include "utils/payload_builder.h"
 
 /** Buffer for preparing bulk chunks */
-static uint8_t bulkread_buffer[BULKREAD_MAX_CHUNK];
+static uint8_t bulkread_buffer[BULK_READ_BUF_LEN];
 
 /**
  * TF listener for the bulk read transaction
@@ -36,7 +36,7 @@ static TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
         uint32_t chunk = pp_u32(&pp);
 
         chunk = MIN(chunk, bulk->len - bulk->offset);
-        chunk = MIN(chunk, BULKREAD_MAX_CHUNK);
+        chunk = MIN(chunk, BULK_READ_BUF_LEN);
 
         // load data into the buffer
         bulk->read(bulk, chunk, bulkread_buffer);
@@ -81,7 +81,7 @@ void bulkread_start(TinyFrame *tf, BulkRead *bulk)
         uint8_t buf[8];
         PayloadBuilder pb = pb_start(buf, 4, NULL);
         pb_u32(&pb, bulk->len);
-        pb_u32(&pb, BULKREAD_MAX_CHUNK);
+        pb_u32(&pb, BULK_READ_BUF_LEN);
 
         // We use userdata1 to hold a reference to the bulk transfer
         TF_Msg msg = {

@@ -10,13 +10,14 @@
 #include "utils/ini_writer.h"
 #include "utils/payload_builder.h"
 #include "utils/payload_parser.h"
+#include "rsc_enum.h"
 
 #define CHECK_TYPE(_unit, _driver) do { \
     if ((_unit->driver) != (_driver)) \
         return E_BAD_UNIT_TYPE; \
 } while (0)
 
-extern char unit_tmp512[512]; // temporary static buffer - not expected to be accessed asynchronously
+extern char unit_tmp512[UNIT_TMP_LEN]; // temporary static buffer - not expected to be accessed asynchronously
 // TODO add mutex?
 
 typedef struct unit Unit;
@@ -33,11 +34,17 @@ struct unit {
      */
     void *data;
 
+    /** Unit call sign for messages */
+    uint8_t callsign;
+
     /** Unit init status */
     error_t status;
 
-    /** Unit call sign for messages */
-    uint8_t callsign;
+    /** If RSC not avail. error is caught, the resource is stored here. */
+    Resource failed_rsc;
+
+    /** Bit-map of held resources */
+    ResourceMap resources;
 };
 
 /**

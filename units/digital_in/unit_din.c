@@ -161,23 +161,7 @@ static error_t DI_init(Unit *unit)
 /** Tear down the unit */
 static void DI_deInit(Unit *unit)
 {
-    struct priv *priv = unit->data;
-
-    if (unit->status == E_SUCCESS) {
-        assert_param(priv->port);
-
-        bool suc = true;
-        uint16_t mask = 1;
-        for (int i = 0; i < 16; i++, mask <<= 1) {
-            if (priv->pins & mask) {
-                uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
-                assert_param(suc); // this should never fail if we got this far
-
-                // configure the pin as analog
-                LL_GPIO_SetPinMode(priv->port, ll_pin, LL_GPIO_MODE_ANALOG);
-            }
-        }
-    }
+    // pins are de-inited during teardown
 
     // Release all resources
     rsc_teardown(unit);
@@ -210,7 +194,7 @@ static error_t DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
         case CMD_READ:;
             TRY(UU_DI_Read(unit, &packed));
 
-            PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 64, NULL);
+            PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, UNIT_TMP_LEN, NULL);
             pb_u16(&pb, packed);
             com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, pb_length(&pb));
             return E_SUCCESS;

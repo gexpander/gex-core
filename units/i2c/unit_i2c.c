@@ -2,6 +2,7 @@
 // Created by MightyPork on 2018/01/02.
 //
 
+#include <framework/system_settings.h>
 #include "comm/messages.h"
 #include "unit_base.h"
 #include "utils/avrlibc.h"
@@ -12,15 +13,17 @@
 /** Private data structure */
 struct priv {
     uint8_t periph_num; //!< 1 or 2
+    uint8_t remap;      //!< I2C remap option
+
     bool anf;    //!< Enable analog noise filter
     uint8_t dnf; //!< Enable digital noise filter (1-15 ... max spike width)
     uint8_t speed; //!< 0 - Standard, 1 - Fast, 2 - Fast+
 
     I2C_TypeDef *periph;
 
-    GPIO_TypeDef *port;
-    uint32_t ll_pin_scl;
-    uint32_t ll_pin_sda;
+//    GPIO_TypeDef *port;
+//    uint32_t ll_pin_scl;
+//    uint32_t ll_pin_sda;
 };
 
 // ------------------------------------------------------------------------
@@ -37,6 +40,10 @@ static void UI2C_loadBinary(Unit *unit, PayloadParser *pp)
     priv->anf = pp_bool(pp);
     priv->dnf = pp_u8(pp);
     priv->speed = pp_u8(pp);
+
+    if (version >= 1) {
+        priv->remap = pp_u8(pp);
+    }
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -44,12 +51,13 @@ static void UI2C_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_u8(pb, 0); // version
+    pb_u8(pb, 1); // version
 
     pb_u8(pb, priv->periph_num);
     pb_bool(pb, priv->anf);
     pb_u8(pb, priv->dnf);
     pb_u8(pb, priv->speed);
+    pb_u8(pb, priv->remap);
 }
 
 // ------------------------------------------------------------------------
@@ -62,6 +70,9 @@ static error_t UI2C_loadIni(Unit *unit, const char *key, const char *value)
 
     if (streq(key, "device")) {
         priv->periph_num = (uint8_t) avr_atoi(value);
+    }
+    else if (streq(key, "remap")) {
+        priv->remap = (uint8_t) avr_atoi(value);
     }
     else if (streq(key, "analog-filter")) {
         priv->anf = str_parse_yn(value, &suc);
@@ -88,6 +99,22 @@ static void UI2C_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Peripheral number (I2Cx)");
     iw_entry(iw, "device", "%d", (int)priv->periph_num);
 
+    iw_comment(iw, "Pin mappings (SCL,SDA)");
+#if GEX_PLAT_F072_DISCOVERY
+    iw_comment(iw, " I2C1: (0) B6,B7    (1) B8,B9");
+    iw_comment(iw, " I2C2: (0) B10,B11  (1) B13,B14");
+#elif GEX_PLAT_F103_BLUEPILL
+    #error "NO IMPL"
+#elif GEX_PLAT_F303_DISCOVERY
+    #error "NO IMPL"
+#elif GEX_PLAT_F407_DISCOVERY
+    #error "NO IMPL"
+#else
+    #error "BAD PLATFORM!"
+#endif
+    iw_entry(iw, "remap", "%d", (int)priv->remap);
+
+    iw_cmt_newline(iw);
     iw_comment(iw, "Speed: 1-Standard, 2-Fast, 3-Fast+");
     iw_entry(iw, "speed", "%d", (int)priv->speed);
 
@@ -157,17 +184,38 @@ static error_t UI2C_init(Unit *unit)
 #if GEX_PLAT_F072_DISCOVERY
     // scl - 6 or 8 for I2C1, 10 for I2C2
     // sda - 7 or 9 for I2C1, 11 for I2C2
-    portname = 'B';
-
     if (priv->periph_num == 1) {
-        pin_scl = 8;
-        pin_sda = 9;
+        // I2C1
+        if (priv->remap == 0) {
+            af_i2c = LL_GPIO_AF_1;
+            portname = 'B';
+            pin_scl = 6;
+            pin_sda = 7;
+        } else if (priv->remap == 1) {
+            af_i2c = LL_GPIO_AF_1;
+            portname = 'B';
+            pin_scl = 8;
+            pin_sda = 9;
+        } else {
+            return E_BAD_CONFIG;
+        }
     } else {
-        pin_scl = 10;
-        pin_sda = 12;
+        // I2C2
+        if (priv->remap == 0) {
+            af_i2c = LL_GPIO_AF_1;
+            portname = 'B';
+            pin_scl = 10;
+            pin_sda = 11;
+        } else if (priv->remap == 1) {
+            af_i2c = LL_GPIO_AF_5;
+            portname = 'B';
+            pin_scl = 13;
+            pin_sda = 14;
+        } else {
+            return E_BAD_CONFIG;
+        }
     }
 
-    af_i2c = LL_GPIO_AF_1;
     if (priv->speed == 1)
         timing = 0x00301D2B; // Standard
     else if (priv->speed == 2)
@@ -186,32 +234,11 @@ static error_t UI2C_init(Unit *unit)
 #endif
 
     // first, we have to claim the pins
-    Resource r_sda = pin2resource(portname, pin_sda, &suc);
-    Resource r_scl = pin2resource(portname, pin_scl, &suc);
-    if (!suc) return E_BAD_CONFIG;
+    TRY(rsc_claim_pin(unit, portname, pin_sda));
+    TRY(rsc_claim_pin(unit, portname, pin_scl));
 
-    TRY(rsc_claim(unit, r_sda));
-    TRY(rsc_claim(unit, r_scl));
-
-    priv->port = port2periph(portname, &suc);
-    uint32_t ll_pin_scl = pin2ll(pin_scl, &suc);
-    uint32_t ll_pin_sda = pin2ll(pin_sda, &suc);
-    if (!suc) return E_BAD_CONFIG;
-
-    // configure AF
-    if (pin_scl < 8) LL_GPIO_SetAFPin_0_7(priv->port, ll_pin_scl, af_i2c);
-    else LL_GPIO_SetAFPin_8_15(priv->port, ll_pin_scl, af_i2c);
-
-    if (pin_sda < 8) LL_GPIO_SetAFPin_0_7(priv->port, ll_pin_sda, af_i2c);
-    else LL_GPIO_SetAFPin_8_15(priv->port, ll_pin_sda, af_i2c);
-
-    LL_GPIO_SetPinMode(priv->port, ll_pin_scl, LL_GPIO_MODE_ALTERNATE);
-    LL_GPIO_SetPinMode(priv->port, ll_pin_sda, LL_GPIO_MODE_ALTERNATE);
-
-    // set as OpenDrain (this may not be needed - TODO check)
-    LL_GPIO_SetPinOutputType(priv->port, ll_pin_scl, LL_GPIO_OUTPUT_OPENDRAIN);
-    LL_GPIO_SetPinOutputType(priv->port, ll_pin_sda, LL_GPIO_OUTPUT_OPENDRAIN);
-
+    configure_gpio_alternate(portname, pin_sda, af_i2c);
+    configure_gpio_alternate(portname, pin_scl, af_i2c);
 
     if (priv->periph_num == 1) {
         __HAL_RCC_I2C1_CLK_ENABLE();
@@ -222,8 +249,7 @@ static error_t UI2C_init(Unit *unit)
     /* Disable the selected I2Cx Peripheral */
     LL_I2C_Disable(priv->periph);
     LL_I2C_ConfigFilters(priv->periph,
-                         priv->anf ? LL_I2C_ANALOGFILTER_ENABLE
-                                   : LL_I2C_ANALOGFILTER_DISABLE,
+                         (priv->anf ? LL_I2C_ANALOGFILTER_ENABLE : LL_I2C_ANALOGFILTER_DISABLE),
                          priv->dnf);
 
     LL_I2C_SetTiming(priv->periph, timing);
@@ -244,7 +270,6 @@ static void UI2C_deInit(Unit *unit)
     // de-init the pins & peripheral only if inited correctly
     if (unit->status == E_SUCCESS) {
         assert_param(priv->periph);
-        assert_param(priv->port);
 
         LL_I2C_DeInit(priv->periph);
 
@@ -253,9 +278,6 @@ static void UI2C_deInit(Unit *unit)
         } else {
             __HAL_RCC_I2C2_CLK_DISABLE();
         }
-
-        LL_GPIO_SetPinMode(priv->port, priv->ll_pin_sda, LL_GPIO_MODE_ANALOG);
-        LL_GPIO_SetPinMode(priv->port, priv->ll_pin_scl, LL_GPIO_MODE_ANALOG);
     }
 
     // Release all resources
@@ -269,7 +291,7 @@ static void UI2C_deInit(Unit *unit)
 // ------------------------------------------------------------------------
 
 enum PinCmd_ {
-    CMD_WRITE = 0,
+    CMD_QUERY = 0,
     CMD_READ = 1,
     CMD_WRITE_REG = 2,
     CMD_READ_REG = 3,
@@ -380,7 +402,7 @@ error_t UU_I2C_WriteReg(Unit *unit, uint16_t addr, uint8_t regnum, const uint8_t
     CHECK_TYPE(unit, &UNIT_I2C);
 
     // we have to insert the address first - needs a buffer (XXX realistically the buffer needs 1-4 bytes + addr)
-    PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, 512, NULL);
+    PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, UNIT_TMP_LEN, NULL);
     pb_u8(&pb, regnum);
     pb_buf(&pb, bytes, width);
 
@@ -400,7 +422,7 @@ static error_t UI2C_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 
     switch (command) {
         /** Write byte(s) - addr:u16, byte(s)  */
-        case CMD_WRITE:
+        case CMD_QUERY:
             addr = pp_u16(pp);
             const uint8_t *bb = pp_tail(pp, &len);
 

@@ -62,7 +62,7 @@ static error_t DO_loadIni(Unit *unit, const char *key, const char *value)
     else if (streq(key, "initial")) {
         priv->initial = parse_pinmask(value, &suc);
     }
-    else if (streq(key, "opendrain")) {
+    else if (streq(key, "open-drain")) {
         priv->open_drain = parse_pinmask(value, &suc);
     }
     else {
@@ -88,7 +88,7 @@ static void DO_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "initial", "%s", str_pinmask(priv->initial, unit_tmp512));
 
     iw_comment(iw, "Open-drain pins");
-    iw_entry(iw, "opendrain", "%s", str_pinmask(priv->open_drain, unit_tmp512));
+    iw_entry(iw, "open-drain", "%s", str_pinmask(priv->open_drain, unit_tmp512));
 }
 
 // ------------------------------------------------------------------------
@@ -125,18 +125,14 @@ static error_t DO_init(Unit *unit)
     // Claim all needed pins
     TRY(rsc_claim_gpios(unit, priv->port_name, priv->pins));
 
-    uint16_t mask = 1;
-    for (int i = 0; i < 16; i++, mask <<= 1) {
-        if (priv->pins & mask) {
+    for (int i = 0; i < 16; i++) {
+        if (priv->pins & (1 << i)) {
             uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
 
             // --- Init hardware ---
             LL_GPIO_SetPinMode(priv->port, ll_pin, LL_GPIO_MODE_OUTPUT);
-
-            LL_GPIO_SetPinOutputType(priv->port, ll_pin, (priv->open_drain & mask) ?
-                                                         LL_GPIO_OUTPUT_OPENDRAIN :
-                                                         LL_GPIO_OUTPUT_PUSHPULL);
-
+            LL_GPIO_SetPinOutputType(priv->port, ll_pin,
+                                     (priv->open_drain & (1 << i)) ? LL_GPIO_OUTPUT_OPENDRAIN : LL_GPIO_OUTPUT_PUSHPULL);
             LL_GPIO_SetPinSpeed(priv->port, ll_pin, LL_GPIO_SPEED_FREQ_HIGH);
         }
     }
@@ -151,25 +147,7 @@ static error_t DO_init(Unit *unit)
 /** Tear down the unit */
 static void DO_deInit(Unit *unit)
 {
-    struct priv *priv = unit->data;
-
-    // de-init the pins only if inited correctly
-    if (unit->status == E_SUCCESS) {
-        assert_param(priv->port);
-
-        bool suc = true;
-        uint16_t mask = 1;
-        for (int i = 0; i < 16; i++, mask <<= 1) {
-            if (priv->pins & mask) {
-
-                uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
-                assert_param(suc); // this should never fail if we got this far
-
-                // configure the pin as analog
-                LL_GPIO_SetPinMode(priv->port, ll_pin, LL_GPIO_MODE_ANALOG);
-            }
-        }
-    }
+    // pins are de-inited during teardown
 
     // Release all resources
     rsc_teardown(unit);
@@ -234,9 +212,18 @@ error_t UU_DO_Toggle(Unit *unit, uint16_t packed)
     return E_SUCCESS;
 }
 
+error_t UU_DO_GetPinCount(Unit *unit, uint8_t *count)
+{
+    CHECK_TYPE(unit, &UNIT_DOUT);
+    struct priv *priv = unit->data;
+
+    uint32_t packed = port_pack(0xFFFF, priv->pins);
+    *count = (uint8_t)(32 - __CLZ(packed));
+    return E_SUCCESS;
+}
 
 enum PinCmd_ {
-    CMD_WRITE = 0,
+    CMD_QUERY = 0,
     CMD_SET = 1,
     CMD_CLEAR = 2,
     CMD_TOGGLE = 3,
@@ -245,12 +232,10 @@ enum PinCmd_ {
 /** Handle a request message */
 static error_t DO_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
-    struct priv *priv = unit->data;
-
     uint16_t packed = pp_u16(pp);
 
     switch (command) {
-        case CMD_WRITE:
+        case CMD_QUERY:
             return UU_DO_Write(unit, packed);
 
         case CMD_SET:

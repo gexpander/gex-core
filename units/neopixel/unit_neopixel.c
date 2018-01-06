@@ -121,13 +121,7 @@ static error_t Npx_init(Unit *unit)
 /** Tear down the unit */
 static void Npx_deInit(Unit *unit)
 {
-    struct priv *priv = unit->data;
-
-    if (unit->status == E_SUCCESS) {
-        assert_param(priv->port);
-        // configure the pin as analog
-        LL_GPIO_SetPinMode(priv->port, priv->ll_pin, LL_GPIO_MODE_ANALOG);
-    }
+    // pins are de-inited during teardown
 
     // Release all resources
     rsc_teardown(unit);

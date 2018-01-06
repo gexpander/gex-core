@@ -208,17 +208,17 @@ char * str_pinmask(uint16_t pins, char *buffer)
         } else {
             if (on) {
                 if (!first) {
-                    b += sprintf(b, ",");
+                    b += SPRINTF(b, ",");
                 }
                 if (start == (uint32_t)(i+1)) {
-                    b += sprintf(b, "%"PRIu32, start);
+                    b += SPRINTF(b, "%"PRIu32, start);
                 }
                 else if (start == (uint32_t)(i+2)) {
                     // exception for 2-long ranges - don't show as range
-                    b += sprintf(b, "%"PRIu32",%"PRIu32, start, i + 1);
+                    b += SPRINTF(b, "%"PRIu32",%"PRIu32, start, i + 1);
                 }
                 else {
-                    b += sprintf(b, "%"PRIu32"-%"PRIu32, start, i + 1);
+                    b += SPRINTF(b, "%"PRIu32"-%"PRIu32, start, i + 1);
                 }
                 first = false;
                 on = false;
@@ -259,4 +259,56 @@ uint16_t port_pack(uint16_t spread, uint16_t mask)
         }
     }
     return result;
+}
+
+void deinit_unit_pins(Unit *unit)
+{
+    for (uint32_t rsc = R_PA0; rsc <= R_PF15; rsc++) {
+        if (RSC_IS_HELD(unit->resources, rsc)) {
+            dbg("Freeing pin %s", rsc_get_name((Resource)rsc));
+            GPIO_TypeDef *port = port_periphs[(rsc-R_PA0) / 16];
+            uint32_t ll_pin = ll_pins[(rsc-R_PA0)%16];
+            LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ANALOG);
+        }
+    }
+}
+
+
+error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t af)
+{
+    bool suc = true;
+    GPIO_TypeDef *port = port2periph(port_name, &suc);
+    uint32_t ll_pin = pin2ll(pin_num, &suc);
+    if (!suc) return E_BAD_CONFIG;
+
+    if (pin_num < 8)
+        LL_GPIO_SetAFPin_0_7(port, ll_pin, af);
+    else
+        LL_GPIO_SetAFPin_8_15(port, ll_pin, af);
+
+    LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ALTERNATE);
+
+    return E_SUCCESS;
+}
+
+error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port_dest, uint32_t mode, uint32_t otype)
+{
+    bool suc = true;
+    GPIO_TypeDef *port = port2periph(port_name, &suc);
+    if (!suc) return E_BAD_CONFIG;
+
+    for (int i = 0; i < 16; i++) {
+        if (mask & (1<<i)) {
+            uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
+            LL_GPIO_SetPinMode(port, ll_pin, mode);
+            LL_GPIO_SetPinOutputType(port, ll_pin, otype);
+            LL_GPIO_SetPinSpeed(port, ll_pin, LL_GPIO_SPEED_FREQ_HIGH);
+        }
+    }
+
+    if (port_dest != NULL) {
+        *port_dest = port;
+    }
+
+    return E_SUCCESS;
 }
