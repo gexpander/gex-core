@@ -135,4 +135,11 @@ void ureg_report_active_units(TF_ID frame_id);
  */
 Unit *ureg_get_rsc_owner(Resource resource);
 
+/**
+ * Print a overview of resources held by units
+ *
+ * @param iw
+ */
+void ureg_print_unit_resources(IniWriter *iw);
+
 #endif //GEX_UNIT_REGISTRY_H

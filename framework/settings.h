@@ -57,23 +57,15 @@ void settings_load_ini_end(void);
 void settings_build_units_ini(IniWriter *iw);
 
 /**
- * Get UNITS.INI len (expensive, uses dummy read)
- *
- * @return bytes
- */
-uint32_t settings_get_units_ini_len(void);
-
-/**
  * Write SYSTEM.INI to iniwriter
  * @param iw - writer handle
  */
 void settings_build_system_ini(IniWriter *iw);
 
 /**
- * Get SYSTEM.INI len (expensive, uses dummy read)
- *
- * @return bytes
+ * Write UNITS.TXT to iniwriter
+ * @param iw - writer handle
  */
-uint32_t settings_get_system_ini_len(void);
+void settings_build_pinout_txt(IniWriter *iw);
 
 #endif //GEX_SETTINGS_H

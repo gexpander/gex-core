@@ -33,6 +33,7 @@
 // GEX version string
 #include "version.h"
 
+
 // ---
 
 /**
@@ -55,5 +56,8 @@ void plat_register_units(void);
  * Use the DPPU bit on USB_BCDR, if available.
  */
 void plat_usb_reconnect(void);
+
+// provided as extern
+//void plat_print_system_pinout(IniWriter *iw);
 
 #endif //GEX_PLATFORM_H

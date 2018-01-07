@@ -27,33 +27,33 @@
 
 const vfs_filename_t daplink_drive_name = VFS_DRIVE_NAME;
 
+static uint32_t read_iw_sector(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors, void (*handler)(IniWriter *))
+{
+    const uint32_t avail = num_sectors*VFS_SECTOR_SIZE;
+    const uint32_t skip = sector_offset*VFS_SECTOR_SIZE;
+    IniWriter iw = iw_init((char *)data, skip, avail);
+    handler(&iw);
+    return avail - iw.count;
+}
+
 // File callback to be used with vfs_add_file to return file contents
 static uint32_t read_file_units_ini(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
 {
     vfs_printf("Read UNITS.INI");
-
-    const uint32_t avail = num_sectors*VFS_SECTOR_SIZE;
-    const uint32_t skip = sector_offset*VFS_SECTOR_SIZE;
-
-    IniWriter iw = iw_init((char *)data, skip, avail);
-    settings_build_units_ini(&iw);
-
-    return avail - iw.count;
+    return read_iw_sector(sector_offset, data, num_sectors, settings_build_units_ini);
 }
 
 static uint32_t read_file_system_ini(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
 {
     vfs_printf("Read SYSTEM.INI");
-
-    const uint32_t avail = num_sectors*VFS_SECTOR_SIZE;
-    const uint32_t skip = sector_offset*VFS_SECTOR_SIZE;
-
-    IniWriter iw = iw_init((char *)data, skip, avail);
-    settings_build_system_ini(&iw);
-
-    return avail - iw.count;
+    return read_iw_sector(sector_offset, data, num_sectors, settings_build_system_ini);
 }
 
+static uint32_t read_file_pinout_txt(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
+{
+    vfs_printf("Read PINOUT.TXT");
+    return read_iw_sector(sector_offset, data, num_sectors, settings_build_pinout_txt);
+}
 
 void vfs_user_build_filesystem(void)
 {
@@ -62,8 +62,9 @@ void vfs_user_build_filesystem(void)
     // Setup the filesystem based on target parameters
     vfs_init(daplink_drive_name, 0/*unused "disk size"*/);
 
-    vfs_create_file("UNITS   INI", read_file_units_ini, NULL, settings_get_units_ini_len());
-    vfs_create_file("SYSTEM  INI", read_file_system_ini, NULL, settings_get_system_ini_len());
+    vfs_create_file("UNITS   INI", read_file_units_ini, NULL, iw_measure_total(settings_build_units_ini));
+    vfs_create_file("SYSTEM  INI", read_file_system_ini, NULL, iw_measure_total(settings_build_system_ini));
+    vfs_create_file("PINOUT  TXT", read_file_pinout_txt, NULL, iw_measure_total(settings_build_pinout_txt));
 }
 
 // Callback to handle changes to the root directory.  Should be used with vfs_set_file_change_callback

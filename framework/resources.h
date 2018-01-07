@@ -36,4 +36,7 @@ const char * rsc_get_name(Resource rsc);
 /** Get rsc owner name */
 const char * rsc_get_owner_name(Resource rsc);
 
+/** Print all available resource names */
+void rsc_print_all_available(IniWriter *iw);
+
 #endif //GEX_RESOURCES_H

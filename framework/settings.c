@@ -2,13 +2,14 @@
 // Created by MightyPork on 2017/11/26.
 //
 
-#include <utils/avrlibc.h>
+#include "utils/avrlibc.h"
 #include "platform.h"
 #include "utils/hexdump.h"
 #include "settings.h"
 #include "unit_registry.h"
 #include "system_settings.h"
 #include "utils/str_utils.h"
+#include "unit_base.h"
 
 // pre-declarations
 static void savebuf_flush(PayloadBuilder *pb, bool final);
@@ -211,27 +212,37 @@ static void savebuf_flush(PayloadBuilder *pb, bool final)
 
 // ---------------------------------------------------------------
 
-static void ini_preamble(IniWriter *iw, const char *filename)
+static void gex_file_preamble(IniWriter *iw, const char *filename)
 {
-    // File header
+// File header
     iw_hdr_comment(iw, filename);
     iw_hdr_comment(iw, "GEX v%s on %s", GEX_VERSION, GEX_PLATFORM);
     iw_hdr_comment(iw, "built %s at %s", __DATE__, __TIME__);
     iw_cmt_newline(iw);
+}
+
+static void ini_preamble(IniWriter *iw, const char *filename)
+{
+    gex_file_preamble(iw, filename);
 
     iw_comment(iw, "Overwrite this file to change settings.");
-    iw_comment(iw, "Close the LOCK jumper to save them to Flash.");
+    #if PLAT_LOCK_BTN
+        iw_comment(iw, "Press the LOCK button to save them to Flash.");
+    #else
+        iw_comment(iw, "Close the LOCK jumper to save them to Flash.");
+    #endif
 }
+
+// --- UNITS.INI ---
 
 extern osMutexId mutScratchBufferHandle;
 
 /**
- * Write system settings to INI (without section)
+ * Build units ini file
  */
 void settings_build_units_ini(IniWriter *iw)
 {
     ini_preamble(iw, "UNITS.INI");
-
     assert_param(osOK == osMutexWait(mutScratchBufferHandle, 5000));
     {
         ureg_build_ini(iw);
@@ -239,31 +250,32 @@ void settings_build_units_ini(IniWriter *iw)
     assert_param(osOK == osMutexRelease(mutScratchBufferHandle));
 }
 
+// --- SYSTEM.INI ---
+
 /**
- * Write system settings to INI (without section)
+ * Build system settings ini file
  */
 void settings_build_system_ini(IniWriter *iw)
 {
     ini_preamble(iw, "SYSTEM.INI");
-
     systemsettings_build_ini(iw);
 }
 
-uint32_t settings_get_units_ini_len(void)
-{
-    // this writer is configured to skip everything, so each written byte will decrement the skip count
-    IniWriter iw = iw_init(NULL, 0xFFFFFFFF, 1); // count is never used, we use 1 because 0 means we're full
-    settings_build_units_ini(&iw);
-    // now we just check how many bytes were skipped
-    return 0xFFFFFFFF - iw.skip;
-}
+// --- PINOUT.TXT ---
 
-uint32_t settings_get_system_ini_len(void)
+/** print system pin.-out info (platform.c) */
+extern void plat_print_system_pinout(IniWriter *iw);
+
+/**
+ * Build pinout info file
+ */
+void settings_build_pinout_txt(IniWriter *iw)
 {
-    // same as above
-    IniWriter iw = iw_init(NULL, 0xFFFFFFFF, 1);
-    settings_build_system_ini(&iw);
-    return 0xFFFFFFFF - iw.skip;
+    gex_file_preamble(iw, "PINOUT.TXT");
+
+    rsc_print_all_available(iw);
+    ureg_print_unit_resources(iw);
+    plat_print_system_pinout(iw);
 }
 
 // ---------------------------------------------------------------

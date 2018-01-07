@@ -26,12 +26,12 @@ const char * rsc_get_name(Resource rsc)
 {
     assert_param(rsc < RESOURCE_COUNT);
 
-    static char gpionamebuf[4];
+    static char gpionamebuf[5];
     if (rsc >= R_PA0) {
         // we assume the returned value is not stored anywhere
         // and is directly used in a sprintf call.
         uint8_t index = rsc - R_PA0;
-        SNPRINTF(gpionamebuf, 4, "%c%d", 'A'+(index/16), index%16);
+        SNPRINTF(gpionamebuf, 5, "P%c%d", 'A'+(index/16), index%16);
         return gpionamebuf;
     }
 
@@ -218,4 +218,61 @@ void rsc_teardown(Unit *unit)
         global_rscmap[i] &= ~unit->resources[i];
         unit->resources[i] = 0;
     }
+}
+
+void rsc_print_all_available(IniWriter *iw)
+{
+    if (iw->count == 0) return;
+
+    static char buf[80];
+
+    iw_string(iw, "Resources available on this platform\r\n"
+                  "------------------------------------\r\n");
+
+    ResourceMap scratchmap = {};
+    for (uint32_t i = 0; i < RSCMAP_LEN; i++) {
+        scratchmap[i] = UNIT_PLATFORM.resources[i] | UNIT_SYSTEM.resources[i];
+    }
+
+    uint32_t count0 = (iw->count + iw->skip);
+    bool first = true;
+    for (uint32_t rsc = 0; rsc < R_PA0; rsc++) {
+        if (RSC_IS_HELD(scratchmap, (Resource)rsc)) continue;
+        if (!first) iw_string(iw, ", ");
+
+        // automatic newlines
+        if (count0 - (iw->count + iw->skip) >= 55) {
+            iw_newline(iw);
+            count0 = (iw->count + iw->skip);
+        }
+
+        iw_string(iw, rsc_get_name((Resource) rsc));
+        first = false;
+    }
+
+    // GPIOs will be printed using the range format
+    uint16_t bitmap = 0;
+    for (uint32_t rsc = R_PA0, i = 0; rsc <= R_PF15; rsc++, i++) {
+        if (i%16 == 0) {
+            // here we print the previous port
+            if (bitmap != 0) {
+                iw_string(iw, str_pinmask(bitmap, buf));
+                bitmap = 0;
+            }
+
+            // first of a port
+            iw_newline(iw);
+            iw_sprintf(iw, "P%c: ", (char)('A' + (i/16)));
+        }
+
+        if (RSC_IS_FREE(scratchmap, (Resource)rsc)) {
+            bitmap |= 1<<i%16;
+        }
+    }
+    // the last one
+    if (bitmap != 0) {
+        iw_string(iw, str_pinmask(bitmap, buf));
+    }
+    iw_newline(iw);
+    iw_newline(iw);
 }

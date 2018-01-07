@@ -557,3 +557,29 @@ Unit *ureg_get_rsc_owner(Resource resource)
 
     return NULL;
 }
+
+void ureg_print_unit_resources(IniWriter *iw)
+{
+    if (iw->count == 0) return;
+
+    iw_string(iw, "Resources held by units\r\n"
+                  "-----------------------\r\n");
+    UlistEntry *li = ulist_head;
+    while (li != NULL) {
+        iw_string(iw, li->unit.name);
+        iw_string(iw, ": ");
+
+        bool first = true;
+        for (uint32_t rsc = 0; rsc < RESOURCE_COUNT; rsc++) {
+            if (!RSC_IS_HELD(li->unit.resources, (Resource)rsc)) continue;
+            if (!first) iw_string(iw, ", ");
+            iw_string(iw, rsc_get_name((Resource) rsc));
+            first = false;
+        }
+        if (first) iw_string(iw, "-none-");
+        iw_newline(iw);
+
+        li = li->next;
+    }
+    iw_newline(iw);
+}

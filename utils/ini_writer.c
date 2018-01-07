@@ -91,3 +91,10 @@ void iw_entry(IniWriter *iw, const char *key, const char *format, ...)
     IW_VPRINTF();
     iw_newline(iw);	// one newline after entry
 }
+
+uint32_t iw_measure_total(void (*handler)(IniWriter *))
+{
+    IniWriter iw = iw_init(NULL, 0xFFFFFFFF, 1);
+    handler(&iw);
+    return 0xFFFFFFFF - iw.skip;
+}

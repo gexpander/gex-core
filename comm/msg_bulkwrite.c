@@ -30,7 +30,7 @@ static TF_Result bulkwrite_lst(TinyFrame *tf, TF_Msg *msg)
     else if (msg->type == MSG_BULK_DATA || msg->type == MSG_BULK_END) {
         // if past len, speak up
         if (bulk->offset >= bulk->len) {
-            com_respond_error(bulk->frame_id, E_OVERRUN);
+            com_respond_error(bulk->frame_id, E_PROTOCOL_BREACH);
             goto close;
         }
 
@@ -71,8 +71,8 @@ void bulkwrite_start(TinyFrame *tf, BulkWrite *bulk)
     {
         uint8_t buf[8];
         PayloadBuilder pb = pb_start(buf, 8, NULL);
-        pb_u32(&pb, bulk->len);
-        pb_u32(&pb, TF_MAX_PAYLOAD_RX);
+        pb_u32(&pb, bulk->len); // total expected len
+        pb_u32(&pb, TF_MAX_PAYLOAD_RX); // max chunk size
 
         // We use userdata1 to hold a reference to the bulk transfer
         TF_Msg msg = {

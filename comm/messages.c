@@ -80,7 +80,7 @@ static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
     assert_param(bulk);
 
     bulk->frame_id = msg->frame_id;
-    bulk->len = settings_get_units_ini_len();
+    bulk->len = iw_measure_total(settings_build_units_ini);
     bulk->read = settings_bulkread_cb;
     bulk->userdata = NULL;
 
@@ -124,7 +124,16 @@ static TF_Result lst_ini_import(TinyFrame *tf, TF_Msg *msg)
     assert_param(bulk);
 
     bulk->frame_id = msg->frame_id;
-    bulk->len = settings_get_units_ini_len();
+
+    // we get the total len in the payload - ini can be as long as it wants, we parse it on-line
+    PayloadParser pp = pp_start(msg->data, msg->len, NULL);
+    uint32_t len = pp_u32(&pp);
+    if (!pp.ok) {
+        com_respond_error(msg->frame_id, E_PROTOCOL_BREACH);
+        goto done;
+    }
+
+    bulk->len = len;
     bulk->write = settings_bulkwrite_cb;
 
     settings_load_ini_begin();
@@ -132,6 +141,7 @@ static TF_Result lst_ini_import(TinyFrame *tf, TF_Msg *msg)
 
     bulkwrite_start(tf, bulk);
 
+done:
     return TF_STAY;
 }
 

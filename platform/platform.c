@@ -252,3 +252,31 @@ void plat_usb_reconnect(void)
 
 }
 
+void plat_print_system_pinout(IniWriter *iw)
+{
+    if (iw->count == 0) return;
+
+    iw_string(iw, "System pin-out\r\n"
+                  "--------------\r\n");
+
+    #if PLAT_LOCK_BTN
+        iw_sprintf(iw, "Lock button (active="
+                #if PLAT_LOCK_1CLOSED
+                    "high"
+                #else
+                    "low"
+                #endif
+            "): P%c%d\r\n", LOCK_JUMPER_PORT, LOCK_JUMPER_PIN);
+    #else
+        iw_sprintf(iw, "Lock jumper (closed="
+                #if PLAT_LOCK_1CLOSED
+                    "high"
+                #else
+                    "low"
+                #endif
+            "): P%c%d\r\n", LOCK_JUMPER_PORT, LOCK_JUMPER_PIN);
+    #endif
+
+    iw_sprintf(iw, "Indicator LED (anode): P%c%d\r\n", STATUS_LED_PORT, STATUS_LED_PIN);
+    iw_sprintf(iw, "System clock speed: %d MHz\r\n", PLAT_AHB_MHZ);
+}

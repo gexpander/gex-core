@@ -39,7 +39,6 @@
     X(NOT_APPLICABLE, NULL) \
     X(HW_TIMEOUT, NULL) \
     X(NO_SUCH_UNIT, NULL) \
-    X(OVERRUN, NULL) /* used in bulk transfer */ \
     X(PROTOCOL_BREACH, NULL) /* eating with the wrong spoon */  \
     X(BAD_UNIT_TYPE, NULL) \
     X(NOT_IMPLEMENTED, NULL) \
