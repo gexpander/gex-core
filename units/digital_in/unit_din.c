@@ -173,6 +173,7 @@ static void DI_deInit(Unit *unit)
 
 // ------------------------------------------------------------------------
 
+/** Read request */
 error_t UU_DI_Read(Unit *unit, uint16_t *packed)
 {
     CHECK_TYPE(unit, &UNIT_DIN);

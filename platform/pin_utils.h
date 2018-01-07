@@ -38,16 +38,44 @@ Resource pin2resource(char port_name, uint8_t pin_number, bool *suc);
  */
 GPIO_TypeDef *port2periph(char port_name, bool *suc);
 
-/** Parse a pin name PA0 or A0 to port name and pin number */
+/**
+ * Parse a pin name (e.g. PA0 or A0) to port name and pin number
+ *
+ * @param str - source string
+ * @param targetName - output: port name (one character)
+ * @param targetNumber - output: pin number 0-15
+ * @return success
+ */
 bool parse_pin(const char *str, char *targetName, uint8_t *targetNumber);
 
-/** Parse a port name */
+/**
+ * Parse a port name (one character) - validates that it's within range
+ *
+ * @param value - source string
+ * @param targetName - output: port name (one character)
+ * @return success
+ */
 bool parse_port(const char *value, char *targetName);
 
-/** Parse a list of pin numbers with ranges and commans/semicolons to a bitmask */
+/**
+ * Parse a list of pin numbers with ranges and commands/semicolons to a bitmask.
+ * Supported syntax:
+ * - comma separated numbers
+ * - numbers connected by dash or colon form a range (can be in any order)
+ *
+ * @param value - source string
+ * @param suc - set to False if parsing failed
+ * @return the resulting bitmap
+ */
 uint16_t parse_pinmask(const char *value, bool *suc);
 
-/** Convert a pin bitmask to the ASCII format understood by str_parse_pinmask() */
+/**
+ * Convert a pin bitmap to the ASCII format understood by str_parse_pinmask()
+ *
+ * @param pins - sparse pin map
+ * @param buffer - output string buffer
+ * @return the output buffer
+ */
 char * str_pinmask(uint16_t pins, char *buffer);
 
 /**
@@ -69,13 +97,33 @@ uint16_t port_spread(uint16_t packed, uint16_t mask);
 uint16_t port_pack(uint16_t spread, uint16_t mask);
 
 /**
- * Set all GPIO resources held by unit to analog
+ * Set all GPIO resources held by unit to analog.
+ * This is a part of unit teardown.
  *
  * @param unit - holding unit
  */
 void deinit_unit_pins(Unit *unit);
 
-error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t af);
-error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port_dest, uint32_t mode, uint32_t otype);
+/**
+ * Configure a GPIO pin to alternate function.
+ *
+ * @param port_name - Port name A-F
+ * @param pin_num - Pin number 0-15
+ * @param ll_af - LL alternate function constant
+ * @return success
+ */
+error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t ll_af);
+
+/**
+ * Configure multiple pins using the bitmap pattern
+ *
+ * @param port_name - port name A-F
+ * @param mask - Pins bitmap (0x8002 = pins 1 and 15)
+ * @param port_dest - destination pointer for the parsed GPIO Port struct. Can be NULL if the value is not needed.
+ * @param ll_mode - LL pin mode (in, out, analog...)
+ * @param ll_otype - LL output type (push/pull, opendrain)
+ * @return success
+ */
+error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port_dest, uint32_t ll_mode, uint32_t ll_otype);
 
 #endif //GEX_PIN_UTILS_H

@@ -261,6 +261,7 @@ uint16_t port_pack(uint16_t spread, uint16_t mask)
     return result;
 }
 
+/** Configure unit pins as analog (part of unit teardown) */
 void deinit_unit_pins(Unit *unit)
 {
     for (uint32_t rsc = R_PA0; rsc <= R_PF15; rsc++) {
@@ -273,8 +274,8 @@ void deinit_unit_pins(Unit *unit)
     }
 }
 
-
-error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t af)
+/** Configure a pin to alternate function */
+error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t ll_af)
 {
     bool suc = true;
     GPIO_TypeDef *port = port2periph(port_name, &suc);
@@ -282,16 +283,17 @@ error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t af)
     if (!suc) return E_BAD_CONFIG;
 
     if (pin_num < 8)
-        LL_GPIO_SetAFPin_0_7(port, ll_pin, af);
+        LL_GPIO_SetAFPin_0_7(port, ll_pin, ll_af);
     else
-        LL_GPIO_SetAFPin_8_15(port, ll_pin, af);
+        LL_GPIO_SetAFPin_8_15(port, ll_pin, ll_af);
 
     LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ALTERNATE);
 
     return E_SUCCESS;
 }
 
-error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port_dest, uint32_t mode, uint32_t otype)
+/** Configure pins using sparse map */
+error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port_dest, uint32_t ll_mode, uint32_t ll_otype)
 {
     bool suc = true;
     GPIO_TypeDef *port = port2periph(port_name, &suc);
@@ -300,8 +302,8 @@ error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port
     for (int i = 0; i < 16; i++) {
         if (mask & (1<<i)) {
             uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
-            LL_GPIO_SetPinMode(port, ll_pin, mode);
-            LL_GPIO_SetPinOutputType(port, ll_pin, otype);
+            LL_GPIO_SetPinMode(port, ll_pin, ll_mode);
+            LL_GPIO_SetPinOutputType(port, ll_pin, ll_otype);
             LL_GPIO_SetPinSpeed(port, ll_pin, LL_GPIO_SPEED_FREQ_HIGH);
         }
     }
