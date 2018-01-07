@@ -8,17 +8,23 @@
 #define VFS_DRIVE_NAME "GEX"
 
 // -------- Static buffers ---------
-#define TSK_STACK_MAIN      220 // USB / VFS task stack size
-#define TSK_STACK_MSG       220 // TF message handler task stack size
-#define TSK_STACK_JOBRUNNER 80 // Job runner task stack size
+// USB / VFS task stack size
+#if DISABLE_MSC
+ #define TSK_STACK_MAIN      100 // without MSC the stack usage is significantly lower
+#else
+ #define TSK_STACK_MAIN      160
+#endif
+
+#define TSK_STACK_MSG       220 // TF message handler task stack size (all unit commands run on this thread)
+#define TSK_STACK_JOBRUNNER 80 // Job runner task stack size (for async execution of events caught in interrupt)
 
 #define BULK_READ_BUF_LEN 256   // Buffer for TF bulk reads
 #define UNIT_TMP_LEN      512   // Buffer for bulk read and varions internal unit operations
 
-#define FLASH_SAVE_BUF_LEN  256 // Static buffer for saving to flash
+#define FLASH_SAVE_BUF_LEN  128 // Static buffer for saving to flash
 
 #define JOB_QUEUE_CAPACITY  4 // Job runner queue size (16 bytes each)
-#define RX_QUE_CAPACITY    10 // TinyFrame rx queue size (64 bytes each)
+#define RX_QUE_CAPACITY    6 // TinyFrame rx queue size (64 bytes each)
 
 #define TF_MAX_PAYLOAD_RX 512 // TF max Rx payload
 #define TF_SENDBUF_LEN     64 // TF transmit buffer (can be less than a full frame)

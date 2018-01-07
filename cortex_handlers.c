@@ -37,7 +37,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
 
 // && (__CORTEX_M >= 3)
 #if VERBOSE_HARDFAULT
-void prvGetRegistersFromStack( uint32_t *origStack, uint32_t lr_value)
+void __attribute__((used)) HardFault_DumpRegisters( uint32_t *origStack, uint32_t lr_value)
 {
 /* These are volatile to try and prevent the compiler/linker optimising them
 away as the variables never actually get used.  If the debugger won't show the
@@ -179,7 +179,7 @@ void  __attribute__((naked)) HardFault_Handler(void)
 //        " mov r2, lr                                                \n"
 //        " ldr r3, handler2_address_const                            \n"
 //        " bx r3                                                     \n"
-//        " handler2_address_const: .word prvGetRegistersFromStack    \n"
+//        " handler2_address_const: .word HardFault_DumpRegisters     \n"
 //    );
 //
     __asm volatile(  ".syntax unified\n"
@@ -188,10 +188,10 @@ void  __attribute__((naked)) HardFault_Handler(void)
         "TST    R0, R1  \n"
         "BEQ    _MSP    \n"
         "MRS    R0, PSP \n"
-        "B      prvGetRegistersFromStack      \n"
+        "B      HardFault_DumpRegisters       \n"
         "_MSP:  \n"
         "MRS    R0, MSP \n"
-        "B      prvGetRegistersFromStack      \n"
+        "B      HardFault_DumpRegisters       \n"
         ".syntax divided\n") ;
 
 #endif
