@@ -16,15 +16,14 @@
 #endif
 
 #define TSK_STACK_MSG       220 // TF message handler task stack size (all unit commands run on this thread)
-#define TSK_STACK_JOBRUNNER 80 // Job runner task stack size (for async execution of events caught in interrupt)
 
 #define BULK_READ_BUF_LEN 256   // Buffer for TF bulk reads
 #define UNIT_TMP_LEN      512   // Buffer for bulk read and varions internal unit operations
 
 #define FLASH_SAVE_BUF_LEN  128 // Static buffer for saving to flash
 
-#define JOB_QUEUE_CAPACITY  4 // Job runner queue size (16 bytes each)
-#define RX_QUE_CAPACITY    6 // TinyFrame rx queue size (64 bytes each)
+#define MSG_QUE_SLOT_SIZE 64 // FIXME this should be possible to lower, but there's some bug with bulk transfer / INI parser
+#define RX_QUE_CAPACITY    8 // TinyFrame rx queue size (64 bytes each)
 
 #define TF_MAX_PAYLOAD_RX 512 // TF max Rx payload
 #define TF_SENDBUF_LEN     64 // TF transmit buffer (can be less than a full frame)
@@ -45,8 +44,9 @@
 #define IWBUFFER_LEN     80 // Ini writer buffer for sprintf
 
 // -------- Timeouts ------------
-#define TF_PARSER_TIMEOUT_TICKS 100 // Timeout for receiving & parsing a frame
-#define BULK_LST_TIMEOUT_MS     200 // timeout for the bulk transaction to expire
+#define TF_PARSER_TIMEOUT_TICKS 300 // Timeout for receiving & parsing a frame
+#define BULK_LST_TIMEOUT_MS     500 // timeout for the bulk transaction to expire
+#define MSG_QUE_POST_TIMEOUT    100 // Time to post to the messages / jobs queue
 
 // -------- Platform specific includes and defines ---------
 

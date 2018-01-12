@@ -7,7 +7,6 @@
 
 #include "platform.h"
 #include "sched_queue.h"
-#include "task_sched.h"
 #include "TinyFrame.h"
 
 /**

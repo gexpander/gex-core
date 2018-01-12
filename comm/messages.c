@@ -110,6 +110,9 @@ static void settings_bulkwrite_cb(BulkWrite *bulk, const uint8_t *chunk, uint32_
         return;
     }
 
+    PUTSN((const char *) chunk, len);
+    PUTS("\r\n---\r\n");
+
     ini_parse((const char *) chunk, len);
 }
 

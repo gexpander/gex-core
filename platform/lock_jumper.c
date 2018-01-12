@@ -3,9 +3,6 @@
 //
 
 #include "sched_queue.h"
-#include "task_sched.h"
-#include "usbd_core.h"
-#include "usb_device.h"
 
 #include "framework/settings.h"
 #include "framework/resources.h"

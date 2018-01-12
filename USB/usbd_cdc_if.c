@@ -266,19 +266,13 @@ static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
   */
 static int8_t CDC_Receive_FS (uint8_t* Buf, uint32_t *Len)
 {
-  static struct rx_que_item rxitem;
   /* USER CODE BEGIN 6 */
 // this does nothing?!
 // the buffer was already assigned in the init function and we got it as argument here?!
 //  USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
 
-  assert_param(*Len <= APP_RX_DATA_SIZE);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
-
-  // Post the data chunk on the RX queue to be handled asynchronously.
-  rxitem.len = *Len;
-  memcpy(rxitem.data, Buf, rxitem.len);
-  assert_param(pdPASS == xQueueSend(queRxDataHandle, &rxitem, 100));
+  rxQuePostMsg(Buf, *Len);
 
   return (USBD_OK);
   /* USER CODE END 6 */

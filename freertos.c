@@ -62,21 +62,13 @@ osThreadId tskMainHandle;
 uint32_t mainTaskStack[ TSK_STACK_MAIN ];
 osStaticThreadDef_t mainTaskControlBlock;
 
-osThreadId tskMsgHandle;
-uint32_t msgTaskStack[ TSK_STACK_MSG ];
-osStaticThreadDef_t msgTaskControlBlock;
+osThreadId tskMsgJobHandle;
+uint32_t msgJobQueTaskStack[ TSK_STACK_MSG ];
+osStaticThreadDef_t msgJobQueTaskControlBlock;
 
-osThreadId tskJobRunnerHandle;
-uint32_t jobRunnerStack[ TSK_STACK_JOBRUNNER ];
-osStaticThreadDef_t jobRunnerControlBlock;
-
-osMessageQId queSchedHandle;
-uint8_t queSchedBuffer[ JOB_QUEUE_CAPACITY * sizeof( struct sched_que_item ) ];
-osStaticMessageQDef_t queSchedControlBlock;
-
-osMessageQId queRxDataHandle;
-uint8_t queRxDataBuffer[ RX_QUE_CAPACITY * sizeof( struct rx_que_item ) ];
-osStaticMessageQDef_t queRxDataControlBlock;
+osMessageQId queMsgJobHandle;
+uint8_t msgJobQueBuffer[ RX_QUE_CAPACITY * sizeof( struct rx_sched_combined_que_item ) ];
+osStaticMessageQDef_t msgJobQueControlBlock;
 
 osMutexId mutTinyFrameTxHandle;
 osStaticMutexDef_t mutTinyFrameTxControlBlock;
@@ -93,9 +85,7 @@ osStaticMutexDef_t mutScratchBufferControlBlock;
 
 /* Function prototypes -------------------------------------------------------*/
 void TaskMain(void const * argument);
-extern void TaskSchedLP(void const * argument);
-extern void TaskJobQueue(void const *argument);
-extern void TaskMessaging(void const * argument);
+extern void TaskMsgJob(void const *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -136,8 +126,7 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackTy
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
   stackmon_register("Main", mainTaskStack, sizeof(mainTaskStack));
-  stackmon_register("JobRunner", jobRunnerStack, sizeof(jobRunnerStack));
-  stackmon_register("Messaging", msgTaskStack, sizeof(msgTaskStack));
+  stackmon_register("Job+Msg", msgJobQueTaskStack, sizeof(msgJobQueTaskStack));
   /* USER CODE END Init */
 
   /* Create the mutex(es) */
@@ -171,13 +160,9 @@ void MX_FREERTOS_Init(void) {
   osThreadStaticDef(tskMain, TaskMain, osPriorityHigh, 0, TSK_STACK_MAIN, mainTaskStack, &mainTaskControlBlock);
   tskMainHandle = osThreadCreate(osThread(tskMain), NULL);
 
-  /* definition and creation of tskJobRunner */
-  osThreadStaticDef(tskJobRunner, TaskJobQueue, osPriorityAboveNormal, 0, TSK_STACK_JOBRUNNER, jobRunnerStack, &jobRunnerControlBlock);
-  tskJobRunnerHandle = osThreadCreate(osThread(tskJobRunner), NULL);
-
   /* definition and creation of TaskMessaging */
-  osThreadStaticDef(tskMsg, TaskMessaging, osPriorityNormal, 0, TSK_STACK_MSG, msgTaskStack, &msgTaskControlBlock);
-  tskMsgHandle = osThreadCreate(osThread(tskMsg), NULL);
+  osThreadStaticDef(tskMsg, TaskMsgJob, osPriorityNormal, 0, TSK_STACK_MSG, msgJobQueTaskStack, &msgJobQueTaskControlBlock);
+  tskMsgJobHandle = osThreadCreate(osThread(tskMsg), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -185,13 +170,9 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the queue(s) */
 
-  /* definition and creation of queSchedHP */
-  osMessageQStaticDef(queSchedHP, JOB_QUEUE_CAPACITY, struct sched_que_item, queSchedBuffer, &queSchedControlBlock);
-  queSchedHandle = osMessageCreate(osMessageQ(queSchedHP), NULL);
-
   /* definition and creation of queRxData */
-  osMessageQStaticDef(queRxData, RX_QUE_CAPACITY, struct rx_que_item, queRxDataBuffer, &queRxDataControlBlock);
-  queRxDataHandle = osMessageCreate(osMessageQ(queRxData), NULL);
+  osMessageQStaticDef(queMsgJob, RX_QUE_CAPACITY, struct rx_sched_combined_que_item, msgJobQueBuffer, &msgJobQueControlBlock);
+  queMsgJobHandle = osMessageCreate(osMessageQ(queMsgJob), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */

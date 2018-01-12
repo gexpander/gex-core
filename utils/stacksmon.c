@@ -2,7 +2,7 @@
 // Created by MightyPork on 2017/12/04.
 //
 
-#include <task_sched.h>
+#include "task_msg.h"
 #include "platform.h"
 #include "stacksmon.h"
 
@@ -64,11 +64,7 @@ void stackmon_dump(void)
         );
     }
 
-    PUTS("\033[36m>> JOB QUEUE\033[m\r\n");
-    PRINTF("   Used slots: \033[33m%"PRIu32"\033[m\r\n",
-           jobQueHighWaterMark);
-
-    PUTS("\033[36m>> MSG QUEUE\033[m\r\n");
+    PUTS("\033[36m>> MSG+JOB QUEUE\033[m\r\n");
     PRINTF("   Used slots: \033[33m%"PRIu32"\033[m\r\n",
            msgQueHighWaterMark);
 
