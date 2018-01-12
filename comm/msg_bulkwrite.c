@@ -19,6 +19,9 @@ static TF_Result bulkwrite_lst(TinyFrame *tf, TF_Msg *msg)
 
     // this is a final call before timeout, to clean up
     if (msg->data == NULL) {
+        if (bulk->offset != bulk->len) {
+            TF_Error("Bulk write ended prematurely with %d written out of %d", (int)bulk->offset, (int)bulk->len);
+        }
         goto close;
     }
 

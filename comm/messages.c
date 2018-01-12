@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/21.
 //
 
+#include <framework/system_settings.h>
 #include "platform.h"
 #include "framework/settings.h"
 #include "utils/ini_parser.h"
@@ -103,8 +104,13 @@ static void settings_bulkwrite_cb(BulkWrite *bulk, const uint8_t *chunk, uint32_
     // clean-up request
     if (chunk == NULL) {
         ini_parse_end();
-        settings_load_ini_end();
-        dbg("INI write complete.");
+
+        if (bulk->offset > 0) {
+            settings_load_ini_end();
+            dbg("INI write complete");
+        } else {
+            dbg("INI write failed");
+        }
 
         free(bulk);
         return;

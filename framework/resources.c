@@ -73,7 +73,7 @@ error_t rsc_claim(Unit *unit, Resource rsc)
     assert_param(rsc < RESOURCE_COUNT);
     assert_param(unit != NULL);
 
-    dbg("%s claims %s", unit->name, rsc_get_name(rsc));
+//    dbg("%s claims %s", unit->name, rsc_get_name(rsc));
 
     if (RSC_IS_HELD(global_rscmap, rsc)) {
         // this whole branch is just reporting the error
@@ -156,7 +156,7 @@ void rsc_free(Unit *unit, Resource rsc)
     assert_param(rsc_initialized);
     assert_param(rsc < RESOURCE_COUNT);
 
-    dbg("Free resource %s", rsc_get_name(rsc));
+//    dbg("Free resource %s", rsc_get_name(rsc));
 
     if (RSC_IS_FREE(global_rscmap, rsc)) return;
 
@@ -211,7 +211,7 @@ void rsc_teardown(Unit *unit)
     assert_param(rsc_initialized);
     assert_param(unit != NULL);
 
-    dbg("Tearing down unit %s", unit->name);
+//    dbg("Tearing down unit %s", unit->name);
     deinit_unit_pins(unit);
 
     for (uint32_t i = 0; i < RSCMAP_LEN; i++) {
