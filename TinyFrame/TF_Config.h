@@ -50,4 +50,6 @@ typedef uint8_t TF_COUNT;
 
 // buffers, counts and timeout are defined in plat_compat.h
 
+#define TF_Error(format, ...) dbg("[TF] " format, ##__VA_ARGS__)
+
 #endif //TF_CONFIG_H
