@@ -2,7 +2,6 @@
 // Created by MightyPork on 2018/01/02.
 //
 
-#include <framework/system_settings.h>
 #include "comm/messages.h"
 #include "unit_base.h"
 #include "utils/avrlibc.h"

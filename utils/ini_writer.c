@@ -98,3 +98,10 @@ uint32_t iw_measure_total(void (*handler)(IniWriter *))
     handler(&iw);
     return 0xFFFFFFFF - iw.skip;
 }
+
+
+
+void iw_cmt_newline(IniWriter *iw)
+{
+    if (SystemSettings.ini_comments) iw_newline(iw);
+}

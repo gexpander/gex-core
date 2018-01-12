@@ -10,6 +10,7 @@ GEX_SRC_DIR = \
     User/units/test \
     User/units/digital_out \
     User/units/digital_in \
+    User/units/usart \
     User/units/i2c \
     User/units/spi \
     User/TinyFrame \

@@ -110,6 +110,21 @@ uint8_t str_parse_012(const char *str, const char *a, const char *b, const char 
 /** Convert bool to one of two options */
 #define str_01(cond, a, b) ((cond) ? (b) : (a))
 
+/** Convert number to one of three options */
+#define str_3(cond, na, a, nb, b, nc, c) (\
+    ((cond)==(na)) ? (a) : \
+    ((cond)==(nb)) ? (b) : \
+    (c) \
+)
+
+/** Convert number to one of three options */
+#define str_4(cond, na, a, nb, b, nc, c, nd, d) (\
+    ((cond)==(na)) ? (a) : \
+    ((cond)==(nb)) ? (b) : \
+    ((cond)==(nc)) ? (c) : \
+    (d) \
+)
+
 /** Convert bool to Y or N */
 #define str_yn(cond) ((cond) ? ("Y") : ("N"))
 

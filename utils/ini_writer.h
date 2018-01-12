@@ -45,10 +45,9 @@ static inline void iw_string(IniWriter *iw, const char *str)
     }
 }
 
+void iw_cmt_newline(IniWriter *iw);
 #define iw_newline(iw) iw_string(iw, "\r\n")
-#define iw_cmt_newline(iw) do { \
-    if (SystemSettings.ini_comments) iw_string(iw, "\r\n"); \
-} while (0)
+
 
 /**
  * Try to snprintf to the file
