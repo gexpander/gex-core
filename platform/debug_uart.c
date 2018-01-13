@@ -117,8 +117,7 @@ void debug_write(const char *buf, uint16_t len)
 /** Debug print, used by debug / newlib */
 ssize_t _write_r(struct _reent *rptr, int fd, const void *buf, size_t len)
 {
-    (void)rptr;
-    debug_write(buf, len);
+    trap("Use of newlib printf");
     return len;
 }
 

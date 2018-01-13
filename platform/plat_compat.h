@@ -12,10 +12,10 @@
 #if DISABLE_MSC
  #define TSK_STACK_MAIN      100 // without MSC the stack usage is significantly lower
 #else
- #define TSK_STACK_MAIN      170
+ #define TSK_STACK_MAIN      160
 #endif
 
-#define TSK_STACK_MSG       220 // TF message handler task stack size (all unit commands run on this thread)
+#define TSK_STACK_MSG       180 // TF message handler task stack size (all unit commands run on this thread)
 
 #define BULK_READ_BUF_LEN 256   // Buffer for TF bulk reads
 #define UNIT_TMP_LEN      512   // Buffer for internal unit operations

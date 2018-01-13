@@ -23,7 +23,7 @@ void _DO_PRINTF(const char *format, ...)
         len = DBG_BUF_LEN-1;
     }
 
-    _write_r(NULL, 2, dbg_buf, (size_t) len);
+    debug_write(dbg_buf, (uint16_t) len);
     va_end(args);
 }
 

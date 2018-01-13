@@ -55,6 +55,7 @@ static inline void PUTCHAR(char ch)
 #define PRINTF(format, ...) do {} while (0)
 #define PUTSN(string, len) do {} while (0)
 #define PUTS(string) do {} while (0)
+#define PUTNL() do {} while (0)
 #define PUTCHAR(ch) do {} while (0)
 #endif
 
