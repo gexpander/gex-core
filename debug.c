@@ -8,7 +8,7 @@
 #if USE_DEBUG_UART
 
 // debug printf
-int PRINTF(const char *format, ...)
+int _DO_PRINTF(const char *format, ...)
 {
     va_list args;
     int len;
