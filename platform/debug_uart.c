@@ -106,18 +106,19 @@ void DebugUart_PreInit(void)
     LL_USART_Enable(DEBUG_USART);
 }
 
+void debug_write(const char *buf, uint16_t len)
+{
+    for (uint16_t i = 0; i < len; i++) {
+        while (!LL_USART_IsActiveFlag_TC(DEBUG_USART));
+        LL_USART_TransmitData8(DEBUG_USART, (uint8_t) *buf++);
+    }
+}
+
 /** Debug print, used by debug / newlib */
 ssize_t _write_r(struct _reent *rptr, int fd, const void *buf, size_t len)
 {
     (void)rptr;
-
-    uint8_t *buff = buf;
-
-    for (uint32_t i = 0; i < len; i++) {
-        while (!LL_USART_IsActiveFlag_TC(DEBUG_USART));
-        LL_USART_TransmitData8(DEBUG_USART, *buff++);
-    }
-
+    debug_write(buf, len);
     return len;
 }
 

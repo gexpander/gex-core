@@ -88,10 +88,17 @@ void iw_section(IniWriter *iw, const char *format, ...)
 /**
  * Try to write a INI comment # blah\r\n
  * @param iw - iniwriter handle
+ * @param text - format, like printf
+ */
+void iw_comment(IniWriter *iw, const char *text);
+
+/**
+ * Try to write a INI comment # blah\r\n
+ * @param iw - iniwriter handle
  * @param format - format, like printf
  * @param ... - replacements
  */
-void iw_comment(IniWriter *iw, const char *format, ...)
+void iw_commentf(IniWriter *iw, const char *format, ...)
     __attribute__((format(printf,2,3)));
 
 /**

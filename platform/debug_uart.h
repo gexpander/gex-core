@@ -8,4 +8,6 @@
 void DebugUart_PreInit(void);
 void DebugUart_Init(void);
 
+void debug_write(const char *buf, uint16_t len);
+
 #endif //GEX_DEBUG_UART_H

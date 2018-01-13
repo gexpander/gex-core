@@ -11,11 +11,26 @@
 
 #if USE_DEBUG_UART
 
-int _DO_PRINTF(const char *format, ...) __attribute__((format(printf,1,2))) ;
-void PUTSN(const char *string, size_t len);
-int PUTS(const char *string);
-void PUTNL(void);
-int PUTCHAR(int ch);
+extern void debug_write(const char *buf, uint16_t len);
+
+void _DO_PRINTF(const char *format, ...) __attribute__((format(printf,1,2))) ;
+void PUTSN(const char *string, uint16_t len);
+void PUTS(const char *string);
+
+static inline void PUTNL(void)
+{
+    debug_write("\r\n", 2);
+}
+
+/**
+ * Print one character to debug uart
+ * @param ch - character ASCII code
+ * @return the character code
+ */
+static inline void PUTCHAR(char ch)
+{
+    debug_write(&ch, 1);
+}
 
 #define PRINTF(format, ...) do { \
     if (VA_ARG_COUNT(__VA_ARGS__) == 0) { \

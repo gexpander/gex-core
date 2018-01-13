@@ -57,7 +57,7 @@ GEX_CFLAGS = \
     -MD -Wno-redundant-decls -Wno-unused-parameter \
     -Wno-unused-variable -Wno-inline \
     -fmerge-constants -fmerge-all-constants -Wno-implicit-fallthrough \
-    -fno-exceptions -finline-small-functions -findirect-inlining -Wno-strict-aliasing -Wno-float-equal -Wno-discarded-qualifiers
+    -fno-exceptions -finline-small-functions -findirect-inlining -Wno-strict-aliasing -Wno-float-equal -Wno-discarded-qualifiers -fstack-usage
 
 GEX_CDEFS_BASE =  \
     -D__weak="__attribute__((weak))" \

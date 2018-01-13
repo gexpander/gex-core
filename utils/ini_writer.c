@@ -82,13 +82,23 @@ void iw_section(IniWriter *iw, const char *format, ...)
     iw_string(iw, "]\r\n");
 }
 
-void iw_comment(IniWriter *iw, const char *format, ...)
+void iw_commentf(IniWriter *iw, const char *format, ...)
 {
     if (iw->count == 0) return;
     if (!SystemSettings.ini_comments) return;
 
     iw_string(iw, "# ");
     IW_VPRINTF();
+    iw_newline(iw);
+}
+
+void iw_comment(IniWriter *iw, const char *text)
+{
+    if (iw->count == 0) return;
+    if (!SystemSettings.ini_comments) return;
+
+    iw_string(iw, "# ");
+    iw_string(iw, text);
     iw_newline(iw);
 }
 
