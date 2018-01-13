@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/26.
 //
 
+#include <stm32f072xb.h>
 #include "platform.h"
 #include "usbd_core.h"
 #include "USB/usb_device.h"
@@ -20,11 +21,16 @@ void plat_init_resources(void)
 {
     uint32_t rv = 0;
 
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOD_CLK_ENABLE();
-    __HAL_RCC_GPIOE_CLK_ENABLE();
+    // switch everything ON (we should not write reserved bits, but nothing bad seems to happen)
+    RCC->APB1ENR = 0xFFFFFFFF;
+    RCC->APB2ENR = 0xFFFFFFFF;
+    RCC->AHBENR = 0xFFFFFFFF; // GPIOs are here
+
+//    __HAL_RCC_GPIOA_CLK_ENABLE();
+//    __HAL_RCC_GPIOB_CLK_ENABLE();
+//    __HAL_RCC_GPIOC_CLK_ENABLE();
+//    __HAL_RCC_GPIOD_CLK_ENABLE();
+//    __HAL_RCC_GPIOE_CLK_ENABLE();
 
     // --- Common unit drivers ---
 

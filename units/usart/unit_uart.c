@@ -2,6 +2,7 @@
 // Created by MightyPork on 2018/01/02.
 //
 
+#include <stm32f072xb.h>
 #include "platform.h"
 #include "comm/messages.h"
 #include "unit_base.h"
@@ -483,21 +484,11 @@ static error_t UUSART_init(Unit *unit)
         configure_gpio_alternate( mappings[5].port, mappings[5].pin, mappings[5].af);
     }
 
-    if (priv->periph_num == 1) {
-        __HAL_RCC_USART1_CLK_ENABLE();
-    } else if (priv->periph_num == 2) {
-        __HAL_RCC_USART2_CLK_ENABLE();
-    } else if (priv->periph_num == 3) {
-        __HAL_RCC_USART3_CLK_ENABLE();
-    } else if (priv->periph_num == 4) {
-        __HAL_RCC_USART4_CLK_ENABLE();
-    }
-
     LL_USART_Disable(priv->periph);
     {
         LL_USART_DeInit(priv->periph);
         LL_USART_SetBaudRate(priv->periph,
-                             PLAT_AHB_MHZ/2,//FIXME this isn't great ...
+                             PLAT_AHB_MHZ*1000000,//FIXME this isn't great ...
                              LL_USART_OVERSAMPLING_16,
                              priv->baudrate);
 
@@ -579,18 +570,7 @@ static void UUSART_deInit(Unit *unit)
     // de-init the pins & peripheral only if inited correctly
     if (unit->status == E_SUCCESS) {
         assert_param(priv->periph);
-
         LL_USART_DeInit(priv->periph);
-
-        if (priv->periph_num == 1) {
-            __HAL_RCC_USART1_CLK_DISABLE();
-        } else if (priv->periph_num == 2) {
-            __HAL_RCC_USART2_CLK_DISABLE();
-        } else if (priv->periph_num == 3) {
-            __HAL_RCC_USART3_CLK_DISABLE();
-        } else if (priv->periph_num == 4) {
-            __HAL_RCC_USART4_CLK_DISABLE();
-        }
     }
 
     // Release all resources
@@ -603,6 +583,30 @@ static void UUSART_deInit(Unit *unit)
 
 // ------------------------------------------------------------------------
 
+static error_t usart_wait_until_flag(struct priv *priv, uint32_t flag, bool stop_state)
+{
+    uint32_t t_start = HAL_GetTick();
+    while (((priv->periph->ISR & flag) != 0) != stop_state) {
+        if (HAL_GetTick() - t_start > 10) {
+            dbg("ERR waiting for ISR flag 0x%p = %d", (void*)flag, (int)stop_state);
+            return E_HW_TIMEOUT;
+        }
+    }
+    return E_SUCCESS;
+}
+
+static error_t sync_send(struct priv *priv, const uint8_t *buf, uint32_t len)
+{
+    while (len > 0) {
+        TRY(usart_wait_until_flag(priv, USART_ISR_TXE, 1));
+        priv->periph->TDR = *buf++;
+        len--;
+    }
+    TRY(usart_wait_until_flag(priv, USART_ISR_TC, 1));
+    return E_SUCCESS;
+}
+
+
 enum PinCmd_ {
     CMD_WRITE = 0,
 };
@@ -610,9 +614,22 @@ enum PinCmd_ {
 /** Handle a request message */
 static error_t UUSART_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
+    struct priv *priv = unit->data;
+
     switch (command) {
         case CMD_WRITE:
-            return E_NOT_IMPLEMENTED;
+            dbg("Tx req. CR1 0x%p, CR2 0x%p, CR3 0x%p, BRR 0x%p",
+                (void*)priv->periph->CR1,
+                (void*)priv->periph->CR2,
+                (void*)priv->periph->CR3,
+                (void*)priv->periph->BRR);
+
+            uint32_t len;
+            const uint8_t *pld = pp_tail(pp, &len);
+
+            TRY(sync_send(priv, pld, len));
+            return E_SUCCESS;
+            //return E_NOT_IMPLEMENTED;
 
         default:
             return E_UNKNOWN_COMMAND;

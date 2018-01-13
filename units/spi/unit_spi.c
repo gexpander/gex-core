@@ -296,12 +296,6 @@ static error_t USPI_init(Unit *unit)
     configure_gpio_alternate(spi_portname, pin_miso, af_spi);
     configure_gpio_alternate(spi_portname, pin_sck, af_spi);
 
-    if (priv->periph_num == 1) {
-        __HAL_RCC_SPI1_CLK_ENABLE();
-    } else {
-        __HAL_RCC_SPI2_CLK_ENABLE();
-    }
-
     // configure SSN GPIOs
     {
         // Claim all needed pins
@@ -346,14 +340,7 @@ static void USPI_deInit(Unit *unit)
     // de-init the pins & peripheral only if inited correctly
     if (unit->status == E_SUCCESS) {
         assert_param(priv->periph);
-
         LL_SPI_DeInit(priv->periph);
-
-        if (priv->periph_num == 1) {
-            __HAL_RCC_SPI1_CLK_DISABLE();
-        } else {
-            __HAL_RCC_SPI2_CLK_DISABLE();
-        }
     }
 
     // Release all resources

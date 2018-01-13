@@ -239,12 +239,6 @@ static error_t UI2C_init(Unit *unit)
     configure_gpio_alternate(portname, pin_sda, af_i2c);
     configure_gpio_alternate(portname, pin_scl, af_i2c);
 
-    if (priv->periph_num == 1) {
-        __HAL_RCC_I2C1_CLK_ENABLE();
-    } else {
-        __HAL_RCC_I2C2_CLK_ENABLE();
-    }
-
     /* Disable the selected I2Cx Peripheral */
     LL_I2C_Disable(priv->periph);
     LL_I2C_ConfigFilters(priv->periph,
@@ -269,14 +263,7 @@ static void UI2C_deInit(Unit *unit)
     // de-init the pins & peripheral only if inited correctly
     if (unit->status == E_SUCCESS) {
         assert_param(priv->periph);
-
         LL_I2C_DeInit(priv->periph);
-
-        if (priv->periph_num == 1) {
-            __HAL_RCC_I2C1_CLK_DISABLE();
-        } else {
-            __HAL_RCC_I2C2_CLK_DISABLE();
-        }
     }
 
     // Release all resources
