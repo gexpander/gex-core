@@ -293,7 +293,7 @@ void settings_build_pinout_txt(IniWriter *iw)
 void settings_load_ini_begin(void)
 {
     SystemSettings.modified = true;
-    SystemSettings.pristine = true;
+    SystemSettings.loading_inifile = 0;
 }
 
 void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value)
@@ -305,9 +305,8 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
     // Init functions are run for first key in the section.
 
     if (streq(section, "SYSTEM")) {
-
-        if (SystemSettings.pristine) {
-            SystemSettings.pristine = false;
+        if (SystemSettings.loading_inifile == 0) {
+            SystemSettings.loading_inifile = 'S';
             systemsettings_loadDefaults();
         }
 
@@ -316,8 +315,8 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
     }
     else if (streq(section, "UNITS")) {
 
-        if (SystemSettings.pristine) {
-            SystemSettings.pristine = false;
+        if (SystemSettings.loading_inifile == 0) {
+            SystemSettings.loading_inifile = 'U';
             ureg_remove_all_units();
         }
 
@@ -347,7 +346,8 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
 
 void settings_load_ini_end(void)
 {
-    if (!ureg_finalize_all_init()) {
-        dbg("Some units failed to init!!");
+    if (SystemSettings.loading_inifile == 'U') {
+        bool suc = ureg_finalize_all_init();
+        if (!suc) dbg("Some units failed to init!!");
     }
 }
