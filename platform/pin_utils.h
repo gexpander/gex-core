@@ -126,4 +126,11 @@ error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t ll_af
  */
 error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port_dest, uint32_t ll_mode, uint32_t ll_otype);
 
+/** Helper struct for defining alternate mappings */
+struct PinAF {
+    char port;
+    uint8_t pin;
+    uint8_t af;
+};
+
 #endif //GEX_PIN_UTILS_H

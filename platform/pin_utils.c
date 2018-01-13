@@ -266,7 +266,7 @@ void deinit_unit_pins(Unit *unit)
 {
     for (uint32_t rsc = R_PA0; rsc <= R_PF15; rsc++) {
         if (RSC_IS_HELD(unit->resources, rsc)) {
-//            dbg("Freeing pin %s", rsc_get_name((Resource)rsc));
+            rsc_dbg("Freeing pin %s", rsc_get_name((Resource)rsc));
             GPIO_TypeDef *port = port_periphs[(rsc-R_PA0) / 16];
             uint32_t ll_pin = ll_pins[(rsc-R_PA0)%16];
             LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ANALOG);

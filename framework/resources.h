@@ -9,6 +9,8 @@
 #include "unit.h"
 #include "rsc_enum.h"
 
+#define rsc_dbg(fmt, ...) dbg("[RSC] "fmt, ##__VA_ARGS__)
+
 #define CHECK_SUC() do { if (!suc) return false; } while (0)
 
 void rsc_init_registry(void);

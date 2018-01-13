@@ -306,6 +306,12 @@ static error_t USPI_init(Unit *unit)
         priv->ssn_port->BSRR = priv->ssn_pins;
     }
 
+    if (priv->periph_num == 1) {
+        __HAL_RCC_SPI1_CLK_ENABLE();
+    } else {
+        __HAL_RCC_SPI2_CLK_ENABLE();
+    }
+
     // Configure SPI - must be configured under reset
     LL_SPI_Disable(priv->periph);
     {
@@ -341,6 +347,12 @@ static void USPI_deInit(Unit *unit)
     if (unit->status == E_SUCCESS) {
         assert_param(priv->periph);
         LL_SPI_DeInit(priv->periph);
+
+        if (priv->periph_num == 1) {
+            __HAL_RCC_SPI1_CLK_DISABLE();
+        } else {
+            __HAL_RCC_SPI2_CLK_DISABLE();
+        }
     }
 
     // Release all resources

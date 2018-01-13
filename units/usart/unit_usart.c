@@ -2,12 +2,11 @@
 // Created by MightyPork on 2018/01/02.
 //
 
-#include <stm32f072xb.h>
 #include "platform.h"
 #include "comm/messages.h"
 #include "unit_base.h"
 #include "utils/avrlibc.h"
-#include "unit_uart.h"
+#include "unit_usart.h"
 
 // SPI master
 
@@ -229,12 +228,11 @@ static void UUSART_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Peripheral number (UARTx 1-4)");
     iw_entry(iw, "device", "%d", (int)priv->periph_num);
 
-    iw_comment(iw, "Pin mappings (TX,RX,CK,CTS,RTS)");
+    iw_comment(iw, "Pin mappings (TX,RX,CK,CTS,RTS/DE)");
 #if GEX_PLAT_F072_DISCOVERY
-    // TODO
     iw_comment(iw, " USART1: (0) A9,A10,A8,A11,A12   (1) B6,B7,A8,A11,A12");
-    iw_comment(iw, " USART2: (0) A2,A3,A4,A0,A1      (1) D5,D6,D7,D3,D4");
-    iw_comment(iw, " USART3: (0) B10,B11,B12,B13,B14 (1) D8,D9,D10,D11,D12");
+    iw_comment(iw, " USART2: (0) A2,A3,A4,A0,A1      (1) A14,A15,A4,A0,A1");
+    iw_comment(iw, " USART3: (0) B10,B11,B12,B13,B14");
     iw_comment(iw, " USART4: (0) A0,A1,C12,B7,A15    (1) C10,C11,C12,B7,A15");
 #elif GEX_PLAT_F103_BLUEPILL
     #error "NO IMPL"
@@ -306,19 +304,12 @@ static void UUSART_writeIni(Unit *unit, IniWriter *iw)
 
 // ------------------------------------------------------------------------
 
-struct paf {
-    char port;
-    uint8_t pin;
-    uint8_t af;
-};
-
-/** Finalize unit set-up */
-static error_t UUSART_init(Unit *unit)
+/** Claim the peripheral and assign priv->periph */
+static error_t UUSART_ClaimPeripheral(Unit *unit)
 {
-    bool suc = true;
     struct priv *priv = unit->data;
 
-    if (!(priv->periph_num >= 1 && priv->periph_num <= 4)) {
+    if (!(priv->periph_num >= 1 && priv->periph_num <= 5)) {
         dbg("!! Bad USART periph");
         return E_BAD_CONFIG;
     }
@@ -328,52 +319,78 @@ static error_t UUSART_init(Unit *unit)
         TRY(rsc_claim(unit, R_USART1));
         priv->periph = USART1;
     }
-#if defined(USART2)
     else if (priv->periph_num == 2) {
         TRY(rsc_claim(unit, R_USART2));
         priv->periph = USART2;
     }
-#endif
-#if defined(USART3)
     else if (priv->periph_num == 3) {
         TRY(rsc_claim(unit, R_USART3));
         priv->periph = USART3;
     }
-#endif
 #if defined(USART4)
     else if (priv->periph_num == 4) {
         TRY(rsc_claim(unit, R_USART4));
         priv->periph = USART4;
     }
 #endif
+#if defined(USART5)
+        else if (priv->periph_num == 5) {
+        TRY(rsc_claim(unit, R_USART5));
+        priv->periph = USART5;
+    }
+#endif
     else return E_BAD_CONFIG;
 
+    return E_SUCCESS;
+}
 
+/** Claim and configure GPIOs used */
+static error_t UUSART_ConfigurePins(Unit *unit)
+{
+    struct priv *priv = unit->data;
     // This is written for F072, other platforms will need adjustments
 
     // Configure UART pins (AF)
 
-    const struct paf *mappings = NULL;
+#define want_ck_pin(priv) ((priv)->clock_output)
+#define want_tx_pin(priv) (bool)((priv)->direction & 2)
+#define want_rx_pin(priv) (bool)((priv)->direction & 1)
+#define want_cts_pin(priv) ((priv)->hw_flow_control==2 || (priv)->hw_flow_control==3)
+#define want_rts_pin(priv) ((priv)->de_output || (priv)->hw_flow_control==1 || (priv)->hw_flow_control==3)
 
-    // TODO
+    /* List of required pins based on the user config */
+    bool pins_wanted[5] = {
+        want_ck_pin(priv),
+        want_tx_pin(priv),
+        want_rx_pin(priv),
+        want_cts_pin(priv),
+        want_rts_pin(priv)
+    };
+
 #if GEX_PLAT_F072_DISCOVERY
-    const struct paf mapping_1_0[5] = {
+
+    const struct PinAF *mappings = NULL;
+
+    // TODO adjust this, possibly remove / split to individual pin config for ..
+    // the final board
+
+    const struct PinAF mapping_1_0[5] = {
         {'A', 8, LL_GPIO_AF_1}, // CK
         {'A', 9, LL_GPIO_AF_1}, // TX
         {'A', 10, LL_GPIO_AF_1}, // RX
-        {'A', 11, LL_GPIO_AF_1}, // CTS
-        {'A', 12, LL_GPIO_AF_1}, // RTS
+        {'A', 11, LL_GPIO_AF_1}, // CTS - collides with USB
+        {'A', 12, LL_GPIO_AF_1}, // RTS - collides with USB
     };
 
-    const struct paf mapping_1_1[5] = {
-        {'A', 8, LL_GPIO_AF_1}, // CK
+    const struct PinAF mapping_1_1[5] = {
+        {'A', 8, LL_GPIO_AF_1}, // CK*
         {'B', 6, LL_GPIO_AF_1}, // TX
         {'B', 7, LL_GPIO_AF_1}, // RX
-        {'A', 11, LL_GPIO_AF_1}, // CTS
-        {'A', 12, LL_GPIO_AF_1}, // RTS
+        {'A', 11, LL_GPIO_AF_1}, // CTS* - collides with USB
+        {'A', 12, LL_GPIO_AF_1}, // RTS* - collides with USB
     };
 
-    const struct paf mapping_2_0[5] = {
+    const struct PinAF mapping_2_0[5] = {
         {'A', 4, LL_GPIO_AF_1}, // CK
         {'A', 2, LL_GPIO_AF_1}, // TX
         {'A', 3, LL_GPIO_AF_1}, // RX
@@ -381,15 +398,15 @@ static error_t UUSART_init(Unit *unit)
         {'A', 1, LL_GPIO_AF_1}, // RTS
     };
 
-    const struct paf mapping_2_1[5] = {
-        {'D', 7, LL_GPIO_AF_0}, // CK
-        {'D', 5, LL_GPIO_AF_0}, // TX
-        {'D', 6, LL_GPIO_AF_0}, // RX
-        {'D', 3, LL_GPIO_AF_0}, // CTS
-        {'D', 4, LL_GPIO_AF_0}, // RTS
+    const struct PinAF mapping_2_1[5] = {
+        {'A', 4, LL_GPIO_AF_1}, // CK*
+        {'A', 14, LL_GPIO_AF_1}, // TX
+        {'A', 15, LL_GPIO_AF_1}, // RX
+        {'A', 0, LL_GPIO_AF_1}, // CTS*
+        {'A', 1, LL_GPIO_AF_1}, // RTS*
     };
 
-    const struct paf mapping_3_0[5] = {
+    const struct PinAF mapping_3_0[5] = {
         {'B', 12, LL_GPIO_AF_4}, // CK
         {'B', 10, LL_GPIO_AF_4}, // TX
         {'B', 11, LL_GPIO_AF_4}, // RX
@@ -397,15 +414,7 @@ static error_t UUSART_init(Unit *unit)
         {'B', 14, LL_GPIO_AF_4}, // RTS
     };
 
-    const struct paf mapping_3_1[5] = {
-        {'D', 10, LL_GPIO_AF_0}, // CK
-        {'D', 8, LL_GPIO_AF_0}, // TX
-        {'D', 9, LL_GPIO_AF_0}, // RX
-        {'D', 11, LL_GPIO_AF_0}, // CTS
-        {'D', 12, LL_GPIO_AF_0}, // RTS
-    };
-
-    const struct paf mapping_4_0[5] = {
+    const struct PinAF mapping_4_0[5] = {
         {'C', 12, LL_GPIO_AF_0}, // CK
         {'A', 0, LL_GPIO_AF_4}, // TX
         {'A', 1, LL_GPIO_AF_4}, // RX
@@ -413,12 +422,12 @@ static error_t UUSART_init(Unit *unit)
         {'A', 15, LL_GPIO_AF_4}, // RTS
     };
 
-    const struct paf mapping_4_1[5] = {
-        {'C', 12, LL_GPIO_AF_0}, // CK
+    const struct PinAF mapping_4_1[5] = {
+        {'C', 12, LL_GPIO_AF_0}, // CK*
         {'C', 10, LL_GPIO_AF_0}, // TX
         {'C', 11, LL_GPIO_AF_0}, // RX
-        {'B', 7, LL_GPIO_AF_4}, // CTS
-        {'A', 15, LL_GPIO_AF_4}, // RTS
+        {'B', 7,  LL_GPIO_AF_4}, // CTS*
+        {'A', 15, LL_GPIO_AF_4}, // RTS*
     };
 
     if (priv->periph_num == 1) {
@@ -436,7 +445,6 @@ static error_t UUSART_init(Unit *unit)
     else if (priv->periph_num == 3) {
         // USART3
         if (priv->remap == 0) mappings = &mapping_3_0[0];
-        else if (priv->remap == 1) mappings = &mapping_3_1[0];
         else return E_BAD_CONFIG;
     }
     else if (priv->periph_num == 4) {
@@ -446,7 +454,15 @@ static error_t UUSART_init(Unit *unit)
         else return E_BAD_CONFIG;
     }
     else return E_BAD_CONFIG;
-    // TODO other periphs
+
+    // Apply mappings based on the 'wanted' table
+    for (int i = 0; i < 5; i++) {
+        if (pins_wanted[i]) {
+            if (mappings[i].port == 0) return E_BAD_CONFIG;
+            TRY(rsc_claim_pin(unit, mappings[i].port, mappings[i].pin));
+            configure_gpio_alternate(mappings[i].port, mappings[i].pin, mappings[i].af);
+        }
+    }
 
 #elif GEX_PLAT_F103_BLUEPILL
     #error "NO IMPL"
@@ -458,39 +474,45 @@ static error_t UUSART_init(Unit *unit)
     #error "BAD PLATFORM!"
 #endif
 
-    // CK
-    if (priv->clock_output) {
-        TRY(rsc_claim_pin(unit, mappings[0].port, mappings[0].pin));
-        configure_gpio_alternate( mappings[0].port, mappings[0].pin, mappings[0].af);
+    return E_SUCCESS;
+}
+
+/** Finalize unit set-up */
+static error_t UUSART_init(Unit *unit)
+{
+    bool suc = true;
+    struct priv *priv = unit->data;
+
+    TRY(UUSART_ClaimPeripheral(unit));
+    TRY(UUSART_ConfigurePins(unit));
+
+    // --- Configure the peripheral ---
+
+    // Enable clock for the peripheral used
+    if (priv->periph_num == 1) {
+        __HAL_RCC_USART1_CLK_ENABLE();
     }
-    // TX
-    if (priv->direction & 2) {
-        TRY(rsc_claim_pin(unit, mappings[1].port, mappings[1].pin));
-        configure_gpio_alternate( mappings[1].port, mappings[1].pin, mappings[1].af);
+    else if (priv->periph_num == 2) {
+        __HAL_RCC_USART2_CLK_ENABLE();
     }
-    // RX
-    if (priv->direction & 1) {
-        TRY(rsc_claim_pin(unit, mappings[2].port, mappings[2].pin));
-        configure_gpio_alternate( mappings[2].port, mappings[2].pin, mappings[2].af);
+    else if (priv->periph_num == 3) {
+        __HAL_RCC_USART3_CLK_ENABLE();
     }
-    // CTS
-    if (priv->hw_flow_control==2 || priv->hw_flow_control==3) {
-        TRY(rsc_claim_pin(unit, mappings[4].port, mappings[4].pin));
-        configure_gpio_alternate( mappings[4].port, mappings[4].pin, mappings[4].af);
+#ifdef USART4
+    else if (priv->periph_num == 4) {
+        __HAL_RCC_USART4_CLK_ENABLE();
     }
-    // RTS
-    if (priv->de_output || priv->hw_flow_control==1 || priv->hw_flow_control==3) {
-        TRY(rsc_claim_pin(unit, mappings[5].port, mappings[5].pin));
-        configure_gpio_alternate( mappings[5].port, mappings[5].pin, mappings[5].af);
+#endif
+#ifdef USART5
+    else if (priv->periph_num == 5) {
+        __HAL_RCC_USART5_CLK_ENABLE();
     }
+#endif
 
     LL_USART_Disable(priv->periph);
     {
         LL_USART_DeInit(priv->periph);
-        LL_USART_SetBaudRate(priv->periph,
-                             PLAT_AHB_MHZ*1000000,//FIXME this isn't great ...
-                             LL_USART_OVERSAMPLING_16,
-                             priv->baudrate);
+        LL_USART_SetBaudRate(priv->periph, PLAT_APB1_HZ, LL_USART_OVERSAMPLING_16, priv->baudrate);
 
         LL_USART_SetParity(priv->periph,
                            priv->parity == 0 ? LL_USART_PARITY_NONE :
@@ -515,10 +537,8 @@ static error_t UUSART_init(Unit *unit)
                                                           : LL_USART_HWCONTROL_RTS_CTS);
 
         LL_USART_ConfigClock(priv->periph,
-                             priv->cpha ? LL_USART_PHASE_2EDGE
-                                        : LL_USART_PHASE_1EDGE,
-                             priv->cpol ? LL_USART_POLARITY_HIGH
-                                        : LL_USART_POLARITY_LOW,
+                             priv->cpha ? LL_USART_PHASE_2EDGE : LL_USART_PHASE_1EDGE,
+                             priv->cpol ? LL_USART_POLARITY_HIGH : LL_USART_POLARITY_LOW,
                              true); // clock on last bit - TODO configurable?
 
         if (priv->clock_output)
@@ -571,6 +591,27 @@ static void UUSART_deInit(Unit *unit)
     if (unit->status == E_SUCCESS) {
         assert_param(priv->periph);
         LL_USART_DeInit(priv->periph);
+
+        // Disable clock
+        if (priv->periph_num == 1) {
+            __HAL_RCC_USART1_CLK_DISABLE();
+        }
+        else if (priv->periph_num == 2) {
+            __HAL_RCC_USART2_CLK_DISABLE();
+        }
+        else if (priv->periph_num == 3) {
+            __HAL_RCC_USART3_CLK_DISABLE();
+        }
+#ifdef USART4
+        else if (priv->periph_num == 4) {
+            __HAL_RCC_USART4_CLK_DISABLE();
+        }
+#endif
+#ifdef USART5
+        else if (priv->periph_num == 5) {
+        __HAL_RCC_USART5_CLK_DISABLE();
+        }
+#endif
     }
 
     // Release all resources
@@ -588,7 +629,6 @@ static error_t usart_wait_until_flag(struct priv *priv, uint32_t flag, bool stop
     uint32_t t_start = HAL_GetTick();
     while (((priv->periph->ISR & flag) != 0) != stop_state) {
         if (HAL_GetTick() - t_start > 10) {
-            dbg("ERR waiting for ISR flag 0x%p = %d", (void*)flag, (int)stop_state);
             return E_HW_TIMEOUT;
         }
     }
@@ -617,13 +657,7 @@ static error_t UUSART_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
     struct priv *priv = unit->data;
 
     switch (command) {
-        case CMD_WRITE:
-            dbg("Tx req. CR1 0x%p, CR2 0x%p, CR3 0x%p, BRR 0x%p",
-                (void*)priv->periph->CR1,
-                (void*)priv->periph->CR2,
-                (void*)priv->periph->CR3,
-                (void*)priv->periph->BRR);
-
+        case CMD_WRITE:;
             uint32_t len;
             const uint8_t *pld = pp_tail(pp, &len);
 

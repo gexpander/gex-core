@@ -14,23 +14,23 @@
 #include "units/neopixel/unit_neopixel.h"
 #include "units/i2c/unit_i2c.h"
 #include "units/test/unit_test.h"
-#include "units/usart/unit_uart.h"
+#include "units/usart/unit_usart.h"
 #include "units/spi/unit_spi.h"
 
 void plat_init_resources(void)
 {
     uint32_t rv = 0;
 
-    // switch everything ON (we should not write reserved bits, but nothing bad seems to happen)
-    RCC->APB1ENR = 0xFFFFFFFF;
-    RCC->APB2ENR = 0xFFFFFFFF;
-    RCC->AHBENR = 0xFFFFFFFF; // GPIOs are here
-
-//    __HAL_RCC_GPIOA_CLK_ENABLE();
-//    __HAL_RCC_GPIOB_CLK_ENABLE();
-//    __HAL_RCC_GPIOC_CLK_ENABLE();
-//    __HAL_RCC_GPIOD_CLK_ENABLE();
-//    __HAL_RCC_GPIOE_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+    __HAL_RCC_GPIOD_CLK_ENABLE();
+#ifdef GPIOE
+    __HAL_RCC_GPIOE_CLK_ENABLE();
+#endif
+#ifdef GPIOF
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+#endif
 
     // --- Common unit drivers ---
 
@@ -103,6 +103,7 @@ void plat_init_resources(void)
         rsc_free_range(NULL, R_TIM6, R_TIM7);
         rsc_free_range(NULL, R_TIM14, R_TIM17);
         rsc_free_range(NULL, R_USART1, R_USART4);
+        rsc_free_range(NULL, R_DMA1_1, R_DMA1_7);
 
         rsc_free_range(NULL, R_PA0, R_PA15);
         rsc_free_range(NULL, R_PB0, R_PB15);

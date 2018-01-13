@@ -159,6 +159,11 @@ of this function. */
 #endif
 
     Indicator_Effect(STATUS_FAULT);
+
+    // throw in the canary dump, just in case
+#if USE_STACK_MONITOR
+    stackmon_dump();
+#endif
     while (1);
 }
 #endif
