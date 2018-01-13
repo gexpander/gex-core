@@ -95,7 +95,7 @@
 
 #define configUSE_PREEMPTION                     1
 #define configSUPPORT_STATIC_ALLOCATION          1
-#define configSUPPORT_DYNAMIC_ALLOCATION         0
+#define configSUPPORT_DYNAMIC_ALLOCATION         1
 #define configUSE_IDLE_HOOK                      0
 #define configUSE_TICK_HOOK                      0
 #define configCPU_CLOCK_HZ                       ( SystemCoreClock )
@@ -108,6 +108,8 @@
 #define configQUEUE_REGISTRY_SIZE                0
 #define configCHECK_FOR_STACK_OVERFLOW           2
 #define configENABLE_BACKWARD_COMPATIBILITY      0
+
+#define configTOTAL_HEAP_SIZE 4096
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0

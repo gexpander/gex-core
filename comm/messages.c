@@ -2,13 +2,14 @@
 // Created by MightyPork on 2017/11/21.
 //
 
-#include <framework/system_settings.h>
 #include "platform.h"
 #include "framework/settings.h"
 #include "utils/ini_parser.h"
 #include "TinyFrame.h"
 #include "framework/unit_registry.h"
 #include "comm/messages.h"
+#include "framework/system_settings.h"
+#include "utils/malloc_safe.h"
 
 static TinyFrame tf_;
 TinyFrame *comm = &tf_;
@@ -61,7 +62,7 @@ static void settings_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer
 {
     // clean-up request
     if (buffer == NULL) {
-        free(bulk);
+        free_ck(bulk);
         iw_end();
         dbg("INI read complete.");
         return;
@@ -80,8 +81,8 @@ static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
 {
     dbg("Bulk read INI file");
 
-    BulkRead *bulk = malloc(sizeof(BulkRead));
-    assert_param(bulk);
+    BulkRead *bulk = malloc_ck(sizeof(BulkRead));
+    assert_param(bulk != NULL);
 
     bulk->frame_id = msg->frame_id;
     bulk->len = iw_measure_total(settings_build_units_ini);
@@ -115,7 +116,7 @@ static void settings_bulkwrite_cb(BulkWrite *bulk, const uint8_t *chunk, uint32_
             dbg("INI write failed");
         }
 
-        free(bulk);
+        free_ck(bulk);
         return;
     }
 
@@ -129,7 +130,7 @@ static TF_Result lst_ini_import(TinyFrame *tf, TF_Msg *msg)
 {
     dbg("Bulk write INI file");
 
-    BulkWrite *bulk = malloc(sizeof(BulkWrite));
+    BulkWrite *bulk = malloc_ck(sizeof(BulkWrite));
     assert_param(bulk);
 
     bulk->frame_id = msg->frame_id;

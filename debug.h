@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include "macro.h"
 
 #if USE_DEBUG_UART
 

@@ -50,9 +50,8 @@ static void Tst_writeIni(Unit *unit, IniWriter *iw)
 /** Allocate data structure and set defaults */
 static error_t Tst_preInit(Unit *unit)
 {
-    bool suc = true;
-    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
-    if (!suc) return E_OUT_OF_MEM;
+    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
+    if (priv == NULL) return E_OUT_OF_MEM;
 
     //
 
@@ -78,8 +77,7 @@ static void Tst_deInit(Unit *unit)
     //
 
     // Free memory
-    free(unit->data);
-    unit->data = NULL;
+    free_ck(unit->data);
 }
 
 // ------------------------------------------------------------------------
@@ -98,7 +96,7 @@ static void br_longtext(struct bulk_read *bulk, uint32_t chunk, uint8_t *buffer)
 {
     // clean-up request
     if (buffer == NULL) {
-        free(bulk);
+        free_ck(bulk);
         return;
     }
 
@@ -109,7 +107,7 @@ static void bw_dump(struct bulk_write *bulk, const uint8_t *chunk, uint32_t len)
 {
     // clean-up request
     if (chunk == NULL) {
-        free(bulk);
+        free_ck(bulk);
         return;
     }
 
@@ -133,7 +131,7 @@ static error_t Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pa
             return E_SUCCESS;
 
         case CMD_BULKREAD:;
-            BulkRead *br = malloc(sizeof(struct bulk_read));
+            BulkRead *br = malloc_ck(sizeof(struct bulk_read));
             assert_param(br);
 
             br->len = (uint32_t) strlen(longtext);
@@ -144,7 +142,7 @@ static error_t Tst_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pa
             return E_SUCCESS;
 
         case CMD_BULKWRITE:;
-            BulkWrite *bw = malloc(sizeof(struct bulk_write));
+            BulkWrite *bw = malloc_ck(sizeof(struct bulk_write));
             assert_param(bw);
 
             bw->len = 10240;

@@ -15,7 +15,8 @@
  #define TSK_STACK_MAIN      160
 #endif
 
-#define TSK_STACK_MSG       180 // TF message handler task stack size (all unit commands run on this thread)
+// 180 is normally enough if not doing extensive debug logging
+#define TSK_STACK_MSG       200 // TF message handler task stack size (all unit commands run on this thread)
 
 #define BULK_READ_BUF_LEN 256   // Buffer for TF bulk reads
 #define UNIT_TMP_LEN      512   // Buffer for internal unit operations

@@ -87,11 +87,10 @@ static bool savebuf_ovhandler(PayloadBuilder *pb, uint32_t more)
 void settings_save(void)
 {
     HAL_StatusTypeDef hst;
-    bool suc;
 
     assert_param(save_buffer == NULL); // It must be NULL here - otherwise we have a leak
-    save_buffer = malloc_ck(FLASH_SAVE_BUF_LEN, &suc);
-    assert_param(suc);
+    save_buffer = malloc_ck(FLASH_SAVE_BUF_LEN);
+    assert_param(save_buffer != NULL);
 
     PayloadBuilder pb = pb_start(save_buffer, FLASH_SAVE_BUF_LEN, savebuf_ovhandler);
 
@@ -151,7 +150,7 @@ void settings_save(void)
     assert_param(hst == HAL_OK);
     fls_printf("--- Flash done ---\r\n");
 
-    free(save_buffer);
+    free_ck(save_buffer);
     save_buffer = NULL;
 
 #if DEBUG_FLASH_WRITE

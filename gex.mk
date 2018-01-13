@@ -57,7 +57,8 @@ GEX_CFLAGS = \
     -MD -Wno-redundant-decls -Wno-unused-parameter \
     -Wno-unused-variable -Wno-inline \
     -fmerge-constants -fmerge-all-constants -Wno-implicit-fallthrough \
-    -fno-exceptions -finline-small-functions -findirect-inlining -Wno-strict-aliasing -Wno-float-equal -Wno-discarded-qualifiers -fstack-usage
+    -fno-exceptions -finline-small-functions -findirect-inlining -Wno-strict-aliasing -Wno-float-equal \
+    -Wno-discarded-qualifiers -fstack-usage
 
 GEX_CDEFS_BASE =  \
     -D__weak="__attribute__((weak))" \
@@ -75,7 +76,8 @@ GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DDEBUG_FLASH_WRITE=0 \
     -DVERBOSE_HARDFAULT=0 \
     -DUSE_STACK_MONITOR=0 \
-    -DUSE_DEBUG_UART=0
+    -DUSE_DEBUG_UART=0 \
+    -DDEBUG_MALLOC=0
 
 else
 
@@ -86,7 +88,8 @@ GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DDEBUG_FLASH_WRITE=0 \
     -DVERBOSE_HARDFAULT=1 \
     -DUSE_STACK_MONITOR=1 \
-    -DUSE_DEBUG_UART=1
+    -DUSE_DEBUG_UART=1 \
+    -DDEBUG_MALLOC=0
 
 endif
 

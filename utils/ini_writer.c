@@ -23,17 +23,15 @@ char *iwbuffer = NULL;
 void iw_begin(void)
 {
     assert_param(iwbuffer == NULL);
-    bool suc = true;
-    iwbuffer = malloc_ck(IWBUFFER_LEN, &suc);
-    assert_param(suc);
+    iwbuffer = malloc_ck(IWBUFFER_LEN);
+    assert_param(iwbuffer != NULL);
 }
 
 /** Release the helper buffer */
 void iw_end(void)
 {
     assert_param(iwbuffer != NULL);
-    free(iwbuffer);
-    iwbuffer = NULL;
+    free_ck(iwbuffer);
 }
 
 #define IW_VPRINTF() do { \

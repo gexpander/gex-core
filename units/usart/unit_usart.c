@@ -42,9 +42,8 @@ struct priv {
 /** Allocate data structure and set defaults */
 static error_t UUSART_preInit(Unit *unit)
 {
-    bool suc = true;
-    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
-    if (!suc) return E_OUT_OF_MEM;
+    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
+    if (priv == NULL) return E_OUT_OF_MEM;
 
     // some defaults
     priv->periph_num = 1;
@@ -618,7 +617,7 @@ static void UUSART_deInit(Unit *unit)
     rsc_teardown(unit);
 
     // Free memory
-    free(unit->data);
+    free_ck(unit->data);
     unit->data = NULL;
 }
 
