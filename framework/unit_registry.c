@@ -326,18 +326,24 @@ bool ureg_finalize_all_init(void)
     while (li != NULL) {
         Unit *const pUnit = &li->unit;
 
-        pUnit->status = pUnit->driver->init(pUnit);
-        if (pUnit->status != E_SUCCESS) {
-            dbg("!!! error initing unit %s: %s", pUnit->name, error_get_message(pUnit->status));
-        }
-
-        // try to assign unique callsigns
-        // FIXME this is wrong, sometimes leads to duplicate CS
-        if (pUnit->callsign == 0) {
-            pUnit->callsign = callsign++;
+        if (pUnit->status == E_SUCCESS) {
+            dbg("! Unit seems already loaded, skipping");
         } else {
-            if (pUnit->callsign >= callsign) {
-                callsign = (uint8_t) (pUnit->callsign + 1);
+            pUnit->status = pUnit->driver->init(pUnit);
+            if (pUnit->status != E_SUCCESS) {
+                dbg("!!! error initing unit %s: %s", pUnit->name,
+                    error_get_message(pUnit->status));
+            }
+
+            // try to assign unique callsigns
+            // FIXME this is wrong, sometimes leads to duplicate CS
+            if (pUnit->callsign == 0) {
+                pUnit->callsign = callsign++;
+            }
+            else {
+                if (pUnit->callsign >= callsign) {
+                    callsign = (uint8_t) (pUnit->callsign + 1);
+                }
             }
         }
 
