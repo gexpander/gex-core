@@ -226,8 +226,6 @@ void rsc_print_all_available(IniWriter *iw)
 {
     if (iw->count == 0) return;
 
-    static char buf[80];
-
     iw_string(iw, "Resources available on this platform\r\n"
                   "------------------------------------\r\n");
 
@@ -258,7 +256,7 @@ void rsc_print_all_available(IniWriter *iw)
         if (i%16 == 0) {
             // here we print the previous port
             if (bitmap != 0) {
-                iw_string(iw, str_pinmask(bitmap, buf));
+                iw_string(iw, str_pinmask(bitmap, iwbuffer));
                 bitmap = 0;
             }
 
@@ -273,7 +271,7 @@ void rsc_print_all_available(IniWriter *iw)
     }
     // the last one
     if (bitmap != 0) {
-        iw_string(iw, str_pinmask(bitmap, buf));
+        iw_string(iw, str_pinmask(bitmap, iwbuffer));
     }
     iw_newline(iw);
     iw_newline(iw);

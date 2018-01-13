@@ -17,7 +17,15 @@ int PUTS(const char *string);
 void PUTNL(void);
 int PUTCHAR(int ch);
 
-#define dbg(format, ...) do { PRINTF(format, ##__VA_ARGS__); PUTNL(); } while (0)
+#define dbg(format, ...) do { \
+    if (VA_ARG_COUNT(__VA_ARGS__) == 0) { \
+      PUTS(format); \
+    } else { \
+      PRINTF(format, ##__VA_ARGS__); \
+    } \
+    PUTNL(); \
+  } while (0)
+
 
 #else
 #define dbg(format, ...) do {} while (0)

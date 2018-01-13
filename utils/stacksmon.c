@@ -5,6 +5,7 @@
 #include "task_msg.h"
 #include "platform.h"
 #include "stacksmon.h"
+#include "hexdump.h"
 
 #if USE_STACK_MONITOR
 

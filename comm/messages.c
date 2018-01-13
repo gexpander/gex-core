@@ -62,9 +62,12 @@ static void settings_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer
     // clean-up request
     if (buffer == NULL) {
         free(bulk);
+        iw_end();
         dbg("INI read complete.");
         return;
     }
+
+    if (bulk->offset == 0) iw_begin();
 
     IniWriter iw = iw_init((char *)buffer, bulk->offset, chunk);
     settings_build_units_ini(&iw);

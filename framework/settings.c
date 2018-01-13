@@ -59,7 +59,7 @@ void settings_load(void)
 }
 
 
-static uint8_t save_buffer[FLASH_SAVE_BUF_LEN];
+static uint8_t *save_buffer = NULL;
 static uint32_t save_addr;
 
 #if DEBUG_FLASH_WRITE
@@ -87,6 +87,12 @@ static bool savebuf_ovhandler(PayloadBuilder *pb, uint32_t more)
 void settings_save(void)
 {
     HAL_StatusTypeDef hst;
+    bool suc;
+
+    assert_param(save_buffer == NULL); // It must be NULL here - otherwise we have a leak
+    save_buffer = malloc_ck(FLASH_SAVE_BUF_LEN, &suc);
+    assert_param(suc);
+
     PayloadBuilder pb = pb_start(save_buffer, FLASH_SAVE_BUF_LEN, savebuf_ovhandler);
 
     save_addr = SETTINGS_FLASH_ADDR;
@@ -145,6 +151,9 @@ void settings_save(void)
     assert_param(hst == HAL_OK);
     fls_printf("--- Flash done ---\r\n");
 
+    free(save_buffer);
+    save_buffer = NULL;
+
 #if DEBUG_FLASH_WRITE
     dbg("written @ %p", (void*)SETTINGS_FLASH_ADDR);
     hexDump("Flash", (void*)SETTINGS_FLASH_ADDR, 64);
@@ -160,6 +169,8 @@ void settings_save(void)
  */
 static void savebuf_flush(PayloadBuilder *pb, bool final)
 {
+    assert_param(save_buffer != NULL);
+
     // TODO this might be buggy, was not tested cross-boundary yet
     // TODO remove those printf's after verifying correctness
 
@@ -289,7 +300,7 @@ void settings_load_ini_begin(void)
 void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value)
 {
 //    dbg("[%s] %s = %s", section, key, value);
-    static char namebuf[INI_KEY_MAX];
+    char namebuf[INI_KEY_MAX];
 
     // SYSTEM and UNITS files must be separate.
     // Init functions are run for first key in the section.

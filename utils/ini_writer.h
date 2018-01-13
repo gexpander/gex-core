@@ -14,6 +14,21 @@ typedef struct iniwriter_ {
 } IniWriter;
 
 /**
+ * IniWriter helper buffer, available within a IW-scope only.
+ *
+ * This buffer is used internally by printf-like iw functions.
+ * It can be used to prepare buffer for iw_buff or iw_string,
+ * but must not be used for %s substitutions in iw_* functions.
+ */
+extern char *iwbuffer;
+
+/** Allocate the helper buffer */
+void iw_begin(void);
+
+/** Release the helper buffer */
+void iw_end(void);
+
+/**
  * Initialize a IniWriter struct (macro)
  *
  * @param buffer - buffer backing the writer, result will be written here

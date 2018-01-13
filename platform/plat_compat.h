@@ -18,9 +18,9 @@
 #define TSK_STACK_MSG       220 // TF message handler task stack size (all unit commands run on this thread)
 
 #define BULK_READ_BUF_LEN 256   // Buffer for TF bulk reads
-#define UNIT_TMP_LEN      512   // Buffer for bulk read and various internal unit operations
+#define UNIT_TMP_LEN      512   // Buffer for internal unit operations
 
-#define FLASH_SAVE_BUF_LEN  128 // Static buffer for saving to flash
+#define FLASH_SAVE_BUF_LEN  128 // Malloc'd buffer for saving to flash
 
 #define MSG_QUE_SLOT_SIZE 64 // FIXME this should be possible to lower, but there's some bug with bulk transfer / INI parser
 #define RX_QUE_CAPACITY    8 // TinyFrame rx queue size (64 bytes each)
