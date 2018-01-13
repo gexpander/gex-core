@@ -30,6 +30,7 @@ struct bulk_read {
     bulkread_data_cb read; //!< Read callback
     uint32_t len;          //!< Total data length
     void *userdata;        //!< A place for arbitrary userdata
+    uint8_t *_buffer;
 
     uint32_t offset;       //!< Internal offset counter, will be set to 0 on start.
 };

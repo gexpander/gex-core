@@ -15,7 +15,7 @@ struct stackhandle {
     uint32_t len;
 };
 
-#define STACK_NUM 8
+#define STACK_NUM 3
 static uint32_t nextidx = 0;
 static struct stackhandle stacks[STACK_NUM];
 
