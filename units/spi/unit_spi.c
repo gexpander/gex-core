@@ -97,8 +97,8 @@ static error_t USPI_loadIni(Unit *unit, const char *key, const char *value)
     else if (streq(key, "tx-only")) {
         priv->tx_only = str_parse_yn(value, &suc);
     }
-    else if (streq(key, "lsb-first")) {
-        priv->lsb_first = str_parse_yn(value, &suc);
+    else if (streq(key, "first-bit")) {
+        priv->lsb_first = (bool)str_parse_2(value, "MSB", 0, "LSB", 1, &suc);
     }
     else if (streq(key, "port")) {
         suc = parse_port(value, &priv->ssn_port_name);
@@ -151,8 +151,10 @@ static void USPI_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Transmit only, disable MISO");
     iw_entry(iw, "tx-only", str_yn(priv->tx_only));
 
-    iw_comment(iw, "Use LSB-first bit order");
-    iw_entry(iw, "lsb-first", str_yn(priv->lsb_first));
+    iw_comment(iw, "Bit order (LSB or MSB first)");
+    iw_entry(iw, "first-bit", str_2((uint32_t)priv->lsb_first,
+                                    0, "MSB",
+                                    1, "LSB"));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "SS port name");

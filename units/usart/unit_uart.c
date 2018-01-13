@@ -15,20 +15,26 @@ struct priv {
     uint8_t periph_num; //!< 1-6
     uint8_t remap;      //!< UART remap option
 
-    uint32_t baudrate;  //!< UART baud rate
+    uint32_t baudrate;  //!< baud rate
     uint8_t parity;     //!< 0-none, 1-odd, 2-even
-    uint8_t stopbits;   //!< 1-one, 2-2, 3-1.5
-    bool enable_rx;     //!< Configure and enable the Rx line
-    bool enable_tx;     //!< Configure and enable the Tx line
+    uint8_t stopbits;   //!< 0-half, 1-one, 2-one-and-half, 3-two (halves - 1)
+    uint8_t direction;  //!< 1-RX, 2-TX, 3-RXTX
 
-    uint8_t hw_flow_control; //!< HW flow control 0-none, 1-RTX, 2-CTS, 3-both
-    bool clock_output;       //!< Output serial clock
+    uint8_t hw_flow_control; //!< HW flow control 0-none, 1-RTC, 2-CTS, 3-full
+    bool clock_output;  //!< Output serial clock
     bool cpol;          //!< clock CPOL setting
     bool cpha;          //!< clock CPHA setting
+    bool lsb_first;     //!< bit order
+    uint8_t width;      //!< word width - 7, 8, 9 (this includes parity)
 
-    uint32_t rx_buf_size; //!< Receive buffer size
-    uint32_t rx_full_thr;  //!< Receive buffer full threshold (will be sent to PC)
-    uint16_t rx_timeout;  //!< Receive timeout (time of inactivity before flushing to PC)
+    bool data_inv;  //!< Invert data bytes
+    bool rx_inv;    //!< Invert the RX pin levels
+    bool tx_inv;    //!< Invert the TX pin levels
+
+    bool de_output; //!< Generate the Driver Enable signal for RS485
+    bool de_polarity; //!< DE active level
+    uint8_t de_assert_time;   //!< Time to assert the DE signal before transmit
+    uint8_t de_clear_time; //!< Time to clear the DE signal after transmit
 
     USART_TypeDef *periph;
 };
@@ -46,18 +52,25 @@ static error_t UUSART_preInit(Unit *unit)
 
     priv->baudrate = 115200;
     priv->parity = 0;         //!< 0-none, 1-odd, 2-even
-    priv->stopbits = 1;       //!< 1-one, 2-2, 3-1.5
-    priv->enable_rx = true;
-    priv->enable_tx = true;
+    priv->stopbits = 1;       //!< 0-half, 1-one, 2-1.5, 3-two
+    priv->direction = 3; // RXTX
 
     priv->hw_flow_control = false;
     priv->clock_output = false;
     priv->cpol = 0;
     priv->cpha = 0;
+    priv->lsb_first = true; // LSB first is default for UART
+    priv->width = 8;
 
-    priv->rx_buf_size = 128;
-    priv->rx_full_thr = 90;
-    priv->rx_timeout = 3; // ms
+    priv->data_inv = false;
+    priv->rx_inv = false;
+    priv->tx_inv = false;
+
+    priv->de_output = false;
+    priv->de_polarity = 1; // active high
+    // this should equal to a half-byte length when oversampling by 16 is used (default)
+    priv->de_assert_time = 8;
+    priv->de_clear_time = 8;
 
     return E_SUCCESS;
 }
@@ -73,22 +86,28 @@ static void UUSART_loadBinary(Unit *unit, PayloadParser *pp)
     (void)version;
 
     priv->periph_num = pp_u8(pp);
-    priv->remap = pp_u8(pp);
+    priv->remap      = pp_u8(pp);
 
-    priv->baudrate = pp_u32(pp);
-    priv->parity = pp_u8(pp);
-    priv->stopbits = pp_u8(pp);
-    priv->enable_rx = pp_bool(pp);
-    priv->enable_tx = pp_bool(pp);
+    priv->baudrate   = pp_u32(pp);
+    priv->parity     = pp_u8(pp);
+    priv->stopbits   = pp_u8(pp);
+    priv->direction  = pp_u8(pp);
 
     priv->hw_flow_control = pp_u8(pp);
-    priv->clock_output = pp_bool(pp);
-    priv->cpol = pp_bool(pp);
-    priv->cpha = pp_bool(pp);
+    priv->clock_output    = pp_bool(pp);
+    priv->cpol            = pp_bool(pp);
+    priv->cpha            = pp_bool(pp);
+    priv->lsb_first       = pp_bool(pp);
+    priv->width           = pp_u8(pp);
 
-    priv->rx_buf_size = pp_u32(pp);
-    priv->rx_full_thr = pp_u32(pp);
-    priv->rx_timeout = pp_u16(pp);
+    priv->data_inv = pp_bool(pp);
+    priv->rx_inv = pp_bool(pp);
+    priv->tx_inv = pp_bool(pp);
+
+    priv->de_output = pp_bool(pp);
+    priv->de_polarity = pp_bool(pp);
+    priv->de_assert_time = pp_u8(pp);
+    priv->de_clear_time = pp_u8(pp);
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -104,17 +123,23 @@ static void UUSART_writeBinary(Unit *unit, PayloadBuilder *pb)
     pb_u32(pb, priv->baudrate);
     pb_u8(pb, priv->parity);
     pb_u8(pb, priv->stopbits);
-    pb_bool(pb, priv->enable_rx);
-    pb_bool(pb, priv->enable_tx);
+    pb_u8(pb, priv->direction);
 
     pb_u8(pb, priv->hw_flow_control);
     pb_bool(pb, priv->clock_output);
     pb_bool(pb, priv->cpol);
     pb_bool(pb, priv->cpha);
+    pb_bool(pb, priv->lsb_first);
+    pb_u8(pb, priv->width);
 
-    pb_u32(pb, priv->rx_buf_size);
-    pb_u32(pb, priv->rx_full_thr);
-    pb_u16(pb, priv->rx_timeout);
+    pb_bool(pb, priv->data_inv);
+    pb_bool(pb, priv->rx_inv);
+    pb_bool(pb, priv->tx_inv);
+
+    pb_bool(pb, priv->de_output);
+    pb_bool(pb, priv->de_polarity);
+    pb_u8(pb, priv->de_assert_time);
+    pb_u8(pb, priv->de_clear_time);
 }
 
 // ------------------------------------------------------------------------
@@ -135,22 +160,39 @@ static error_t UUSART_loadIni(Unit *unit, const char *key, const char *value)
         priv->baudrate = (uint32_t ) avr_atoi(value);
     }
     else if (streq(key, "parity")) {
-        priv->parity = (uint8_t) avr_atoi(value);
+        priv->parity = (uint8_t) str_parse_3(value,
+                                             "NONE", 0,
+                                             "ODD", 1,
+                                             "EVEN", 2, &suc);
     }
     else if (streq(key, "stop-bits")) {
-        priv->stopbits = (uint8_t) (1 + str_parse_012(value, "1", "2", "1.5", &suc));
+        priv->stopbits = (uint8_t) str_parse_4(value,
+                                               "0.5", 0,
+                                               "1", 1,
+                                               "1.5", 2,
+                                               "2", 3, &suc);
     }
-    else if (streq(key, "enable-rx")) {
-        priv->enable_rx = str_parse_yn(value, &suc);
-    }
-    else if (streq(key, "enable-tx")) {
-        priv->enable_tx = str_parse_yn(value, &suc);
+    else if (streq(key, "direction")) {
+        priv->direction = (uint8_t) str_parse_3(value,
+                                                "RX", 1,
+                                                "TX", 2,
+                                                "RXTX", 3, &suc);
     }
     else if (streq(key, "hw-flow-control")) {
-        priv->hw_flow_control = (uint8_t) avr_atoi(value);
+        priv->hw_flow_control = (uint8_t) str_parse_4(value,
+                                                      "NONE", 0,
+                                                      "RTS", 1,
+                                                      "CTS", 2,
+                                                      "FULL", 3, &suc);
     }
-    else if (streq(key, "synchronous")) {
-        priv->clock_output = (bool) avr_atoi(value);
+    else if (streq(key, "word-width")) {
+        priv->width = (uint8_t ) avr_atoi(value);
+    }
+    else if (streq(key, "first-bit")) {
+        priv->lsb_first = (bool)str_parse_2(value, "MSB", 0, "LSB", 1, &suc);
+    }
+    else if (streq(key, "clock-output")) {
+        priv->clock_output = str_parse_yn(value, &suc);
     }
     else if (streq(key, "cpol")) {
         priv->cpol = (bool) avr_atoi(value);
@@ -158,14 +200,17 @@ static error_t UUSART_loadIni(Unit *unit, const char *key, const char *value)
     else if (streq(key, "cpha")) {
         priv->cpha = (bool) avr_atoi(value);
     }
-    else if (streq(key, "rx-buffer")) {
-        priv->rx_buf_size = (uint32_t ) avr_atoi(value);
+    else if (streq(key, "de-output")) {
+        priv->de_output = str_parse_yn(value, &suc);
     }
-    else if (streq(key, "rx-full-theshold")) {
-        priv->rx_full_thr = (uint32_t ) avr_atoi(value);
+    else if (streq(key, "de-polarity")) {
+        priv->de_polarity = (bool) avr_atoi(value);
     }
-    else if (streq(key, "rx-timeout")) {
-        priv->rx_timeout = (uint16_t ) avr_atoi(value);
+    else if (streq(key, "de-assert-time")) {
+        priv->de_assert_time = (uint8_t) avr_atoi(value);
+    }
+    else if (streq(key, "de-clear-time")) {
+        priv->de_clear_time = (uint8_t) avr_atoi(value);
     }
     else {
         return E_BAD_KEY;
@@ -180,14 +225,16 @@ static void UUSART_writeIni(Unit *unit, IniWriter *iw)
 {
     struct priv *priv = unit->data;
 
-    iw_comment(iw, "Peripheral number (UARTx)");
+    iw_comment(iw, "Peripheral number (UARTx 1-4)");
     iw_entry(iw, "device", "%d", (int)priv->periph_num);
 
-    iw_comment(iw, "Pin mappings (SCK,MISO,MOSI)");
+    iw_comment(iw, "Pin mappings (TX,RX,CK,CTS,RTS)");
 #if GEX_PLAT_F072_DISCOVERY
     // TODO
-//    iw_comment(iw, " SPI1: (0) A5,A6,A7     (1) B3,B4,B5  (2) E13,E14,E15");
-//    iw_comment(iw, " SPI2: (0) B13,B14,B15  (1) D1,D3,D4");
+    iw_comment(iw, " USART1: (0) A9,A10,A8,A11,A12   (1) B6,B7,A8,A11,A12");
+    iw_comment(iw, " USART2: (0) A2,A3,A4,A0,A1      (1) D5,D6,D7,D3,D4");
+    iw_comment(iw, " USART3: (0) B10,B11,B12,B13,B14 (1) D8,D9,D10,D11,D12");
+    iw_comment(iw, " USART4: (0) A0,A1,C12,B7,A15    (1) C10,C11,C12,B7,A15");
 #elif GEX_PLAT_F103_BLUEPILL
     #error "NO IMPL"
 #elif GEX_PLAT_F303_DISCOVERY
@@ -200,37 +247,69 @@ static void UUSART_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "remap", "%d", (int)priv->remap);
 
     iw_cmt_newline(iw);
-    iw_comment(iw, "Baud rate"); // TODO examples/range
+    iw_comment(iw, "Baud rate in bps (eg. 9600, 115200)"); // TODO examples/range
     iw_entry(iw, "baud-rate", "%d", (int)priv->baudrate);
 
-    iw_comment(iw, "Parity (0-none, 1-odd, 2-even)");
-    iw_entry(iw, "parity", "%d", (int)priv->parity);
+    iw_comment(iw, "Parity type (NONE, ODD, EVEN)");
+    iw_entry(iw, "parity", "%s", str_3(priv->parity,
+                                       0, "NONE",
+                                       1, "ODD",
+                                       2, "EVEN"));
 
-    iw_comment(iw, "Stop-bits (1, 1.5, 2)");
-    iw_entry(iw, "stop-bits", "%s", (priv->stopbits==3)?"1.5":(priv->stopbits==2?"2":"1"));
+    iw_comment(iw, "Number of stop bits (0.5, 1, 1.5, 2)");
+    iw_entry(iw, "stop-bits", "%s", str_4(priv->stopbits,
+                                          0, "0.5",
+                                          1, "1",
+                                          2, "1.5",
+                                          3, "2"));
 
-    iw_comment(iw, "Enable the RX / TX lines");
-    iw_entry(iw, "exable-rx", str_yn(priv->enable_rx));
-    iw_entry(iw, "exable-tx", str_yn(priv->enable_tx));
+    iw_comment(iw, "Bit order (LSB or MSB first)");
+    iw_entry(iw, "first-bit", str_2((uint32_t)priv->lsb_first,
+                                    0, "MSB",
+                                    1, "LSB"));
 
-    iw_comment(iw, "Hardware flow control (NONE, RTS, CTS, ALL)");
-    iw_entry(iw, "hw-flow-control", "%s", str_4(priv->hw_flow_control, 0, "NONE", 1, "RTS", 2, "CTS", 3, "ALL"));
+    iw_comment(iw, "Word width (7,8,9) - including parity bit if used");
+    iw_entry(iw, "word-width", "%d", (int)priv->width);
 
-    iw_comment(iw, "Clock output (Y,N) - N for async");
+    iw_comment(iw, "Enabled lines (RX,TX,RXTX)");
+    iw_entry(iw, "direction", str_3(priv->direction,
+                                    1, "RX",
+                                    2, "TX",
+                                    3, "RXTX"));
+
+    iw_comment(iw, "Hardware flow control (NONE, RTS, CTS, FULL)");
+    iw_entry(iw, "hw-flow-control", "%s", str_4(priv->hw_flow_control,
+                                                0, "NONE",
+                                                1, "RTS",
+                                                2, "CTS",
+                                                3, "FULL"));
+
+    iw_cmt_newline(iw);
+    iw_comment(iw, "Generate serial clock (Y,N)");
     iw_entry(iw, "clock-output", str_yn(priv->clock_output));
-    iw_comment(iw, "Sync: Clock polarity: 0,1 (clock idle level)");
+    iw_comment(iw, "Output clock polarity: 0,1 (clock idle level)");
     iw_entry(iw, "cpol", "%d", (int)priv->cpol);
-    iw_comment(iw, "Sync: Clock phase: 0,1 (active edge, 0-first, 1-second)");
+    iw_comment(iw, "Output clock phase: 0,1 (active edge, 0-first, 1-second)");
     iw_entry(iw, "cpha", "%d", (int)priv->cpha);
 
-    iw_comment(iw, "Receive buffer capacity, full threshold and flush timeout");
-    iw_entry(iw, "rx-buffer", "%d", (int)priv->rx_buf_size);
-    iw_entry(iw, "rx-full-theshold", "%d", (int)priv->rx_full_thr);
-    iw_entry(iw, "rx-timeout", "%d", (int)priv->rx_timeout);
+    iw_cmt_newline(iw);
+    iw_comment(iw, "Generate RS485 Driver Enable signal (Y,N) - uses RTS pin");
+    iw_entry(iw, "de-output", str_yn(priv->de_output));
+    iw_comment(iw, "DE active level: 0,1");
+    iw_entry(iw, "de-polarity", "%d", (int)(priv->de_polarity));
+    iw_comment(iw, "DE assert time (0-31)");
+    iw_entry(iw, "de-assert-time", "%d", (int)(priv->de_assert_time));
+    iw_comment(iw, "DE clear time (0-31)");
+    iw_entry(iw, "de-clear-time", "%d", (int)(priv->de_clear_time));
 }
 
 // ------------------------------------------------------------------------
 
+struct paf {
+    char port;
+    uint8_t pin;
+    uint8_t af;
+};
 
 /** Finalize unit set-up */
 static error_t UUSART_init(Unit *unit)
@@ -239,8 +318,7 @@ static error_t UUSART_init(Unit *unit)
     struct priv *priv = unit->data;
 
     if (!(priv->periph_num >= 1 && priv->periph_num <= 4)) {
-        dbg("!! Bad UART periph");
-        // TODO count based on platform chip
+        dbg("!! Bad USART periph");
         return E_BAD_CONFIG;
     }
 
@@ -249,49 +327,124 @@ static error_t UUSART_init(Unit *unit)
         TRY(rsc_claim(unit, R_USART1));
         priv->periph = USART1;
     }
+#if defined(USART2)
     else if (priv->periph_num == 2) {
         TRY(rsc_claim(unit, R_USART2));
         priv->periph = USART2;
     }
+#endif
+#if defined(USART3)
     else if (priv->periph_num == 3) {
         TRY(rsc_claim(unit, R_USART3));
         priv->periph = USART3;
     }
+#endif
+#if defined(USART4)
     else if (priv->periph_num == 4) {
         TRY(rsc_claim(unit, R_USART4));
         priv->periph = USART4;
     }
+#endif
+    else return E_BAD_CONFIG;
+
 
     // This is written for F072, other platforms will need adjustments
 
     // Configure UART pins (AF)
 
-    char uart_portname;
-    uint8_t pin_rx;
-    uint8_t pin_tx;
-    uint8_t pin_clk;
-    uint8_t pin_rts;
-    uint8_t pin_cts;
-    uint32_t af_uart;
+    const struct paf *mappings = NULL;
 
     // TODO
 #if GEX_PLAT_F072_DISCOVERY
-    // SPI1 - many options
-    // sck, miso, mosi, af
+    const struct paf mapping_1_0[5] = {
+        {'A', 8, LL_GPIO_AF_1}, // CK
+        {'A', 9, LL_GPIO_AF_1}, // TX
+        {'A', 10, LL_GPIO_AF_1}, // RX
+        {'A', 11, LL_GPIO_AF_1}, // CTS
+        {'A', 12, LL_GPIO_AF_1}, // RTS
+    };
+
+    const struct paf mapping_1_1[5] = {
+        {'A', 8, LL_GPIO_AF_1}, // CK
+        {'B', 6, LL_GPIO_AF_1}, // TX
+        {'B', 7, LL_GPIO_AF_1}, // RX
+        {'A', 11, LL_GPIO_AF_1}, // CTS
+        {'A', 12, LL_GPIO_AF_1}, // RTS
+    };
+
+    const struct paf mapping_2_0[5] = {
+        {'A', 4, LL_GPIO_AF_1}, // CK
+        {'A', 2, LL_GPIO_AF_1}, // TX
+        {'A', 3, LL_GPIO_AF_1}, // RX
+        {'A', 0, LL_GPIO_AF_1}, // CTS
+        {'A', 1, LL_GPIO_AF_1}, // RTS
+    };
+
+    const struct paf mapping_2_1[5] = {
+        {'D', 7, LL_GPIO_AF_0}, // CK
+        {'D', 5, LL_GPIO_AF_0}, // TX
+        {'D', 6, LL_GPIO_AF_0}, // RX
+        {'D', 3, LL_GPIO_AF_0}, // CTS
+        {'D', 4, LL_GPIO_AF_0}, // RTS
+    };
+
+    const struct paf mapping_3_0[5] = {
+        {'B', 12, LL_GPIO_AF_4}, // CK
+        {'B', 10, LL_GPIO_AF_4}, // TX
+        {'B', 11, LL_GPIO_AF_4}, // RX
+        {'B', 13, LL_GPIO_AF_4}, // CTS
+        {'B', 14, LL_GPIO_AF_4}, // RTS
+    };
+
+    const struct paf mapping_3_1[5] = {
+        {'D', 10, LL_GPIO_AF_0}, // CK
+        {'D', 8, LL_GPIO_AF_0}, // TX
+        {'D', 9, LL_GPIO_AF_0}, // RX
+        {'D', 11, LL_GPIO_AF_0}, // CTS
+        {'D', 12, LL_GPIO_AF_0}, // RTS
+    };
+
+    const struct paf mapping_4_0[5] = {
+        {'C', 12, LL_GPIO_AF_0}, // CK
+        {'A', 0, LL_GPIO_AF_4}, // TX
+        {'A', 1, LL_GPIO_AF_4}, // RX
+        {'B', 7, LL_GPIO_AF_4}, // CTS
+        {'A', 15, LL_GPIO_AF_4}, // RTS
+    };
+
+    const struct paf mapping_4_1[5] = {
+        {'C', 12, LL_GPIO_AF_0}, // CK
+        {'C', 10, LL_GPIO_AF_0}, // TX
+        {'C', 11, LL_GPIO_AF_0}, // RX
+        {'B', 7, LL_GPIO_AF_4}, // CTS
+        {'A', 15, LL_GPIO_AF_4}, // RTS
+    };
 
     if (priv->periph_num == 1) {
-        // SPI1
-        if (priv->remap == 0) {
-            uart_portname = 'A';
-//            af_spi = LL_GPIO_AF_0;
-//            pin_sck = 5;
-//            pin_miso = 6;
-//            pin_mosi = 7;
-        }
-        else {
-            return E_BAD_CONFIG;
-        }
+        // USART1
+        if (priv->remap == 0) mappings = &mapping_1_0[0];
+        else if (priv->remap == 1) mappings = &mapping_1_1[0];
+        else return E_BAD_CONFIG;
     }
+    else if (priv->periph_num == 2) {
+        // USART2
+        if (priv->remap == 0) mappings = &mapping_2_0[0];
+        else if (priv->remap == 1) mappings = &mapping_2_1[0];
+        else return E_BAD_CONFIG;
+    }
+    else if (priv->periph_num == 3) {
+        // USART3
+        if (priv->remap == 0) mappings = &mapping_3_0[0];
+        else if (priv->remap == 1) mappings = &mapping_3_1[0];
+        else return E_BAD_CONFIG;
+    }
+    else if (priv->periph_num == 4) {
+        // USART3
+        if (priv->remap == 0) mappings = &mapping_4_0[0];
+        else if (priv->remap == 1) mappings = &mapping_4_1[0];
+        else return E_BAD_CONFIG;
+    }
+    else return E_BAD_CONFIG;
     // TODO other periphs
 
 #elif GEX_PLAT_F103_BLUEPILL
@@ -303,54 +456,117 @@ static error_t UUSART_init(Unit *unit)
 #else
     #error "BAD PLATFORM!"
 #endif
-//
-//    // first, we have to claim the pins
-//    TRY(rsc_claim_pin(unit, uart_portname, pin_mosi));
-//    TRY(rsc_claim_pin(unit, uart_portname, pin_miso));
-//    TRY(rsc_claim_pin(unit, uart_portname, pin_sck));
-//
-//    configure_gpio_alternate(uart_portname, pin_mosi, af_spi);
-//    configure_gpio_alternate(uart_portname, pin_miso, af_spi);
-//    configure_gpio_alternate(uart_portname, pin_sck, af_spi);
-//
-//    if (priv->periph_num == 1) {
-//        __HAL_RCC_SPI1_CLK_ENABLE();
-//    } else {
-//        __HAL_RCC_SPI2_CLK_ENABLE();
-//    }
-//
-//    // configure SSN GPIOs
-//    {
-//        // Claim all needed pins
-//        TRY(rsc_claim_gpios(unit, priv->ssn_port_name, priv->ssn_pins));
-//        TRY(configure_sparse_pins(priv->ssn_port_name, priv->ssn_pins, &priv->ssn_port,
-//                                  LL_GPIO_MODE_OUTPUT, LL_GPIO_OUTPUT_PUSHPULL));
-//        // Set the initial state - all high
-//        priv->ssn_port->BSRR = priv->ssn_pins;
-//    }
-//
-//    // Configure SPI - must be configured under reset
-//    LL_SPI_Disable(priv->periph);
-//    {
-//        uint32_t presc = priv->prescaller;
-//        uint32_t lz = __CLZ(presc);
-//        if (lz < 23) lz = 23;
-//        if (lz > 30) lz = 30;
-//        presc = (32 - lz - 2);
-//        LL_SPI_SetBaudRatePrescaler(priv->periph, (presc<<SPI_CR1_BR_Pos)&SPI_CR1_BR_Msk);
-//
-//        LL_SPI_SetClockPolarity(priv->periph,     priv->cpol ? LL_SPI_POLARITY_HIGH : LL_SPI_POLARITY_LOW);
-//        LL_SPI_SetClockPhase(priv->periph,        priv->cpha ? LL_SPI_PHASE_1EDGE : LL_SPI_PHASE_2EDGE);
-//        LL_SPI_SetTransferDirection(priv->periph, priv->tx_only ? LL_SPI_HALF_DUPLEX_TX : LL_SPI_FULL_DUPLEX);
-//        LL_SPI_SetTransferBitOrder(priv->periph,  priv->lsb_first ? LL_SPI_LSB_FIRST : LL_SPI_MSB_FIRST);
-//
-//        LL_SPI_SetNSSMode(priv->periph, LL_SPI_NSS_SOFT);
-//        LL_SPI_SetDataWidth(priv->periph, LL_SPI_DATAWIDTH_8BIT);
-//        LL_SPI_SetRxFIFOThreshold(priv->periph, LL_SPI_RX_FIFO_TH_QUARTER); // trigger RXNE on 1 byte
-//
-//        LL_SPI_SetMode(priv->periph, LL_SPI_MODE_MASTER);
-//    }
-//    LL_SPI_Enable(priv->periph);
+
+    // CK
+    if (priv->clock_output) {
+        TRY(rsc_claim_pin(unit, mappings[0].port, mappings[0].pin));
+        configure_gpio_alternate( mappings[0].port, mappings[0].pin, mappings[0].af);
+    }
+    // TX
+    if (priv->direction & 2) {
+        TRY(rsc_claim_pin(unit, mappings[1].port, mappings[1].pin));
+        configure_gpio_alternate( mappings[1].port, mappings[1].pin, mappings[1].af);
+    }
+    // RX
+    if (priv->direction & 1) {
+        TRY(rsc_claim_pin(unit, mappings[2].port, mappings[2].pin));
+        configure_gpio_alternate( mappings[2].port, mappings[2].pin, mappings[2].af);
+    }
+    // CTS
+    if (priv->hw_flow_control==2 || priv->hw_flow_control==3) {
+        TRY(rsc_claim_pin(unit, mappings[4].port, mappings[4].pin));
+        configure_gpio_alternate( mappings[4].port, mappings[4].pin, mappings[4].af);
+    }
+    // RTS
+    if (priv->de_output || priv->hw_flow_control==1 || priv->hw_flow_control==3) {
+        TRY(rsc_claim_pin(unit, mappings[5].port, mappings[5].pin));
+        configure_gpio_alternate( mappings[5].port, mappings[5].pin, mappings[5].af);
+    }
+
+    if (priv->periph_num == 1) {
+        __HAL_RCC_USART1_CLK_ENABLE();
+    } else if (priv->periph_num == 2) {
+        __HAL_RCC_USART2_CLK_ENABLE();
+    } else if (priv->periph_num == 3) {
+        __HAL_RCC_USART3_CLK_ENABLE();
+    } else if (priv->periph_num == 4) {
+        __HAL_RCC_USART4_CLK_ENABLE();
+    }
+
+    LL_USART_Disable(priv->periph);
+    {
+        LL_USART_DeInit(priv->periph);
+        LL_USART_SetBaudRate(priv->periph,
+                             PLAT_AHB_MHZ/2,//FIXME this isn't great ...
+                             LL_USART_OVERSAMPLING_16,
+                             priv->baudrate);
+
+        LL_USART_SetParity(priv->periph,
+                           priv->parity == 0 ? LL_USART_PARITY_NONE :
+                           priv->parity == 1 ? LL_USART_PARITY_ODD
+                                             : LL_USART_PARITY_EVEN);
+
+        LL_USART_SetStopBitsLength(priv->periph,
+                                   priv->stopbits == 0 ? LL_USART_STOPBITS_0_5 :
+                                   priv->stopbits == 1 ? LL_USART_STOPBITS_1 :
+                                   priv->stopbits == 2 ? LL_USART_STOPBITS_1_5
+                                                       : LL_USART_STOPBITS_2);
+
+        LL_USART_SetTransferDirection(priv->periph,
+                                      priv->direction == 1 ? LL_USART_DIRECTION_RX :
+                                      priv->direction == 2 ? LL_USART_DIRECTION_TX
+                                                           : LL_USART_DIRECTION_TX_RX);
+
+        LL_USART_SetHWFlowCtrl(priv->periph,
+                               priv->hw_flow_control == 0 ? LL_USART_HWCONTROL_NONE :
+                               priv->hw_flow_control == 1 ? LL_USART_HWCONTROL_RTS :
+                               priv->hw_flow_control == 2 ? LL_USART_HWCONTROL_CTS
+                                                          : LL_USART_HWCONTROL_RTS_CTS);
+
+        LL_USART_ConfigClock(priv->periph,
+                             priv->cpha ? LL_USART_PHASE_2EDGE
+                                        : LL_USART_PHASE_1EDGE,
+                             priv->cpol ? LL_USART_POLARITY_HIGH
+                                        : LL_USART_POLARITY_LOW,
+                             true); // clock on last bit - TODO configurable?
+
+        if (priv->clock_output)
+            LL_USART_EnableSCLKOutput(priv->periph);
+        else
+            LL_USART_DisableSCLKOutput(priv->periph);
+
+        LL_USART_SetTransferBitOrder(priv->periph,
+                                     priv->lsb_first ? LL_USART_BITORDER_LSBFIRST
+                                                     : LL_USART_BITORDER_MSBFIRST);
+
+        LL_USART_SetDataWidth(priv->periph,
+                              priv->width == 7 ? LL_USART_DATAWIDTH_7B :
+                              priv->width == 8 ? LL_USART_DATAWIDTH_8B
+                                               : LL_USART_DATAWIDTH_9B);
+
+        LL_USART_SetBinaryDataLogic(priv->periph,
+                                    priv->data_inv ? LL_USART_BINARY_LOGIC_NEGATIVE
+                                                   : LL_USART_BINARY_LOGIC_POSITIVE);
+
+        LL_USART_SetRXPinLevel(priv->periph, priv->rx_inv ? LL_USART_RXPIN_LEVEL_INVERTED
+                                                          : LL_USART_RXPIN_LEVEL_STANDARD);
+
+        LL_USART_SetTXPinLevel(priv->periph, priv->tx_inv ? LL_USART_TXPIN_LEVEL_INVERTED
+                                                          : LL_USART_TXPIN_LEVEL_STANDARD);
+
+        if (priv->de_output)
+            LL_USART_EnableDEMode(priv->periph);
+        else
+            LL_USART_DisableDEMode(priv->periph);
+
+        LL_USART_SetDESignalPolarity(priv->periph,
+                                     priv->de_polarity ? LL_USART_DE_POLARITY_HIGH
+                                                       : LL_USART_DE_POLARITY_LOW);
+
+        LL_USART_SetDEAssertionTime(priv->periph, priv->de_assert_time);
+        LL_USART_SetDEDeassertionTime(priv->periph, priv->de_clear_time);
+    }
+    LL_USART_Enable(priv->periph);
 
     return E_SUCCESS;
 }
@@ -360,18 +576,22 @@ static void UUSART_deInit(Unit *unit)
 {
     struct priv *priv = unit->data;
 
-//    // de-init the pins & peripheral only if inited correctly
-//    if (unit->status == E_SUCCESS) {
-//        assert_param(priv->periph);
-//
-//        LL_SPI_DeInit(priv->periph);
-//
-//        if (priv->periph_num == 1) {
-//            __HAL_RCC_SPI1_CLK_DISABLE();
-//        } else {
-//            __HAL_RCC_SPI2_CLK_DISABLE();
-//        }
-//    }
+    // de-init the pins & peripheral only if inited correctly
+    if (unit->status == E_SUCCESS) {
+        assert_param(priv->periph);
+
+        LL_USART_DeInit(priv->periph);
+
+        if (priv->periph_num == 1) {
+            __HAL_RCC_USART1_CLK_DISABLE();
+        } else if (priv->periph_num == 2) {
+            __HAL_RCC_USART2_CLK_DISABLE();
+        } else if (priv->periph_num == 3) {
+            __HAL_RCC_USART3_CLK_DISABLE();
+        } else if (priv->periph_num == 4) {
+            __HAL_RCC_USART4_CLK_DISABLE();
+        }
+    }
 
     // Release all resources
     rsc_teardown(unit);
