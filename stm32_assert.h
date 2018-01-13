@@ -12,7 +12,7 @@ void warn_msg(const char *msg, const char *filename, uint32_t line);
 void __attribute__((noreturn)) assert_failed_(const char *file, uint32_t line);
 
 #if USE_FULL_ASSERT
-    #if VERBOSE_ASSERT
+    #if ASSERT_FILENAMES
         // With the filename enabled.
         #define trap(msg) abort_msg(msg, __BASE_FILE__, __LINE__)
         #define assert_param(expression) do { if (!(expression)) assert_failed_(__BASE_FILE__, __LINE__); } while(0)
