@@ -101,7 +101,7 @@ static error_t USPI_loadIni(Unit *unit, const char *key, const char *value)
         priv->lsb_first = (bool)str_parse_2(value, "MSB", 0, "LSB", 1, &suc);
     }
     else if (streq(key, "port")) {
-        suc = parse_port(value, &priv->ssn_port_name);
+        suc = parse_port_name(value, &priv->ssn_port_name);
     }
     else if (streq(key, "pins")) {
         priv->ssn_pins = parse_pinmask(value, &suc);
@@ -161,7 +161,7 @@ static void USPI_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "port", "%c", priv->ssn_port_name);
 
     iw_comment(iw, "SS pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", "%s", str_pinmask(priv->ssn_pins, unit_tmp512));
+    iw_entry(iw, "pins", "%s", pinmask2str(priv->ssn_pins, unit_tmp512));
 }
 
 // ------------------------------------------------------------------------
@@ -291,25 +291,21 @@ static error_t USPI_init(Unit *unit)
     TRY(rsc_claim_pin(unit, spi_portname, pin_miso));
     TRY(rsc_claim_pin(unit, spi_portname, pin_sck));
 
-    configure_gpio_alternate(spi_portname, pin_mosi, af_spi);
-    configure_gpio_alternate(spi_portname, pin_miso, af_spi);
-    configure_gpio_alternate(spi_portname, pin_sck, af_spi);
+    hw_configure_gpio_af(spi_portname, pin_mosi, af_spi);
+    hw_configure_gpio_af(spi_portname, pin_miso, af_spi);
+    hw_configure_gpio_af(spi_portname, pin_sck, af_spi);
 
     // configure SSN GPIOs
     {
         // Claim all needed pins
         TRY(rsc_claim_gpios(unit, priv->ssn_port_name, priv->ssn_pins));
-        TRY(configure_sparse_pins(priv->ssn_port_name, priv->ssn_pins, &priv->ssn_port,
-                                  LL_GPIO_MODE_OUTPUT, LL_GPIO_OUTPUT_PUSHPULL));
+        TRY(hw_configure_sparse_pins(priv->ssn_port_name, priv->ssn_pins, &priv->ssn_port,
+                                     LL_GPIO_MODE_OUTPUT, LL_GPIO_OUTPUT_PUSHPULL));
         // Set the initial state - all high
         priv->ssn_port->BSRR = priv->ssn_pins;
     }
 
-    if (priv->periph_num == 1) {
-        __HAL_RCC_SPI1_CLK_ENABLE();
-    } else {
-        __HAL_RCC_SPI2_CLK_ENABLE();
-    }
+    hw_periph_clock_enable(priv->periph);
 
     // Configure SPI - must be configured under reset
     LL_SPI_Disable(priv->periph);
@@ -347,11 +343,7 @@ static void USPI_deInit(Unit *unit)
         assert_param(priv->periph);
         LL_SPI_DeInit(priv->periph);
 
-        if (priv->periph_num == 1) {
-            __HAL_RCC_SPI1_CLK_DISABLE();
-        } else {
-            __HAL_RCC_SPI2_CLK_DISABLE();
-        }
+        hw_periph_clock_disable(priv->periph);
     }
 
     // Release all resources
@@ -430,7 +422,7 @@ error_t UU_SPI_Multicast(Unit *unit, uint16_t slaves,
                      const uint8_t *request, uint32_t req_len)
 {
     struct priv *priv= unit->data;
-    uint16_t mask = port_spread(slaves, priv->ssn_pins);
+    uint16_t mask = pinmask_spread(slaves, priv->ssn_pins);
     priv->ssn_port->BRR = mask;
     {
         TRY(xfer_do(priv, request, NULL, req_len, 0, 0));
@@ -446,7 +438,7 @@ error_t UU_SPI_Write(Unit *unit, uint8_t slave_num,
 {
     struct priv *priv= unit->data;
 
-    uint16_t mask = port_spread((uint16_t) (1 << slave_num), priv->ssn_pins);
+    uint16_t mask = pinmask_spread((uint16_t) (1 << slave_num), priv->ssn_pins);
     priv->ssn_port->BRR = mask;
     {
         TRY(xfer_do(priv, request, response, req_len, resp_len, resp_skip));

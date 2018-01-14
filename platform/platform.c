@@ -16,6 +16,7 @@
 #include "units/test/unit_test.h"
 #include "units/usart/unit_usart.h"
 #include "units/spi/unit_spi.h"
+#include "hw_utils.h"
 
 void plat_init_resources(void)
 {
@@ -25,11 +26,12 @@ void plat_init_resources(void)
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
-#ifdef GPIOE
     __HAL_RCC_GPIOE_CLK_ENABLE();
-#endif
-#ifdef GPIOF
     __HAL_RCC_GPIOF_CLK_ENABLE();
+
+    hw_periph_clock_enable(DMA1);
+#ifdef DMA2
+    hw_periph_clock_enable(DMA2);
 #endif
 
     // --- Common unit drivers ---

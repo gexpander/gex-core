@@ -6,7 +6,7 @@
 #include "framework/resources.h"
 #include "debug_uart.h"
 #include "plat_compat.h"
-#include "pin_utils.h"
+#include "hw_utils.h"
 
 #if USE_DEBUG_UART
 
@@ -56,11 +56,9 @@
 /** Init the submodule. */
 void DebugUart_Init(void)
 {
-    bool suc = true;
     // Debug UART
     assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, DEBUG_USART_RSC));
-    assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, pin2resource(DEBUG_USART_PORT, DEBUG_USART_PIN, &suc)));
-    assert_param(suc);
+    assert_param(E_SUCCESS == rsc_claim_pin(&UNIT_SYSTEM, DEBUG_USART_PORT, DEBUG_USART_PIN));
 }
 
 /** Init the hardware peripheral - this is called early in the boot process */
@@ -68,28 +66,10 @@ void DebugUart_PreInit(void)
 {
     // configure AF only if platform uses AF numbers
 #if !PLAT_NO_AFNUM
-    configure_gpio_alternate(DEBUG_USART_PORT, DEBUG_USART_PIN, DEBUG_USART_AF);
+    hw_configure_gpio_af(DEBUG_USART_PORT, DEBUG_USART_PIN, DEBUG_USART_AF);
 #endif
 
-    if (DEBUG_USART == USART1) {
-        __HAL_RCC_USART1_CLK_ENABLE();
-    }
-    else if (DEBUG_USART == USART2) {
-        __HAL_RCC_USART2_CLK_ENABLE();
-    }
-    else if (DEBUG_USART == USART3) {
-        __HAL_RCC_USART3_CLK_ENABLE();
-    }
-#ifdef USART4
-    else if (DEBUG_USART == USART4) {
-        __HAL_RCC_USART4_CLK_ENABLE();
-    }
-#endif
-#ifdef USART5
-    else if (DEBUG_USART == USART5) {
-        __HAL_RCC_USART5_CLK_ENABLE();
-    }
-#endif
+    hw_periph_clock_enable(DEBUG_USART);
 
 //    LL_GPIO_SetPinMode(GPIOA, LL_GPIO_PIN_2, LL_GPIO_MODE_ALTERNATE);
 //    LL_GPIO_SetPinOutputType(GPIOA, LL_GPIO_PIN_2, LL_GPIO_OUTPUT_PUSHPULL);
@@ -118,7 +98,6 @@ void debug_write(const char *buf, uint16_t len)
 ssize_t _write_r(struct _reent *rptr, int fd, const void *buf, size_t len)
 {
     trap("Use of newlib printf");
-    return len;
 }
 
 #else

@@ -459,7 +459,7 @@ static error_t UUSART_ConfigurePins(Unit *unit)
         if (pins_wanted[i]) {
             if (mappings[i].port == 0) return E_BAD_CONFIG;
             TRY(rsc_claim_pin(unit, mappings[i].port, mappings[i].pin));
-            configure_gpio_alternate(mappings[i].port, mappings[i].pin, mappings[i].af);
+            hw_configure_gpio_af(mappings[i].port, mappings[i].pin, mappings[i].af);
         }
     }
 
@@ -488,25 +488,7 @@ static error_t UUSART_init(Unit *unit)
     // --- Configure the peripheral ---
 
     // Enable clock for the peripheral used
-    if (priv->periph_num == 1) {
-        __HAL_RCC_USART1_CLK_ENABLE();
-    }
-    else if (priv->periph_num == 2) {
-        __HAL_RCC_USART2_CLK_ENABLE();
-    }
-    else if (priv->periph_num == 3) {
-        __HAL_RCC_USART3_CLK_ENABLE();
-    }
-#ifdef USART4
-    else if (priv->periph_num == 4) {
-        __HAL_RCC_USART4_CLK_ENABLE();
-    }
-#endif
-#ifdef USART5
-    else if (priv->periph_num == 5) {
-        __HAL_RCC_USART5_CLK_ENABLE();
-    }
-#endif
+    hw_periph_clock_enable(priv->periph);
 
     LL_USART_Disable(priv->periph);
     {
@@ -592,25 +574,7 @@ static void UUSART_deInit(Unit *unit)
         LL_USART_DeInit(priv->periph);
 
         // Disable clock
-        if (priv->periph_num == 1) {
-            __HAL_RCC_USART1_CLK_DISABLE();
-        }
-        else if (priv->periph_num == 2) {
-            __HAL_RCC_USART2_CLK_DISABLE();
-        }
-        else if (priv->periph_num == 3) {
-            __HAL_RCC_USART3_CLK_DISABLE();
-        }
-#ifdef USART4
-        else if (priv->periph_num == 4) {
-            __HAL_RCC_USART4_CLK_DISABLE();
-        }
-#endif
-#ifdef USART5
-        else if (priv->periph_num == 5) {
-        __HAL_RCC_USART5_CLK_DISABLE();
-        }
-#endif
+        hw_periph_clock_disable(priv->periph);
     }
 
     // Release all resources

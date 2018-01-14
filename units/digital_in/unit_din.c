@@ -57,7 +57,7 @@ static error_t DI_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "port")) {
-        suc = parse_port(value, &priv->port_name);
+        suc = parse_port_name(value, &priv->port_name);
     }
     else if (streq(key, "pins")) {
         priv->pins = parse_pinmask(value, &suc);
@@ -85,13 +85,13 @@ static void DI_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "port", "%c", priv->port_name);
 
     iw_comment(iw, "Pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", "%s", str_pinmask(priv->pins, unit_tmp512));
+    iw_entry(iw, "pins", "%s", pinmask2str(priv->pins, unit_tmp512));
 
     iw_comment(iw, "Pins with pull-up");
-    iw_entry(iw, "pull-up", "%s", str_pinmask(priv->pullup, unit_tmp512));
+    iw_entry(iw, "pull-up", "%s", pinmask2str(priv->pullup, unit_tmp512));
 
     iw_comment(iw, "Pins with pull-down");
-    iw_entry(iw, "pull-down", "%s", str_pinmask(priv->pulldown, unit_tmp512));
+    iw_entry(iw, "pull-down", "%s", pinmask2str(priv->pulldown, unit_tmp512));
 
 #if PLAT_NO_FLOATING_INPUTS
     iw_comment(iw, "NOTE: Pins use pull-up by default.\r\n");
@@ -125,7 +125,7 @@ static error_t DI_init(Unit *unit)
     priv->pullup &= priv->pins;
 
     // --- Parse config ---
-    priv->port = port2periph(priv->port_name, &suc);
+    priv->port = hw_port2periph(priv->port_name, &suc);
     if (!suc) return E_BAD_CONFIG;
 
     // Claim all needed pins
@@ -134,7 +134,7 @@ static error_t DI_init(Unit *unit)
     uint16_t mask = 1;
     for (int i = 0; i < 16; i++, mask <<= 1) {
         if (priv->pins & mask) {
-            uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
+            uint32_t ll_pin = hw_pin2ll((uint8_t) i, &suc);
 
             // --- Init hardware ---
             LL_GPIO_SetPinMode(priv->port, ll_pin, LL_GPIO_MODE_INPUT);
@@ -176,7 +176,7 @@ error_t UU_DI_Read(Unit *unit, uint16_t *packed)
 {
     CHECK_TYPE(unit, &UNIT_DIN);
     struct priv *priv = unit->data;
-    *packed = port_pack((uint16_t) priv->port->IDR, priv->pins);
+    *packed = pinmask_pack((uint16_t) priv->port->IDR, priv->pins);
     return E_SUCCESS;
 }
 

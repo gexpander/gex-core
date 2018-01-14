@@ -5,7 +5,7 @@
 #include "platform.h"
 #include "framework/resources.h"
 #include "status_led.h"
-#include "pin_utils.h"
+#include "hw_utils.h"
 
 static GPIO_TypeDef *led_periph;
 static uint32_t led_llpin;
@@ -26,8 +26,8 @@ void Indicator_PreInit(void)
 {
     bool suc = true;
     // Resolve pin
-    led_periph = port2periph(STATUS_LED_PORT, &suc);
-    led_llpin = pin2ll(STATUS_LED_PIN, &suc);
+    led_periph = hw_port2periph(STATUS_LED_PORT, &suc);
+    led_llpin = hw_pin2ll(STATUS_LED_PIN, &suc);
 
     // Configure for output
     LL_GPIO_SetPinMode(led_periph, led_llpin, LL_GPIO_MODE_OUTPUT);
@@ -53,7 +53,7 @@ void Indicator_Init(void)
     bool suc = true;
 
     // Resolve and claim resource
-    Resource rsc = pin2resource(STATUS_LED_PORT, STATUS_LED_PIN, &suc);
+    Resource rsc = hw_pin2resource(STATUS_LED_PORT, STATUS_LED_PIN, &suc);
     assert_param(suc);
 
     assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, rsc));

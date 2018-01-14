@@ -5,7 +5,7 @@
 #include "platform.h"
 #include "unit.h"
 #include "resources.h"
-#include "pin_utils.h"
+#include "hw_utils.h"
 #include "unit_registry.h"
 
 static bool rsc_initialized = false;
@@ -129,7 +129,7 @@ error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
 
     for (int i = 0; i < 16; i++) {
         if (pins & (1 << i)) {
-            Resource rsc = pin2resource(port_name, (uint8_t) i, &suc);
+            Resource rsc = hw_pin2resource(port_name, (uint8_t) i, &suc);
             if (!suc) return E_BAD_CONFIG;
 
             TRY(rsc_claim(unit, rsc));
@@ -141,7 +141,7 @@ error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
 error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin)
 {
     bool suc = true;
-    Resource rsc = pin2resource(port_name,  pin, &suc);
+    Resource rsc = hw_pin2resource(port_name, pin, &suc);
     if (!suc) return E_BAD_CONFIG;
     TRY(rsc_claim(unit, rsc));
     return E_SUCCESS;
@@ -214,7 +214,7 @@ void rsc_teardown(Unit *unit)
     assert_param(unit != NULL);
 
     rsc_dbg("Tearing down unit %s", unit->name);
-    deinit_unit_pins(unit);
+    hw_deinit_unit_pins(unit);
 
     for (uint32_t i = 0; i < RSCMAP_LEN; i++) {
         global_rscmap[i] &= ~unit->resources[i];
@@ -256,7 +256,7 @@ void rsc_print_all_available(IniWriter *iw)
         if (i%16 == 0) {
             // here we print the previous port
             if (bitmap != 0) {
-                iw_string(iw, str_pinmask(bitmap, iwbuffer));
+                iw_string(iw, pinmask2str(bitmap, iwbuffer));
                 bitmap = 0;
             }
 
@@ -271,7 +271,7 @@ void rsc_print_all_available(IniWriter *iw)
     }
     // the last one
     if (bitmap != 0) {
-        iw_string(iw, str_pinmask(bitmap, iwbuffer));
+        iw_string(iw, pinmask2str(bitmap, iwbuffer));
     }
     iw_newline(iw);
     iw_newline(iw);

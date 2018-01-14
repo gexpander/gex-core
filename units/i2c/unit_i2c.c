@@ -235,14 +235,10 @@ static error_t UI2C_init(Unit *unit)
     TRY(rsc_claim_pin(unit, portname, pin_sda));
     TRY(rsc_claim_pin(unit, portname, pin_scl));
 
-    configure_gpio_alternate(portname, pin_sda, af_i2c);
-    configure_gpio_alternate(portname, pin_scl, af_i2c);
+    hw_configure_gpio_af(portname, pin_sda, af_i2c);
+    hw_configure_gpio_af(portname, pin_scl, af_i2c);
 
-    if (priv->periph_num == 1) {
-        __HAL_RCC_I2C1_CLK_ENABLE();
-    } else {
-        __HAL_RCC_I2C2_CLK_ENABLE();
-    }
+    hw_periph_clock_enable(priv->periph);
 
     /* Disable the selected I2Cx Peripheral */
     LL_I2C_Disable(priv->periph);
@@ -270,11 +266,7 @@ static void UI2C_deInit(Unit *unit)
         assert_param(priv->periph);
         LL_I2C_DeInit(priv->periph);
 
-        if (priv->periph_num == 1) {
-            __HAL_RCC_I2C1_CLK_DISABLE();
-        } else {
-            __HAL_RCC_I2C2_CLK_DISABLE();
-        }
+        hw_periph_clock_disable(priv->periph);
     }
 
     // Release all resources
