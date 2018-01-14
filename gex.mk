@@ -5,7 +5,6 @@ GEX_SRC_DIR = \
     User/framework \
     User/platform \
     User/units \
-    User/units/system \
     User/units/neopixel \
     User/units/test \
     User/units/digital_out \
@@ -35,6 +34,7 @@ GEX_INCLUDES = \
     -IUser/TinyFrame \
     -IUser/vfs \
     -IUser/utils \
+    -IUser/units \
     -IUser/framework \
     -IUser/platform \
     -IUser/tasks \

@@ -64,7 +64,7 @@
 //  - some support quadrature input, probably all support external clock / gating / clock-out/PWM generation
 //  Not all chips have all timers and not all timers are equal.
 
-// DMA - Direct memory access lines - TODO split those to channels, they can be used separately
+// DMA - Direct memory access lines
 
 // The resource registry will be pre-loaded with platform-specific config of which blocks are available - the rest will be "pre-claimed"
 // (i.e. unavailable to functional modules)

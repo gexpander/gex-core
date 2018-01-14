@@ -8,18 +8,14 @@ void *malloc_ck_do(size_t size,  const char *file, uint32_t line)
     void *mem = pvPortMalloc(size);
     _malloc_trace(size, mem, file, line);
     if (mem == NULL) {
-        warn_msg("MALLOC FAILED", file, line);
+        _warn_msg(file, line, "MALLOC FAILED");
     }
     return mem;
 }
 
 void *calloc_ck_do(size_t nmemb, size_t size, const char *file, uint32_t line)
 {
-    void *mem = pvPortMalloc(size*nmemb);
-    _malloc_trace(nmemb*size, mem, file, line);
-    if (mem == NULL) {
-        warn_msg("CALLOC FAILED", file, line);
-    }
+    void *mem = malloc_ck_do(nmemb*size, file, line);
     memset(mem, 0, size*nmemb);
     return mem;
 }
