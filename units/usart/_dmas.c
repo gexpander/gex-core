@@ -268,10 +268,10 @@ static void UUSART_DMA_TxStart(struct priv *priv)
     priv->tx_buf_chunk = chunk; // will be further moved by 'chunk' bytes when dma completes
 
     dbg_uusart("# TX: chunk start %d, len %d", (int)nr, (int)chunk);
-#if UUSART_DEBUG
-    PUTS(">"); PUTSN((char *) (priv->tx_buffer + nr), chunk); PUTS("<");
-    PUTNL();
-#endif
+//#if UUSART_DEBUG
+//    PUTS(">"); PUTSN((char *) (priv->tx_buffer + nr), chunk); PUTS("<");
+//    PUTNL();
+//#endif
 
     LL_DMA_DisableChannel(priv->dma, priv->dma_tx_chnum);
     {
@@ -309,13 +309,9 @@ uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t l
     uint16_t used = 0;
     if (nr == nw) {
         used = 0;
-    }
-    else if (nw > nr) {
-        // simple linear
+    } else if (nw > nr) { // simple linear
         used = (uint16_t) (nw - nr);
-    }
-    else if (nw < nr) {
-        // wrapped
+    } else if (nw < nr) { // wrapped
         used = (uint16_t) ((UUSART_TXBUF_LEN - nr) + nw);
     }
 
@@ -328,13 +324,18 @@ uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t l
 
     uint8_t written = 0;
 
+    // this avoids attempting to write if we don't have space
     if (avail <= 5) {
         dbg_uusart("No space (only %d)", (int) avail);
         return written;
     }
 
+    int cnt = 0;
     while (avail > 0 && written < len) {
-        // Padding with chunk information (1 byte: length)
+        assert_param(cnt < 2); // if more than two, we have a bug and it's repeating infinitely
+
+        cnt++;
+        // Padding with chunk information (1 byte: length) - for each chunk
         const uint8_t lpad = 1;
 
         // Chunk can go max to the end of the buffer
@@ -342,7 +343,7 @@ uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t l
         if (chunk > avail) chunk = (uint8_t) avail;
 
         dbg_uusart("nw %d, raw available chunk %d", (int) nw, (int)chunk);
-        if (chunk <= lpad + 1) {
+        if (chunk < lpad + 1) {
             // write 0 to indicate a wrap-around
             dbg_uusart("Wrap-around marker at offset %d", (int) nw);
             priv->tx_buffer[nw] = 0;
@@ -355,13 +356,13 @@ uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t l
             nw += lpad;
             uint8_t datachunk = (uint8_t) (chunk - lpad);
             dbg_uusart("Datachunk len %d at offset %d", (int) datachunk, (int) nw);
-#if UUSART_DEBUG
-            PUTS("mcpy src >"); PUTSN((char *) (buffer), datachunk); PUTS("<\r\n");
-#endif
+//#if UUSART_DEBUG
+//            PUTS("mcpy src >"); PUTSN((char *) (buffer), datachunk); PUTS("<\r\n");
+//#endif
             memcpy((uint8_t *) (priv->tx_buffer + nw), buffer, datachunk);
-#if UUSART_DEBUG
-            PUTS("mcpy dst >"); PUTSN((char *) (priv->tx_buffer + nw), datachunk); PUTS("<\r\n");
-#endif
+//#if UUSART_DEBUG
+//            PUTS("mcpy dst >"); PUTSN((char *) (priv->tx_buffer + nw), datachunk); PUTS("<\r\n");
+//#endif
             buffer += datachunk;
             nw += datachunk;
             written += datachunk;
@@ -374,7 +375,7 @@ uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t l
     {
         dbg_uusart("Write done -> nr %d, nw %d", (int) nr, (int) nw);
 
-        // FIXME a potential race condition can happen here
+        // FIXME a potential race condition can happen here (but it's unlikely)
 
         priv->tx_buf_nw = nw;
 
@@ -413,7 +414,7 @@ static void UUSART_DMA_TxHandler(void *arg)
         LL_DMA_ClearFlag_TC(priv->dma, priv->dma_tx_chnum);
 
         // Wait for TC
-        while (!LL_USART_IsActiveFlag_TC(priv->periph)); // TODO add a timeout here!!!
+        while (!LL_USART_IsActiveFlag_TC(priv->periph)); // TODO timeout
 
         // start the next chunk
         if (priv->tx_buf_nr != priv->tx_buf_nw) {

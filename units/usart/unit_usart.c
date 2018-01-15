@@ -78,12 +78,19 @@ static error_t UUSART_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
             uint32_t len;
             const uint8_t *pld = pp_tail(pp, &len);
 
+            uint32_t t_start = HAL_GetTick();
             while (len > 0) {
+                // this should be long enough even for the slowest bitrates and 512 bytes
+                if (HAL_GetTick() - t_start > 5000) {
+                    return E_HW_TIMEOUT;
+                }
+
                 uint16_t chunk = UUSART_DMA_TxQueue(priv, pld, (uint16_t) len);
+
                 pld += chunk;
                 len -= chunk;
 
-                // We give up control if there's another thread waiting
+                // We give up control if there's another thread waiting and this isn't the last cycle
                 if (len > 0) {
                     osThreadYield();
                 }
