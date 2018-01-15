@@ -78,7 +78,6 @@ void UUSART_Tick(Unit *unit)
     if (priv->rx_last_dmapos == priv->dma_rx->CNDTR) {
         uint16_t endpos = (uint16_t) (UUSART_RXBUF_LEN - priv->rx_last_dmapos);
         if (endpos != priv->rx_buf_readpos) {
-            dbg("DMA timeout");
             UUSART_DMA_HandleRxFromIRQ(unit, endpos);
         }
     } else {
