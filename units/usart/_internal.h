@@ -57,6 +57,8 @@ struct priv {
     volatile uint16_t tx_buf_nw;
     volatile uint16_t tx_buf_chunk;
     volatile bool tx_dma_busy;
+
+    volatile uint16_t rx_last_dmapos;
 };
 
 /** Allocate data structure and set defaults */
@@ -94,6 +96,13 @@ void UUSART_DMA_HandleRxFromIRQ(Unit *unit, uint16_t endpos);
  * @return number of bytes that were really written (from the beginning)
  */
 uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t len);
+
+/**
+ * Handle rx timeout, grab what is received and send it immediately.
+ *
+ * @param unit
+ */
+void UUSART_DMA_HandleRxTimeout(Unit *unit);
 
 // ------------------------------------------------------------------------
 

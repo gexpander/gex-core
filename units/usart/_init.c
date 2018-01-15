@@ -1,6 +1,7 @@
 //
 // Created by MightyPork on 2018/01/14.
 //
+#include <platform/irq_dispatcher.h>
 #include "platform.h"
 #include "unit_base.h"
 
@@ -42,9 +43,6 @@ error_t UUSART_preInit(Unit *unit)
     // this should equal to a half-byte length when oversampling by 16 is used (default)
     priv->de_assert_time = 8;
     priv->de_clear_time = 8;
-
-    priv->rx_buffer = NULL;
-    priv->tx_buffer = NULL;
 
     return E_SUCCESS;
 }
@@ -314,6 +312,10 @@ error_t UUSART_init(Unit *unit)
 
     // modifies some usart registers that can't be modified when enabled
     TRY(UUSART_SetupDMAs(unit));
+
+    // timeout based on the baudrate
+    unit->tick_interval = (uint16_t) ((50 * 1000) / priv->baudrate); // receive timeout (ms)
+    if (unit->tick_interval < 5) unit->tick_interval = 5;
 
     return E_SUCCESS;
 }

@@ -143,6 +143,7 @@ static struct cbslot *get_slot_for_periph(void *periph)
 void irqd_attach(void *periph, IrqCallback callback, void *arg)
 {
     struct cbslot *slot = get_slot_for_periph(periph);
+    assert_param(slot->callback == NULL);
     slot->callback = callback;
     slot->arg = arg;
 }

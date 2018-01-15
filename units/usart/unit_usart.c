@@ -2,6 +2,7 @@
 // Created by MightyPork on 2018/01/02.
 //
 
+#include <stm32f072xb.h>
 #include "platform.h"
 #include "comm/messages.h"
 #include "unit_base.h"
@@ -66,6 +67,23 @@ void UUSART_DMA_HandleRxFromIRQ(Unit *unit, uint16_t endpos)
     // Move the read cursor, wrap around if needed
     if (endpos == UUSART_RXBUF_LEN) endpos = 0;
     priv->rx_buf_readpos = endpos;
+}
+
+void UUSART_Tick(Unit *unit)
+{
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    if (priv->rx_last_dmapos == priv->dma_rx->CNDTR) {
+        uint16_t endpos = (uint16_t) (UUSART_RXBUF_LEN - priv->rx_last_dmapos);
+        if (endpos != priv->rx_buf_readpos) {
+            dbg("DMA timeout");
+            UUSART_DMA_HandleRxFromIRQ(unit, endpos);
+        }
+    } else {
+        priv->rx_last_dmapos = (uint16_t) priv->dma_rx->CNDTR;
+    }
 }
 
 
@@ -155,5 +173,6 @@ const UnitDriver UNIT_USART = {
     .init = UUSART_init,
     .deInit = UUSART_deInit,
     // Function
+    .updateTick = UUSART_Tick,
     .handleRequest = UUSART_handleRequest,
 };

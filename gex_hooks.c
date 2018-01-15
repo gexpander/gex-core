@@ -9,6 +9,7 @@
 #include "platform/status_led.h"
 #include "platform/debug_uart.h"
 #include "gex_hooks.h"
+#include "unit_registry.h"
 
 /**
  * This is a systick callback for GEX application logic
@@ -17,6 +18,7 @@ void GEX_MsTick(void)
 {
     TF_Tick(comm);
     Indicator_Tick();
+    ureg_tick_units();
 }
 
 /**

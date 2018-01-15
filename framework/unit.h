@@ -45,6 +45,9 @@ struct unit {
 
     /** Bit-map of held resources */
     ResourceMap resources;
+
+    uint16_t tick_interval;
+    uint16_t _tick_cnt;
 };
 
 /**
@@ -111,6 +114,13 @@ struct unit_driver {
      * Handle an incoming request. Return true if command was OK.
      */
     error_t (*handleRequest)(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp);
+
+    /**
+     * Periodic update call.
+     * This is run from the SysTick interrupt handler,
+     * any communication should be deferred via the job queue.
+     */
+    void (*updateTick)(Unit *unit);
 };
 
 /**
