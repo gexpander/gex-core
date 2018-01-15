@@ -127,6 +127,11 @@ error_t UUSART_SetupDMAs(Unit *unit)
     priv->tx_buffer = malloc_ck(UUSART_TXBUF_LEN);
     if (NULL == priv->tx_buffer) return E_OUT_OF_MEM;
 
+    // Those must be aligned to a word boundary for the DMAs to work.
+    // Any well-behaved malloc impl should do this correctly.
+    assert_param(((uint32_t)priv->rx_buffer & 3) == 0);
+    assert_param(((uint32_t)priv->tx_buffer & 3) == 0);
+
     priv->rx_buf_readpos = 0;
 
     LL_DMA_InitTypeDef init;
@@ -237,35 +242,39 @@ static void UUSART_DMA_TxStart(struct priv *priv)
     uint16_t nr = priv->tx_buf_nr;
     uint16_t nw = priv->tx_buf_nw;
 
-//    if (nr == nw-1 || nr==0&&nw==UUSART_TXBUF_LEN-1) {
-//        dbg("FULL buf, cant start")
-//    }
-
     if (nr == nw) {
         dbg("remain=0,do nothing");
         return;
     } // do nothing if we're done
 
-    uint16_t chunk = 0;
-    if (nr < nw) {
-        // linear forward
-        chunk = nw - nr;
-    } else {
-        // wrapped
-        chunk = (uint16_t) (UUSART_TXBUF_LEN - nr);
+    uint8_t chunk = priv->tx_buffer[nr];
+    nr += (uint16_t) (4 - (nr & 0b11));
+    if (chunk == 0) {
+        // wrap-around
+        chunk = priv->tx_buffer[0];
+        nr = 4;
+        assert_param(nr < nw);
     }
-    dbg("chunk %d", (int)chunk);
 
-    priv->tx_buf_chunk = chunk;
+    // nr was advanced by the lpad preamble
+    priv->tx_buf_nr = nr;
+    priv->tx_buf_chunk = chunk; // will be further moved by 'chunk' bytes when dma completes
+
+    dbg("# TX: chunk start %d, len %d", (int)nr, (int)chunk);
+    PUTS(">"); PUTSN((char *) (priv->tx_buffer + nr), chunk); PUTS("<");
+    PUTNL();
 
     LL_DMA_DisableChannel(priv->dma, priv->dma_tx_chnum);
     {
+        LL_DMA_ClearFlags(priv->dma, priv->dma_tx_chnum);
         LL_DMA_SetMemoryAddress(priv->dma, priv->dma_tx_chnum, (uint32_t) (priv->tx_buffer + nr));
         LL_DMA_SetDataLength(priv->dma, priv->dma_tx_chnum, chunk);
         LL_USART_ClearFlag_TC(priv->periph);
     }
     LL_DMA_EnableChannel(priv->dma, priv->dma_tx_chnum);
 }
+
+COMPILER_ASSERT(UUSART_TXBUF_LEN <= 256); // more would break the "len tag" algorithm
 
 /**
  * Put data on the queue. Only a part may be sent due to a buffer size limit.
@@ -280,6 +289,7 @@ uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t l
     const uint16_t nr = priv->tx_buf_nr;
     uint16_t nw = priv->tx_buf_nw;
 
+    // shortcut for checking a completely full buffer
     if (nw == nr-1 || (nr==0&&nw==UUSART_TXBUF_LEN-1)) {
         dbg("Buffer full, cant queue");
         return 0;
@@ -304,28 +314,53 @@ uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t l
     uint16_t avail = (const uint16_t) (UUSART_TXBUF_LEN - 1 - used);
     dbg("nr %d, nw %d, used %d, avail %d", (int)nr, (int)nw, (int)used, (int)avail);
 
-    uint16_t towrite = MIN(avail, len);
-    const uint16_t towrite_orig = towrite;
+    // hack to avoid too large chunks - XXX this is not ideal
+    if (avail > 255) avail = 255;
 
-    uint32_t cnt = 0;
-    while (towrite > 0) {
-        // this should run max 2x
-        assert_param(cnt < 2);
-        cnt++;
+    uint8_t written = 0;
 
-        uint16_t chunk = (uint16_t) MIN(towrite, UUSART_TXBUF_LEN - nw);
-        memcpy((uint8_t *) (priv->tx_buffer + nw), buffer, chunk);
-        dbg("- memcpy %d bytes at %d", (int)chunk, (int)nw);
-        nw += chunk;
-        towrite -= chunk;
+    if (avail <= 10) {
+        dbg("No space (only %d)", (int) avail);
+        return written;
+    }
 
-        if (nw == UUSART_TXBUF_LEN) {
+    while (avail > 0 && written < len) {
+        // DMA must start at a word boundary, for this reason we pad it and insert the chunk length (1 byte + padding)
+        uint8_t lpad = (uint8_t) (4 - (nw & 0b11));
+
+        // Chunk can go max to the end of the buffer
+        uint8_t chunk = (uint8_t) MIN((len-written) + lpad, UUSART_TXBUF_LEN - nw);
+        if (chunk > avail) chunk = (uint8_t) avail;
+
+        dbg("nw %d, raw available chunk %d", (int) nw, (int)chunk);
+        if (chunk <= lpad + 1) {
+            // write 0 to indicate a wrap-around
+            dbg("Wrap-around marker at offset %d", (int) nw);
+            priv->tx_buffer[nw] = 0;
             nw = 0;
         }
+        else {
+            // enough space for a preamble + some data
+            dbg("Preamble of %d bytes at offset %d", (int) lpad, (int) nw);
+            priv->tx_buffer[nw] = (uint8_t) (chunk - lpad);
+            nw += lpad;
+            uint8_t datachunk = (uint8_t) (chunk - lpad);
+            dbg("Datachunk len %d at offset %d", (int) datachunk, (int) nw);
+            PUTS("mcpy src >"); PUTSN((char *) (buffer), datachunk); PUTS("<\r\n");
+            memcpy((uint8_t *) (priv->tx_buffer + nw), buffer, datachunk);
+            PUTS("mcpy dst >"); PUTSN((char *) (priv->tx_buffer + nw), datachunk); PUTS("<\r\n");
+            buffer += datachunk;
+            nw += datachunk;
+            written += datachunk;
+            if (nw == UUSART_TXBUF_LEN) nw = 0;
+        }
+        avail -= chunk;
+        dbg(". end of loop, avail is %d", (int)avail);
     }
+
     priv->tx_buf_nw = nw;
 
-    dbg("Written. -> nr %d, nw %d, used %d, avail %d", (int)nr, (int)nw, (int)used, (int)avail);
+    dbg("Writte done -> nr %d, nw %d", (int)nr, (int)nw);
 
     // start the DMA if it's idle
     if (priv->dma_tx->CNDTR == 0) {
@@ -335,7 +370,7 @@ uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t l
         dbg("DMA in progress, not requesting");
     }
 
-    return towrite_orig;
+    return written;
 }
 
 /**
@@ -352,7 +387,7 @@ static void UUSART_DMA_TxHandler(void *arg)
     uint32_t isrsnapshot = priv->dma->ISR;
     if (LL_DMA_IsActiveFlag_TC(isrsnapshot, priv->dma_tx_chnum)) {
         // chunk Tx is finished
-        dbg("DMA_TxHandler, lr %d, nw %d, chunk %d", (int)priv->tx_buf_nr, (int)priv->tx_buf_nw, (int)priv->tx_buf_chunk);
+        dbg("~ DMA tx done, nr %d, nw %d, chunk %d", (int)priv->tx_buf_nr, (int)priv->tx_buf_nw, (int)priv->tx_buf_chunk);
 
 //        dbg("StartPos advance...");
         priv->tx_buf_nr += priv->tx_buf_chunk;
@@ -366,7 +401,7 @@ static void UUSART_DMA_TxHandler(void *arg)
 
         // start the next chunk
         if (priv->tx_buf_nr != priv->tx_buf_nw) {
-            dbg("Flag cleared ... asking for more. lr %d, nw %d", (int)priv->tx_buf_nr, (int)priv->tx_buf_nw);
+            dbg("  Asking for more, if any");
             UUSART_DMA_TxStart(priv);
         }
     }
