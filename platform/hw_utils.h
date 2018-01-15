@@ -7,6 +7,7 @@
 #ifndef GEX_PIN_UTILS_H
 #define GEX_PIN_UTILS_H
 
+#include <stm32f072xb.h>
 #include "platform.h"
 #include "resources.h"
 
@@ -17,7 +18,7 @@
  * @param suc - set to false on failure, left unchanged on success.
  * @return LL_GPIO_PIN_x
  */
-uint32_t pin2ll(uint8_t pin_number, bool *suc);
+uint32_t hw_pin2ll(uint8_t pin_number, bool *suc);
 
 /**
  * Convert pin name and number to a resource enum
@@ -27,7 +28,7 @@ uint32_t pin2ll(uint8_t pin_number, bool *suc);
  * @param suc - set to false on failure, left unchanged on success
  * @return the resource, or R_NONE
  */
-Resource pin2resource(char port_name, uint8_t pin_number, bool *suc);
+Resource hw_pin2resource(char port_name, uint8_t pin_number, bool *suc);
 
 /**
  * Convert port name to peripheral instance
@@ -36,7 +37,7 @@ Resource pin2resource(char port_name, uint8_t pin_number, bool *suc);
  * @param suc - set to false on failure, left unchanged on success.
  * @return instance
  */
-GPIO_TypeDef *port2periph(char port_name, bool *suc);
+GPIO_TypeDef *hw_port2periph(char port_name, bool *suc);
 
 /**
  * Parse a pin name (e.g. PA0 or A0) to port name and pin number
@@ -55,7 +56,7 @@ bool parse_pin(const char *str, char *targetName, uint8_t *targetNumber);
  * @param targetName - output: port name (one character)
  * @return success
  */
-bool parse_port(const char *value, char *targetName);
+bool parse_port_name(const char *value, char *targetName);
 
 /**
  * Parse a list of pin numbers with ranges and commands/semicolons to a bitmask.
@@ -76,7 +77,7 @@ uint16_t parse_pinmask(const char *value, bool *suc);
  * @param buffer - output string buffer
  * @return the output buffer
  */
-char * str_pinmask(uint16_t pins, char *buffer);
+char * pinmask2str(uint16_t pins, char *buffer);
 
 /**
  * Spread packed port pins using a mask
@@ -85,7 +86,7 @@ char * str_pinmask(uint16_t pins, char *buffer);
  * @param mask - positions of the bits (eg. 0x8803)
  * @return - bits spread to their positions (always counting from right)
  */
-uint16_t port_spread(uint16_t packed, uint16_t mask);
+uint16_t pinmask_spread(uint16_t packed, uint16_t mask);
 
 /**
  * Pack spread port pins using a mask
@@ -94,7 +95,7 @@ uint16_t port_spread(uint16_t packed, uint16_t mask);
  * @param mask - mask of the bits we want to pack (eg. 0x8803)
  * @return - packed bits, right aligned (eg. 0b1110)
  */
-uint16_t port_pack(uint16_t spread, uint16_t mask);
+uint16_t pinmask_pack(uint16_t spread, uint16_t mask);
 
 /**
  * Set all GPIO resources held by unit to analog.
@@ -102,7 +103,7 @@ uint16_t port_pack(uint16_t spread, uint16_t mask);
  *
  * @param unit - holding unit
  */
-void deinit_unit_pins(Unit *unit);
+void hw_deinit_unit_pins(Unit *unit);
 
 /**
  * Configure a GPIO pin to alternate function.
@@ -112,7 +113,7 @@ void deinit_unit_pins(Unit *unit);
  * @param ll_af - LL alternate function constant
  * @return success
  */
-error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t ll_af);
+error_t hw_configure_gpio_af(char port_name, uint8_t pin_num, uint32_t ll_af);
 
 /**
  * Configure multiple pins using the bitmap pattern
@@ -124,6 +125,69 @@ error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t ll_af
  * @param ll_otype - LL output type (push/pull, opendrain)
  * @return success
  */
-error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port_dest, uint32_t ll_mode, uint32_t ll_otype);
+error_t hw_configure_sparse_pins(char port_name,
+                                 uint16_t mask, GPIO_TypeDef **port_dest,
+                                 uint32_t ll_mode, uint32_t ll_otype);
+
+/** Helper struct for defining alternate mappings */
+struct PinAF {
+    char port;
+    uint8_t pin;
+    uint8_t af;
+};
+
+/**
+ * Enable a peripheral clock
+ * @param periph - any peripheral
+ */
+void hw_periph_clock_enable(void *periph);
+
+/**
+ * Disable a peripheral clock
+ * @param periph - any peripheral
+ */
+void hw_periph_clock_disable(void *periph);
+
+// ---------- LL extras ------------
+
+static inline bool LL_DMA_IsActiveFlag_G(uint32_t isr_snapshot, uint8_t channel)
+{
+    return 0 != (isr_snapshot & (DMA_ISR_GIF1 << (uint32_t)((channel-1) * 4)));
+}
+
+static inline bool LL_DMA_IsActiveFlag_TC(uint32_t isr_snapshot, uint8_t channel)
+{
+    return 0 != (isr_snapshot & (DMA_ISR_TCIF1 << (uint32_t)((channel-1) * 4)));
+}
+
+static inline bool LL_DMA_IsActiveFlag_HT(uint32_t isr_snapshot, uint8_t channel)
+{
+    return 0 != (isr_snapshot & (DMA_ISR_HTIF1 << (uint32_t)((channel-1) * 4)));
+}
+
+static inline bool LL_DMA_IsActiveFlag_TE(uint32_t isr_snapshot, uint8_t channel)
+{
+    return 0 != (isr_snapshot & (DMA_ISR_TEIF1 << (uint32_t)((channel-1) * 4)));
+}
+
+static inline void LL_DMA_ClearFlag_HT(DMA_TypeDef *DMAx, uint8_t channel)
+{
+    DMAx->IFCR = (DMA_IFCR_CHTIF1 << (uint32_t)((channel-1) * 4));
+}
+
+static inline void LL_DMA_ClearFlag_TC(DMA_TypeDef *DMAx, uint8_t channel)
+{
+    DMAx->IFCR = (DMA_IFCR_CTCIF1 << (uint32_t)((channel-1) * 4));
+}
+
+static inline void LL_DMA_ClearFlag_TE(DMA_TypeDef *DMAx, uint8_t channel)
+{
+    DMAx->IFCR = (DMA_IFCR_CTEIF1 << (uint32_t)((channel-1) * 4));
+}
+
+static inline void LL_DMA_ClearFlags(DMA_TypeDef *DMAx, uint8_t channel)
+{
+    DMAx->IFCR = (DMA_IFCR_CGIF1 << (uint32_t)((channel-1) * 4));
+}
 
 #endif //GEX_PIN_UTILS_H

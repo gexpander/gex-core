@@ -1,29 +1,15 @@
 #include "platform.h"
 #include "platform/status_led.h"
 
-/**
- * Abort at file, line with a custom tag (eg. ASSERT FAILED)
- * @param msg - tag message
- * @param filename - file
- * @param line - line
- */
-void __attribute__((noreturn)) abort_msg(const char *msg, const char *filename, uint32_t line)
+void _abort_errlight(void)
 {
-    dbg("\r\n\033[31m%s:\033[m %s:%"PRIu32, msg, filename, line);
-    vPortEnterCritical();
     Indicator_Effect(STATUS_FAULT);
-    while(1);
 }
 
-/**
- * Warn at file, line with a custom tag (eg. ASSERT FAILED)
- * @param msg - tag message
- * @param filename - file
- * @param line - line
- */
-void warn_msg(const char *msg, const char *filename, uint32_t line)
+void __attribute__((noreturn)) _abort_do(void)
 {
-    dbg("\r\n\033[33m%s:\033[m %s:%"PRIu32, msg, filename, line);
+    vPortEnterCritical();
+    while(1);
 }
 
 /**
@@ -32,7 +18,7 @@ void warn_msg(const char *msg, const char *filename, uint32_t line)
    * @param file: pointer to the source file name
    * @param line: assert_param error line source number
    */
-void __attribute__((noreturn)) assert_failed_(const char *file, uint32_t line)
+void __attribute__((noreturn)) _assert_failed(const char *file, uint32_t line)
 {
-    abort_msg("ASSERT FAILED", file, line);
+    _abort_msg(file, line, "ASSERT FAILED");
 }

@@ -32,7 +32,9 @@ static uint32_t read_iw_sector(uint32_t sector_offset, uint8_t *data, uint32_t n
     const uint32_t avail = num_sectors*VFS_SECTOR_SIZE;
     const uint32_t skip = sector_offset*VFS_SECTOR_SIZE;
     IniWriter iw = iw_init((char *)data, skip, avail);
+    iw_begin();
     handler(&iw);
+    iw_end();
     return avail - iw.count;
 }
 

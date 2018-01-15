@@ -47,6 +47,7 @@
   ******************************************************************************
 */
 /* Includes ------------------------------------------------------------------*/
+#include <utils/malloc_safe.h>
 #include "platform.h"
 #include "usbd_def.h"
 #include "usbd_core.h"
@@ -633,8 +634,6 @@ void  USBD_LL_Delay (uint32_t Delay)
   HAL_Delay(Delay);  
 }
 
-static uint32_t _static_malloc_pos = 0;
-
 /**
   * @brief  static single allocation.
   * @param  size: size of allocated memory
@@ -642,11 +641,7 @@ static uint32_t _static_malloc_pos = 0;
   */
 void *USBD_static_malloc(uint32_t size)
 {
-    // XXX this was modified to support multiple classes
-    static uint32_t mem[(sizeof(USBD_MSC_BOT_HandleTypeDef)/4)+1+(sizeof(USBD_CDC_HandleTypeDef)/4)+1];/* On 32-bit boundary */
-    uint32_t oldpos = _static_malloc_pos;
-    _static_malloc_pos += size/4+1;
-    return &mem[oldpos];
+    return malloc_ck(size);
 }
 
 /**
@@ -656,9 +651,7 @@ void *USBD_static_malloc(uint32_t size)
   */
 void USBD_static_free(void *p)
 {
-    // This is wrong, but will work if both frees and malloc's
-    // are always called together and not interleaved
-    _static_malloc_pos = 0;
+    free_ck(p);
 }
 
 /**

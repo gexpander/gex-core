@@ -5,11 +5,11 @@ GEX_SRC_DIR = \
     User/framework \
     User/platform \
     User/units \
-    User/units/system \
     User/units/neopixel \
     User/units/test \
     User/units/digital_out \
     User/units/digital_in \
+    User/units/usart \
     User/units/i2c \
     User/units/spi \
     User/TinyFrame \
@@ -34,6 +34,7 @@ GEX_INCLUDES = \
     -IUser/TinyFrame \
     -IUser/vfs \
     -IUser/utils \
+    -IUser/units \
     -IUser/framework \
     -IUser/platform \
     -IUser/tasks \
@@ -56,7 +57,8 @@ GEX_CFLAGS = \
     -MD -Wno-redundant-decls -Wno-unused-parameter \
     -Wno-unused-variable -Wno-inline \
     -fmerge-constants -fmerge-all-constants -Wno-implicit-fallthrough \
-    -fno-exceptions -finline-small-functions -findirect-inlining -Wno-strict-aliasing -Wno-float-equal -Wno-discarded-qualifiers
+    -fno-exceptions -finline-small-functions -findirect-inlining -Wno-strict-aliasing -Wno-float-equal \
+    -Wno-discarded-qualifiers -fstack-usage
 
 GEX_CDEFS_BASE =  \
     -D__weak="__attribute__((weak))" \
@@ -69,23 +71,27 @@ ifeq '$(DISABLE_DEBUG)' '1'
 
 GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DUSE_FULL_ASSERT=0 \
-    -DVERBOSE_ASSERT=0 \
+    -DASSERT_FILENAMES=0 \
     -DDEBUG_VFS=0 \
     -DDEBUG_FLASH_WRITE=0 \
     -DVERBOSE_HARDFAULT=0 \
     -DUSE_STACK_MONITOR=0 \
-    -DUSE_DEBUG_UART=0
+    -DUSE_DEBUG_UART=0 \
+    -DDEBUG_MALLOC=0 \
+    -DDEBUG_RSC=0
 
 else
 
 GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DUSE_FULL_ASSERT=1 \
-    -DVERBOSE_ASSERT=1 \
+    -DASSERT_FILENAMES=1 \
     -DDEBUG_VFS=0 \
     -DDEBUG_FLASH_WRITE=0 \
     -DVERBOSE_HARDFAULT=1 \
-    -DUSE_STACK_MONITOR=1 \
-    -DUSE_DEBUG_UART=1
+    -DUSE_STACK_MONITOR=0 \
+    -DUSE_DEBUG_UART=1 \
+    -DDEBUG_MALLOC=0 \
+    -DDEBUG_RSC=0
 
 endif
 

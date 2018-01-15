@@ -23,6 +23,7 @@
 
 /**** pts: sam2p-specific defines ****/
 #include "snprintf.h"
+#include "malloc_safe.h"
 /* #include <stdarg.h> -- from snprintf.h */
 #ifdef NULL  /* as on Mac OS/X 10.5.7 <stdlib.h> */
 #  undef NULL
@@ -32,7 +33,7 @@
 #  define malloc ::operator new
 #else
 #  include <stdlib.h> /* malloc() */
-#include <debug.h>
+#include "debug.h"
 
 #endif
 #define size_t size_t /* normally: int, unsigned */
@@ -834,7 +835,7 @@ size_t vasprintf(char **ptr, const char *format, va_list ap)
     ret = vsnprintf((char*)NULL, 0, format, ap);
     if (ret+1 <= 1) return ret; /* pts: bit of old unsigned trick... */
 
-    if (NULL==(*ptr = (char *)malloc(ret+1))) return (size_t)-1;
+    if (NULL==(*ptr = (char *)malloc_ck(ret+1))) return (size_t)-1;
     ret = vsnprintf(*ptr, ret+1, format, ap);
 
     return ret;

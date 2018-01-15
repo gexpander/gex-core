@@ -2,7 +2,6 @@
 // Created by MightyPork on 2018/01/02.
 //
 
-#include <framework/system_settings.h>
 #include <stm32f072xb.h>
 #include "comm/messages.h"
 #include "unit_base.h"
@@ -98,11 +97,11 @@ static error_t USPI_loadIni(Unit *unit, const char *key, const char *value)
     else if (streq(key, "tx-only")) {
         priv->tx_only = str_parse_yn(value, &suc);
     }
-    else if (streq(key, "lsb-first")) {
-        priv->lsb_first = str_parse_yn(value, &suc);
+    else if (streq(key, "first-bit")) {
+        priv->lsb_first = (bool)str_parse_2(value, "MSB", 0, "LSB", 1, &suc);
     }
     else if (streq(key, "port")) {
-        suc = parse_port(value, &priv->ssn_port_name);
+        suc = parse_port_name(value, &priv->ssn_port_name);
     }
     else if (streq(key, "pins")) {
         priv->ssn_pins = parse_pinmask(value, &suc);
@@ -152,15 +151,17 @@ static void USPI_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Transmit only, disable MISO");
     iw_entry(iw, "tx-only", str_yn(priv->tx_only));
 
-    iw_comment(iw, "Use LSB-first bit order");
-    iw_entry(iw, "lsb-first", str_yn(priv->lsb_first));
+    iw_comment(iw, "Bit order (LSB or MSB first)");
+    iw_entry(iw, "first-bit", str_2((uint32_t)priv->lsb_first,
+                                    0, "MSB",
+                                    1, "LSB"));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "SS port name");
     iw_entry(iw, "port", "%c", priv->ssn_port_name);
 
     iw_comment(iw, "SS pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", "%s", str_pinmask(priv->ssn_pins, unit_tmp512));
+    iw_entry(iw, "pins", "%s", pinmask2str(priv->ssn_pins, unit_tmp512));
 }
 
 // ------------------------------------------------------------------------
@@ -168,9 +169,8 @@ static void USPI_writeIni(Unit *unit, IniWriter *iw)
 /** Allocate data structure and set defaults */
 static error_t USPI_preInit(Unit *unit)
 {
-    bool suc = true;
-    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
-    if (!suc) return E_OUT_OF_MEM;
+    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
+    if (priv == NULL) return E_OUT_OF_MEM;
 
     // some defaults
     priv->periph_num = 1;
@@ -291,25 +291,21 @@ static error_t USPI_init(Unit *unit)
     TRY(rsc_claim_pin(unit, spi_portname, pin_miso));
     TRY(rsc_claim_pin(unit, spi_portname, pin_sck));
 
-    configure_gpio_alternate(spi_portname, pin_mosi, af_spi);
-    configure_gpio_alternate(spi_portname, pin_miso, af_spi);
-    configure_gpio_alternate(spi_portname, pin_sck, af_spi);
-
-    if (priv->periph_num == 1) {
-        __HAL_RCC_SPI1_CLK_ENABLE();
-    } else {
-        __HAL_RCC_SPI2_CLK_ENABLE();
-    }
+    hw_configure_gpio_af(spi_portname, pin_mosi, af_spi);
+    hw_configure_gpio_af(spi_portname, pin_miso, af_spi);
+    hw_configure_gpio_af(spi_portname, pin_sck, af_spi);
 
     // configure SSN GPIOs
     {
         // Claim all needed pins
         TRY(rsc_claim_gpios(unit, priv->ssn_port_name, priv->ssn_pins));
-        TRY(configure_sparse_pins(priv->ssn_port_name, priv->ssn_pins, &priv->ssn_port,
-                                  LL_GPIO_MODE_OUTPUT, LL_GPIO_OUTPUT_PUSHPULL));
+        TRY(hw_configure_sparse_pins(priv->ssn_port_name, priv->ssn_pins, &priv->ssn_port,
+                                     LL_GPIO_MODE_OUTPUT, LL_GPIO_OUTPUT_PUSHPULL));
         // Set the initial state - all high
         priv->ssn_port->BSRR = priv->ssn_pins;
     }
+
+    hw_periph_clock_enable(priv->periph);
 
     // Configure SPI - must be configured under reset
     LL_SPI_Disable(priv->periph);
@@ -345,22 +341,16 @@ static void USPI_deInit(Unit *unit)
     // de-init the pins & peripheral only if inited correctly
     if (unit->status == E_SUCCESS) {
         assert_param(priv->periph);
-
         LL_SPI_DeInit(priv->periph);
 
-        if (priv->periph_num == 1) {
-            __HAL_RCC_SPI1_CLK_DISABLE();
-        } else {
-            __HAL_RCC_SPI2_CLK_DISABLE();
-        }
+        hw_periph_clock_disable(priv->periph);
     }
 
     // Release all resources
     rsc_teardown(unit);
 
     // Free memory
-    free(unit->data);
-    unit->data = NULL;
+    free_ck(unit->data);
 }
 
 // ------------------------------------------------------------------------
@@ -432,7 +422,7 @@ error_t UU_SPI_Multicast(Unit *unit, uint16_t slaves,
                      const uint8_t *request, uint32_t req_len)
 {
     struct priv *priv= unit->data;
-    uint16_t mask = port_spread(slaves, priv->ssn_pins);
+    uint16_t mask = pinmask_spread(slaves, priv->ssn_pins);
     priv->ssn_port->BRR = mask;
     {
         TRY(xfer_do(priv, request, NULL, req_len, 0, 0));
@@ -448,7 +438,7 @@ error_t UU_SPI_Write(Unit *unit, uint8_t slave_num,
 {
     struct priv *priv= unit->data;
 
-    uint16_t mask = port_spread((uint16_t) (1 << slave_num), priv->ssn_pins);
+    uint16_t mask = pinmask_spread((uint16_t) (1 << slave_num), priv->ssn_pins);
     priv->ssn_port->BRR = mask;
     {
         TRY(xfer_do(priv, request, response, req_len, resp_len, resp_skip));

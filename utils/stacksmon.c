@@ -5,6 +5,7 @@
 #include "task_msg.h"
 #include "platform.h"
 #include "stacksmon.h"
+#include "hexdump.h"
 
 #if USE_STACK_MONITOR
 
@@ -14,7 +15,7 @@ struct stackhandle {
     uint32_t len;
 };
 
-#define STACK_NUM 8
+#define STACK_NUM 3
 static uint32_t nextidx = 0;
 static struct stackhandle stacks[STACK_NUM];
 
@@ -55,18 +56,19 @@ void stackmon_dump(void)
         uint32_t words = ((stack->len-free)>>2)+1;
         if (words>stack->len>>2) words=stack->len>>2;
 
-        PRINTF("   Used: \033[33m%"PRIu32" / %"PRIu32" bytes\033[m (\033[33m%"PRIu32" / %"PRIu32" words\033[m) ~ \033[33m%"PRIu32" %%\033[m\r\n",
+        PRINTF("   Used: \033[33m%"PRIu32" / %"PRIu32" bytes\033[m (\033[33m%"PRIu32" / %"PRIu32" words\033[m)",
                (stack->len-free),
                stack->len,
                words,
-               stack->len>>2,
-               (stack->len-free)*100/stack->len
+               stack->len>>2
         );
+        PRINTF(" ~ \033[33m%"PRIu32" %%\033[m\r\n",
+               (stack->len-free)*100/stack->len);
     }
 
     PUTS("\033[36m>> MSG+JOB QUEUE\033[m\r\n");
-    PRINTF("   Used slots: \033[33m%"PRIu32"\033[m\r\n",
-           msgQueHighWaterMark);
+    PRINTF("   Used slots: \033[33m%"PRIu32" / %d\033[m\r\n",
+           msgQueHighWaterMark, RX_QUE_CAPACITY);
 
     PRINTF("\033[1m---------------------------\033[m\r\n\r\n");
 }

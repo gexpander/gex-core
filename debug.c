@@ -8,7 +8,7 @@
 #if USE_DEBUG_UART
 
 // debug printf
-int PRINTF(const char *format, ...)
+void _DO_PRINTF(const char *format, ...)
 {
     va_list args;
     int len;
@@ -23,10 +23,8 @@ int PRINTF(const char *format, ...)
         len = DBG_BUF_LEN-1;
     }
 
-    _write_r(NULL, 2, dbg_buf, (size_t) len);
+    debug_write(dbg_buf, (uint16_t) len);
     va_end(args);
-
-    return len;
 }
 
 /**
@@ -34,19 +32,10 @@ int PRINTF(const char *format, ...)
  * @param string - buffer to print
  * @param len - number of bytes to print
  */
-void PUTSN(const char *string, size_t len)
+void PUTSN(const char *string, uint16_t len)
 {
-    if (len == 0) len = strlen(string);
-    _write_r(NULL, 2, string, (size_t) len);
-}
-
-/**
- * Puts a newline
- *
- */
-void PUTNL(void)
-{
-    _write_r(NULL, 2, "\r\n", 2);
+    if (len == 0) len = (uint16_t) strlen(string);
+    debug_write(string, len);
 }
 
 /**
@@ -54,22 +43,11 @@ void PUTNL(void)
  * @param string - string to print, zero-terminated
  * @return number of characters printed
  */
-int PUTS(const char *string)
+void PUTS(const char *string)
 {
     size_t len = strlen(string);
-    _write_r(NULL, 2, string, len);
-    return (int) len;
+    debug_write(string, (uint16_t) len);
 }
 
-/**
- * Print one character to debug uart
- * @param ch - character ASCII code
- * @return the character code
- */
-int PUTCHAR(int ch)
-{
-    _write_r(NULL, 2, &ch, 1);
-    return ch; // or EOF
-}
 
 #endif

@@ -159,6 +159,11 @@ of this function. */
 #endif
 
     Indicator_Effect(STATUS_FAULT);
+
+    // throw in the canary dump, just in case
+#if USE_STACK_MONITOR
+    stackmon_dump();
+#endif
     while (1);
 }
 #endif
@@ -200,6 +205,32 @@ void  __attribute__((naked)) HardFault_Handler(void)
     Indicator_Effect(STATUS_FAULT);
     while (1);
 }
+
+#if 0
+char *heap_end = 0;
+caddr_t _sbrk(int incr) {
+    extern char _end; // this is the end of bbs, defined in LD
+    extern char _estack; // this is the end of the allocable memory - defined in LD. Top level stack lives here.
+    char *prev_heap_end;
+
+    if (heap_end == 0) {
+        heap_end = &_end;
+    }
+    prev_heap_end = heap_end;
+
+    if (heap_end + incr > &_estack) {
+        /* Heap and stack collision */
+        dbg("\r\nOUT OF MEMORY");
+        return (char*)-1;
+    }
+#if DEBUG_MALLOC
+    PRINTF(" !sbrk(%d),total=%d! ", incr, (int)(heap_end - &_end));
+#endif
+
+    heap_end += incr;
+    return (caddr_t) prev_heap_end;
+}
+#endif
 
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

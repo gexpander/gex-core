@@ -80,7 +80,7 @@ void TaskMsgJob(const void *argument)
 
 #if USE_STACK_MONITOR
         uint32_t count;
-        count = (uint32_t) uxQueueMessagesWaiting(queMsgJobHandle); // this seems to return N+1, hence we don't add the +1 for the one just removed.
+        count = (uint32_t) uxQueueMessagesWaiting(queMsgJobHandle)+1;
         msgQueHighWaterMark = MAX(msgQueHighWaterMark, count);
 #endif
     }

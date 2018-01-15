@@ -79,11 +79,10 @@ static void Npx_writeIni(Unit *unit, IniWriter *iw)
 /** Allocate data structure and set defaults */
 static error_t Npx_preInit(Unit *unit)
 {
-    bool suc = true;
-    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
-    if (!suc) return E_OUT_OF_MEM;
+    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
+    if (priv == NULL)
 
-    // some defaults
+        // some defaults
     priv->pin_number = 0;
     priv->port_name = 'A';
     priv->pixels = 1;
@@ -98,9 +97,9 @@ static error_t Npx_init(Unit *unit)
     struct priv *priv = unit->data;
 
     // --- Parse config ---
-    priv->ll_pin = pin2ll(priv->pin_number, &suc);
-    priv->port = port2periph(priv->port_name, &suc);
-    Resource rsc = pin2resource(priv->port_name, priv->pin_number, &suc);
+    priv->ll_pin = hw_pin2ll(priv->pin_number, &suc);
+    priv->port = hw_port2periph(priv->port_name, &suc);
+    Resource rsc = hw_pin2resource(priv->port_name, priv->pin_number, &suc);
     if (!suc) return E_BAD_CONFIG;
 
     // --- Claim resources ---
@@ -127,8 +126,7 @@ static void Npx_deInit(Unit *unit)
     rsc_teardown(unit);
 
     // Free memory
-    free(unit->data);
-    unit->data = NULL;
+    free_ck(unit->data);
 }
 
 // ------------------------------------------------------------------------

@@ -2,7 +2,6 @@
 // Created by MightyPork on 2018/01/02.
 //
 
-#include <framework/system_settings.h>
 #include "comm/messages.h"
 #include "unit_base.h"
 #include "utils/avrlibc.h"
@@ -130,9 +129,8 @@ static void UI2C_writeIni(Unit *unit, IniWriter *iw)
 /** Allocate data structure and set defaults */
 static error_t UI2C_preInit(Unit *unit)
 {
-    bool suc = true;
-    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
-    if (!suc) return E_OUT_OF_MEM;
+    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
+    if (priv == NULL) return E_OUT_OF_MEM;
 
     // some defaults
     priv->periph_num = 1;
@@ -237,14 +235,10 @@ static error_t UI2C_init(Unit *unit)
     TRY(rsc_claim_pin(unit, portname, pin_sda));
     TRY(rsc_claim_pin(unit, portname, pin_scl));
 
-    configure_gpio_alternate(portname, pin_sda, af_i2c);
-    configure_gpio_alternate(portname, pin_scl, af_i2c);
+    hw_configure_gpio_af(portname, pin_sda, af_i2c);
+    hw_configure_gpio_af(portname, pin_scl, af_i2c);
 
-    if (priv->periph_num == 1) {
-        __HAL_RCC_I2C1_CLK_ENABLE();
-    } else {
-        __HAL_RCC_I2C2_CLK_ENABLE();
-    }
+    hw_periph_clock_enable(priv->periph);
 
     /* Disable the selected I2Cx Peripheral */
     LL_I2C_Disable(priv->periph);
@@ -270,22 +264,16 @@ static void UI2C_deInit(Unit *unit)
     // de-init the pins & peripheral only if inited correctly
     if (unit->status == E_SUCCESS) {
         assert_param(priv->periph);
-
         LL_I2C_DeInit(priv->periph);
 
-        if (priv->periph_num == 1) {
-            __HAL_RCC_I2C1_CLK_DISABLE();
-        } else {
-            __HAL_RCC_I2C2_CLK_DISABLE();
-        }
+        hw_periph_clock_disable(priv->periph);
     }
 
     // Release all resources
     rsc_teardown(unit);
 
     // Free memory
-    free(unit->data);
-    unit->data = NULL;
+    free_ck(unit->data);
 }
 
 // ------------------------------------------------------------------------

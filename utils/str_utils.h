@@ -107,8 +107,41 @@ uint8_t str_parse_01(const char *str, const char *a, const char *b, bool *suc);
 /** Compare string with three options */
 uint8_t str_parse_012(const char *str, const char *a, const char *b, const char *c, bool *suc);
 
-/** Convert bool to one of two options */
-#define str_01(cond, a, b) ((cond) ? (b) : (a))
+/** Convert number to one of 4 options */
+const char *str_2(uint32_t n,
+                  uint32_t na, const char *a,
+                  uint32_t nb, const char *b);
+
+/** Convert number to one of 4 options */
+const char *str_3(uint32_t n,
+                  uint32_t na, const char *a,
+                  uint32_t nb, const char *b,
+                  uint32_t nc, const char *c);
+
+/** Convert number to one of 4 options */
+const char *str_4(uint32_t n,
+                     uint32_t na, const char *a,
+                     uint32_t nb, const char *b,
+                     uint32_t nc, const char *c,
+                     uint32_t nd, const char *d);
+
+uint32_t str_parse_2(const char *tpl,
+                     const char *a, uint32_t na,
+                     const char *b, uint32_t nb,
+                     bool *suc);
+
+uint32_t str_parse_3(const char *tpl,
+                     const char *a, uint32_t na,
+                     const char *b, uint32_t nb,
+                     const char *c, uint32_t nc,
+                     bool *suc);
+
+uint32_t str_parse_4(const char *tpl,
+                     const char *a, uint32_t na,
+                     const char *b, uint32_t nb,
+                     const char *c, uint32_t nc,
+                     const char *d, uint32_t nd,
+                     bool *suc);
 
 /** Convert bool to Y or N */
 #define str_yn(cond) ((cond) ? ("Y") : ("N"))

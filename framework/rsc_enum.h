@@ -15,7 +15,8 @@
     X(TIM1) X(TIM2) X(TIM3) X(TIM4) X(TIM5) \
     X(TIM6) X(TIM7) X(TIM8) X(TIM9) X(TIM10) X(TIM11) X(TIM12) X(TIM13) X(TIM14) \
     X(TIM15) X(TIM16) X(TIM17) \
-    X(DMA1) X(DMA2)
+    X(DMA1_1) X(DMA1_2) X(DMA1_3) X(DMA1_4) X(DMA1_5) X(DMA1_6) X(DMA1_7) X(DMA1_8) \
+    X(DMA2_1) X(DMA2_2) X(DMA2_3) X(DMA2_4) X(DMA2_5) X(DMA2_6) X(DMA2_7) X(DMA2_8)
 
 // Resources not used anywhere:
 // X(I2S1) X(I2S2) X(I2S3)
@@ -63,7 +64,7 @@
 //  - some support quadrature input, probably all support external clock / gating / clock-out/PWM generation
 //  Not all chips have all timers and not all timers are equal.
 
-// DMA - Direct memory access lines - TODO split those to channels, they can be used separately
+// DMA - Direct memory access lines
 
 // The resource registry will be pre-loaded with platform-specific config of which blocks are available - the rest will be "pre-claimed"
 // (i.e. unavailable to functional modules)

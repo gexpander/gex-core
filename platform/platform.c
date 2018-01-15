@@ -2,18 +2,21 @@
 // Created by MightyPork on 2017/11/26.
 //
 
+#include <stm32f072xb.h>
 #include "platform.h"
 #include "usbd_core.h"
 #include "USB/usb_device.h"
 #include "framework/resources.h"
 #include "framework/unit_registry.h"
-
 #include "units/digital_out/unit_dout.h"
+
 #include "units/digital_in/unit_din.h"
 #include "units/neopixel/unit_neopixel.h"
 #include "units/i2c/unit_i2c.h"
 #include "units/test/unit_test.h"
+#include "units/usart/unit_usart.h"
 #include "units/spi/unit_spi.h"
+#include "hw_utils.h"
 
 void plat_init_resources(void)
 {
@@ -24,6 +27,12 @@ void plat_init_resources(void)
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
     __HAL_RCC_GPIOE_CLK_ENABLE();
+    __HAL_RCC_GPIOF_CLK_ENABLE();
+
+    hw_periph_clock_enable(DMA1);
+#ifdef DMA2
+    hw_periph_clock_enable(DMA2);
+#endif
 
     // --- Common unit drivers ---
 
@@ -79,6 +88,7 @@ void plat_init_resources(void)
     ureg_add_type(&UNIT_NEOPIXEL);
     ureg_add_type(&UNIT_I2C);
     ureg_add_type(&UNIT_SPI);
+    ureg_add_type(&UNIT_USART);
 
     // Free all present resources
     {
@@ -95,6 +105,7 @@ void plat_init_resources(void)
         rsc_free_range(NULL, R_TIM6, R_TIM7);
         rsc_free_range(NULL, R_TIM14, R_TIM17);
         rsc_free_range(NULL, R_USART1, R_USART4);
+        rsc_free_range(NULL, R_DMA1_1, R_DMA1_7);
 
         rsc_free_range(NULL, R_PA0, R_PA15);
         rsc_free_range(NULL, R_PB0, R_PB15);

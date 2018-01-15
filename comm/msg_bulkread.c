@@ -5,13 +5,11 @@
 #include "platform.h"
 
 #include <TinyFrame.h>
+#include "utils/malloc_safe.h"
 
 #include "messages.h"
 #include "utils/payload_parser.h"
 #include "utils/payload_builder.h"
-
-/** Buffer for preparing bulk chunks */
-static uint8_t bulkread_buffer[BULK_READ_BUF_LEN];
 
 /**
  * TF listener for the bulk read transaction
@@ -26,6 +24,7 @@ static TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
     }
 
     assert_param(NULL != bulk);
+    assert_param(NULL != bulk->_buffer);
 
     if (msg->type == MSG_BULK_ABORT) {
         goto close;
@@ -39,7 +38,7 @@ static TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
         chunk = MIN(chunk, BULK_READ_BUF_LEN);
 
         // load data into the buffer
-        bulk->read(bulk, chunk, bulkread_buffer);
+        bulk->read(bulk, chunk, bulk->_buffer);
 
         bool last = (bulk->offset + chunk >= bulk->len);
 
@@ -47,7 +46,7 @@ static TF_Result bulkread_lst(TinyFrame *tf, TF_Msg *msg)
         TF_ClearMsg(&resp);
         resp.frame_id = bulk->frame_id;
         resp.type = (last ? MSG_BULK_END : MSG_BULK_DATA); // the last chunk has the END type
-        resp.data = bulkread_buffer;
+        resp.data = bulk->_buffer;
         resp.len = (TF_LEN) chunk;
         TF_Respond(tf, &resp);
 
@@ -64,6 +63,7 @@ close:
         // Ask user to free the bulk and userdata
         bulk->read(bulk, 0, NULL);
         msg->userdata = NULL;
+        free_ck(bulk->_buffer);
     }
     return TF_CLOSE;
 }
@@ -76,6 +76,7 @@ void bulkread_start(TinyFrame *tf, BulkRead *bulk)
     assert_param(bulk->read);
 
     bulk->offset = 0;
+    bulk->_buffer = malloc_ck(BULK_READ_BUF_LEN);
 
     {
         uint8_t buf[8];

@@ -14,6 +14,21 @@ typedef struct iniwriter_ {
 } IniWriter;
 
 /**
+ * IniWriter helper buffer, available within a IW-scope only.
+ *
+ * This buffer is used internally by printf-like iw functions.
+ * It can be used to prepare buffer for iw_buff or iw_string,
+ * but must not be used for %s substitutions in iw_* functions.
+ */
+extern char *iwbuffer;
+
+/** Allocate the helper buffer */
+void iw_begin(void);
+
+/** Release the helper buffer */
+void iw_end(void);
+
+/**
  * Initialize a IniWriter struct (macro)
  *
  * @param buffer - buffer backing the writer, result will be written here
@@ -45,10 +60,9 @@ static inline void iw_string(IniWriter *iw, const char *str)
     }
 }
 
+void iw_cmt_newline(IniWriter *iw);
 #define iw_newline(iw) iw_string(iw, "\r\n")
-#define iw_cmt_newline(iw) do { \
-    if (SystemSettings.ini_comments) iw_string(iw, "\r\n"); \
-} while (0)
+
 
 /**
  * Try to snprintf to the file
@@ -74,10 +88,17 @@ void iw_section(IniWriter *iw, const char *format, ...)
 /**
  * Try to write a INI comment # blah\r\n
  * @param iw - iniwriter handle
+ * @param text - format, like printf
+ */
+void iw_comment(IniWriter *iw, const char *text);
+
+/**
+ * Try to write a INI comment # blah\r\n
+ * @param iw - iniwriter handle
  * @param format - format, like printf
  * @param ... - replacements
  */
-void iw_comment(IniWriter *iw, const char *format, ...)
+void iw_commentf(IniWriter *iw, const char *format, ...)
     __attribute__((format(printf,2,3)));
 
 /**

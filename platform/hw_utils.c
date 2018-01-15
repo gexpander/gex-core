@@ -3,7 +3,7 @@
 //
 
 #include <utils/avrlibc.h>
-#include "pin_utils.h"
+#include "hw_utils.h"
 #include "macro.h"
 
 #define PINS_COUNT 16
@@ -46,7 +46,7 @@ static GPIO_TypeDef * const port_periphs[] = {
 COMPILER_ASSERT(PORTS_COUNT == ELEMENTS_IN_ARRAY(port_periphs));
 
 /** Convert pin number to LL bitfield */
-uint32_t pin2ll(uint8_t pin_number, bool *suc)
+uint32_t hw_pin2ll(uint8_t pin_number, bool *suc)
 {
     assert_param(suc != NULL);
 
@@ -60,7 +60,7 @@ uint32_t pin2ll(uint8_t pin_number, bool *suc)
 }
 
 /** Convert port name (A,B,C...) to peripheral struct pointer */
-GPIO_TypeDef *port2periph(char port_name, bool *suc)
+GPIO_TypeDef *hw_port2periph(char port_name, bool *suc)
 {
     assert_param(suc != NULL);
 
@@ -75,7 +75,7 @@ GPIO_TypeDef *port2periph(char port_name, bool *suc)
 }
 
 /** Convert a pin to resource handle */
-Resource pin2resource(char port_name, uint8_t pin_number, bool *suc)
+Resource hw_pin2resource(char port_name, uint8_t pin_number, bool *suc)
 {
     assert_param(suc != NULL);
 
@@ -116,7 +116,7 @@ bool parse_pin(const char *value, char *targetName, uint8_t *targetNumber)
 }
 
 /** Parse port name */
-bool parse_port(const char *value, char *targetName)
+bool parse_port_name(const char *value, char *targetName)
 {
     *targetName = (uint8_t) value[0];
     if (!(*targetName >= 'A' && *targetName < 'A' + PORTS_COUNT)) return false;
@@ -177,7 +177,7 @@ uint16_t parse_pinmask(const char *value, bool *suc)
 }
 
 /** Convert a pin bitmask to the ASCII format understood by str_parse_pinmask() */
-char * str_pinmask(uint16_t pins, char *buffer)
+char * pinmask2str(uint16_t pins, char *buffer)
 {
     char *b = buffer;
     uint32_t start = 0;
@@ -230,7 +230,7 @@ char * str_pinmask(uint16_t pins, char *buffer)
 }
 
 /** Spread packed port pins using a mask */
-uint16_t port_spread(uint16_t packed, uint16_t mask)
+uint16_t pinmask_spread(uint16_t packed, uint16_t mask)
 {
     uint16_t result = 0;
     uint16_t poke = 1;
@@ -246,7 +246,7 @@ uint16_t port_spread(uint16_t packed, uint16_t mask)
 }
 
 /** Pack spread port pins using a mask */
-uint16_t port_pack(uint16_t spread, uint16_t mask)
+uint16_t pinmask_pack(uint16_t spread, uint16_t mask)
 {
     uint16_t result = 0;
     uint16_t poke = 1;
@@ -262,11 +262,11 @@ uint16_t port_pack(uint16_t spread, uint16_t mask)
 }
 
 /** Configure unit pins as analog (part of unit teardown) */
-void deinit_unit_pins(Unit *unit)
+void hw_deinit_unit_pins(Unit *unit)
 {
     for (uint32_t rsc = R_PA0; rsc <= R_PF15; rsc++) {
         if (RSC_IS_HELD(unit->resources, rsc)) {
-//            dbg("Freeing pin %s", rsc_get_name((Resource)rsc));
+            rsc_dbg("Freeing pin %s", rsc_get_name((Resource)rsc));
             GPIO_TypeDef *port = port_periphs[(rsc-R_PA0) / 16];
             uint32_t ll_pin = ll_pins[(rsc-R_PA0)%16];
             LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ANALOG);
@@ -275,11 +275,15 @@ void deinit_unit_pins(Unit *unit)
 }
 
 /** Configure a pin to alternate function */
-error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t ll_af)
+error_t hw_configure_gpio_af(char port_name, uint8_t pin_num, uint32_t ll_af)
 {
+#if PLAT_NO_AFNUM
+    trap("Illegal call to hw_configure_gpio_af() on this platform");
+#else
+
     bool suc = true;
-    GPIO_TypeDef *port = port2periph(port_name, &suc);
-    uint32_t ll_pin = pin2ll(pin_num, &suc);
+    GPIO_TypeDef *port = hw_port2periph(port_name, &suc);
+    uint32_t ll_pin = hw_pin2ll(pin_num, &suc);
     if (!suc) return E_BAD_CONFIG;
 
     if (pin_num < 8)
@@ -289,19 +293,21 @@ error_t configure_gpio_alternate(char port_name, uint8_t pin_num, uint32_t ll_af
 
     LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ALTERNATE);
 
+#endif
     return E_SUCCESS;
 }
 
 /** Configure pins using sparse map */
-error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port_dest, uint32_t ll_mode, uint32_t ll_otype)
+error_t hw_configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port_dest,
+                                 uint32_t ll_mode, uint32_t ll_otype)
 {
     bool suc = true;
-    GPIO_TypeDef *port = port2periph(port_name, &suc);
+    GPIO_TypeDef *port = hw_port2periph(port_name, &suc);
     if (!suc) return E_BAD_CONFIG;
 
     for (int i = 0; i < 16; i++) {
         if (mask & (1<<i)) {
-            uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
+            uint32_t ll_pin = hw_pin2ll((uint8_t) i, &suc);
             LL_GPIO_SetPinMode(port, ll_pin, ll_mode);
             LL_GPIO_SetPinOutputType(port, ll_pin, ll_otype);
             LL_GPIO_SetPinSpeed(port, ll_pin, LL_GPIO_SPEED_FREQ_HIGH);
@@ -313,4 +319,213 @@ error_t configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **port
     }
 
     return E_SUCCESS;
+}
+
+void hw_periph_clock_enable(void *periph)
+{
+    // GPIOs are enabled by default on start-up
+
+    // --- USART ---
+    if (periph == USART1) __HAL_RCC_USART1_CLK_ENABLE();
+    else if (periph == USART2) __HAL_RCC_USART2_CLK_ENABLE();
+#ifdef USART3
+    else if (periph == USART3) __HAL_RCC_USART3_CLK_ENABLE();
+#endif
+#ifdef USART4
+    else if (periph == USART4) __HAL_RCC_USART4_CLK_ENABLE();
+#endif
+#ifdef USART5
+    else if (periph == USART5) __HAL_RCC_USART5_CLK_ENABLE();
+#endif
+
+    // --- SPI ---
+    else if (periph == SPI1) __HAL_RCC_SPI1_CLK_ENABLE();
+#ifdef SPI2
+    else if (periph == SPI2) __HAL_RCC_SPI2_CLK_ENABLE();
+#endif
+#ifdef SPI3
+    else if (periph == SPI3) __HAL_RCC_SPI3_CLK_ENABLE();
+#endif
+
+    // --- I2C ---
+    else if (periph == I2C1) __HAL_RCC_I2C1_CLK_ENABLE();
+    else if (periph == I2C2) __HAL_RCC_I2C2_CLK_ENABLE();
+#ifdef I2C3
+    else if (periph == I2C3) __HAL_RCC_I2C3_CLK_ENABLE();
+#endif
+
+    // --- DMA ---
+    else if (periph == DMA1) __HAL_RCC_DMA1_CLK_ENABLE();
+#ifdef DMA2
+    else if (periph == DMA2) __HAL_RCC_DMA2_CLK_ENABLE();
+#endif
+
+    // --- TIM ---
+    else if (periph == TIM1) __HAL_RCC_TIM1_CLK_ENABLE();
+    else if (periph == TIM2) __HAL_RCC_TIM2_CLK_ENABLE();
+    else if (periph == TIM3) __HAL_RCC_TIM3_CLK_ENABLE();
+#ifdef TIM4
+    else if (periph == TIM4) __HAL_RCC_TIM4_CLK_ENABLE();
+#endif
+#ifdef TIM5
+    else if (periph == TIM5) __HAL_RCC_TIM5_CLK_ENABLE();
+#endif
+#ifdef TIM6
+    else if (periph == TIM6) __HAL_RCC_TIM7_CLK_ENABLE();
+#endif
+#ifdef TIM7
+    else if (periph == TIM7) __HAL_RCC_TIM7_CLK_ENABLE();
+#endif
+#ifdef TIM8
+    else if (periph == TIM8) __HAL_RCC_TIM8_CLK_ENABLE();
+#endif
+#ifdef TIM9
+    else if (periph == TIM9) __HAL_RCC_TIM9_CLK_ENABLE();
+#endif
+#ifdef TIM11
+    else if (periph == TIM11) __HAL_RCC_TIM11_CLK_ENABLE();
+#endif
+#ifdef TIM12
+    else if (periph == TIM12) __HAL_RCC_TIM12_CLK_ENABLE();
+#endif
+#ifdef TIM13
+    else if (periph == TIM13) __HAL_RCC_TIM13_CLK_ENABLE();
+#endif
+#ifdef TIM14
+    else if (periph == TIM14) __HAL_RCC_TIM14_CLK_ENABLE();
+#endif
+#ifdef TIM15
+    else if (periph == TIM15) __HAL_RCC_TIM15_CLK_ENABLE();
+#endif
+#ifdef TIM16
+    else if (periph == TIM16) __HAL_RCC_TIM15_CLK_ENABLE();
+#endif
+#ifdef TIM17
+    else if (periph == TIM17) __HAL_RCC_TIM17_CLK_ENABLE();
+#endif
+
+    // --- ADC ---
+#ifdef ADC1
+    else if (periph == ADC1) __HAL_RCC_ADC1_CLK_ENABLE();
+#endif
+#ifdef ADC2
+    else if (periph == ADC2) __HAL_RCC_ADC2_CLK_ENABLE();
+#endif
+
+    // --- DAC ---
+#ifdef DAC1
+    else if (periph == DAC1) __HAL_RCC_DAC1_CLK_ENABLE();
+#endif
+#ifdef DAC2
+    else if (periph == DAC2) __HAL_RCC_DAC2_CLK_ENABLE();
+#endif
+    else {
+        dbg("Periph 0x%p missing in hw clock enable func", periph);
+        trap("BUG");
+    }
+}
+
+
+void hw_periph_clock_disable(void *periph)
+{
+    // GPIOs are enabled by default on start-up
+
+    // --- USART ---
+    if (periph == USART1) __HAL_RCC_USART1_CLK_DISABLE();
+    else if (periph == USART2) __HAL_RCC_USART2_CLK_DISABLE();
+#ifdef USART3
+    else if (periph == USART3) __HAL_RCC_USART3_CLK_DISABLE();
+#endif
+#ifdef USART4
+    else if (periph == USART4) __HAL_RCC_USART4_CLK_DISABLE();
+#endif
+#ifdef USART5
+    else if (periph == USART5) __HAL_RCC_USART5_CLK_DISABLE();
+#endif
+
+        // --- SPI ---
+    else if (periph == SPI1) __HAL_RCC_SPI1_CLK_DISABLE();
+#ifdef SPI2
+    else if (periph == SPI2) __HAL_RCC_SPI2_CLK_DISABLE();
+#endif
+#ifdef SPI3
+    else if (periph == SPI3) __HAL_RCC_SPI3_CLK_DISABLE();
+#endif
+
+        // --- I2C ---
+    else if (periph == I2C1) __HAL_RCC_I2C1_CLK_DISABLE();
+    else if (periph == I2C2) __HAL_RCC_I2C2_CLK_DISABLE();
+#ifdef I2C3
+    else if (periph == I2C3) __HAL_RCC_I2C3_CLK_DISABLE();
+#endif
+
+        // --- DMA ---
+    else if (periph == DMA1) __HAL_RCC_DMA1_CLK_DISABLE();
+#ifdef DMA2
+    else if (periph == DMA2) __HAL_RCC_DMA2_CLK_DISABLE();
+#endif
+
+        // --- TIM ---
+    else if (periph == TIM1) __HAL_RCC_TIM1_CLK_DISABLE();
+    else if (periph == TIM2) __HAL_RCC_TIM2_CLK_DISABLE();
+    else if (periph == TIM3) __HAL_RCC_TIM3_CLK_DISABLE();
+#ifdef TIM4
+    else if (periph == TIM4) __HAL_RCC_TIM4_CLK_DISABLE();
+#endif
+#ifdef TIM5
+    else if (periph == TIM5) __HAL_RCC_TIM5_CLK_DISABLE();
+#endif
+#ifdef TIM6
+    else if (periph == TIM6) __HAL_RCC_TIM7_CLK_DISABLE();
+#endif
+#ifdef TIM7
+    else if (periph == TIM7) __HAL_RCC_TIM7_CLK_DISABLE();
+#endif
+#ifdef TIM8
+    else if (periph == TIM8) __HAL_RCC_TIM8_CLK_DISABLE();
+#endif
+#ifdef TIM9
+    else if (periph == TIM9) __HAL_RCC_TIM9_CLK_DISABLE();
+#endif
+#ifdef TIM11
+    else if (periph == TIM11) __HAL_RCC_TIM11_CLK_DISABLE();
+#endif
+#ifdef TIM12
+    else if (periph == TIM12) __HAL_RCC_TIM12_CLK_DISABLE();
+#endif
+#ifdef TIM13
+    else if (periph == TIM13) __HAL_RCC_TIM13_CLK_DISABLE();
+#endif
+#ifdef TIM14
+    else if (periph == TIM14) __HAL_RCC_TIM14_CLK_DISABLE();
+#endif
+#ifdef TIM15
+    else if (periph == TIM15) __HAL_RCC_TIM15_CLK_DISABLE();
+#endif
+#ifdef TIM16
+    else if (periph == TIM16) __HAL_RCC_TIM15_CLK_DISABLE();
+#endif
+#ifdef TIM17
+    else if (periph == TIM17) __HAL_RCC_TIM17_CLK_DISABLE();
+#endif
+
+        // --- ADC ---
+#ifdef ADC1
+    else if (periph == ADC1) __HAL_RCC_ADC1_CLK_DISABLE();
+#endif
+#ifdef ADC2
+    else if (periph == ADC2) __HAL_RCC_ADC2_CLK_DISABLE();
+#endif
+
+        // --- DAC ---
+#ifdef DAC1
+    else if (periph == DAC1) __HAL_RCC_DAC1_CLK_DISABLE();
+#endif
+#ifdef DAC2
+        else if (periph == DAC2) __HAL_RCC_DAC2_CLK_DISABLE();
+#endif
+    else {
+        dbg("Periph 0x%p missing in hw clock disable func", periph);
+        trap("BUG");
+    }
 }

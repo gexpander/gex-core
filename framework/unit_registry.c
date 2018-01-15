@@ -58,8 +58,8 @@ void ureg_add_type(const UnitDriver *driver)
     assert_param(driver->deInit != NULL);
     assert_param(driver->handleRequest != NULL);
 
-    UregEntry *re = calloc_ck(1, sizeof(UregEntry), &suc);
-    assert_param(suc);
+    UregEntry *re = calloc_ck(1, sizeof(UregEntry));
+    assert_param(re != NULL);
 
     re->driver = driver;
     re->next = NULL;
@@ -81,11 +81,7 @@ static void free_le_unit(UlistEntry *le)
     pUnit->driver->deInit(pUnit);
     // Name is not expected to be freed by the deInit() function
     // - was alloc'd in the settings load loop
-    if (isDynAlloc(pUnit->name)) {
-        dbg("Freeing allocated name");
-        free((void *) pUnit->name);
-        pUnit->name = NULL;
-    }
+    free_ck(pUnit->name);
 }
 
 /** Add unit to the list, updating references as needed */
@@ -103,7 +99,6 @@ static void add_unit_to_list(UlistEntry *le)
 // create a unit instance (not yet loading or initing - just pre-init)
 Unit *ureg_instantiate(const char *driver_name)
 {
-    bool suc = true;
     error_t rv;
 
     // Find type in the repository
@@ -111,8 +106,8 @@ Unit *ureg_instantiate(const char *driver_name)
     while (re != NULL) {
         if (streq(re->driver->name, driver_name)) {
             // Create new list entry
-            UlistEntry *le = calloc_ck(1, sizeof(UlistEntry), &suc);
-            CHECK_SUC();
+            UlistEntry *le = calloc_ck(1, sizeof(UlistEntry));
+            if (le == NULL) return NULL;
 
             le->next = NULL;
 
@@ -132,7 +127,7 @@ Unit *ureg_instantiate(const char *driver_name)
 
                 dbg("!! Unit type %s failed to pre-init! %s", driver_name, error_get_message(rv));
                 clean_failed_unit(pUnit);
-                free(le);
+                free_ck(le);
                 return NULL;
             }
 
@@ -211,7 +206,7 @@ bool ureg_load_units(PayloadParser *pp)
 
                 // NAME
                 pp_string(pp, typebuf, 16);
-                pUnit->name = strdup(typebuf);
+                pUnit->name = strdup_ck(typebuf);
                 assert_param(pUnit->name);
 
                 // callsign
@@ -247,7 +242,7 @@ void ureg_remove_all_units(void)
         next = le->next;
 
         free_le_unit(le);
-        free(le);
+        free_ck(le);
 
         le = next;
     }
@@ -274,17 +269,17 @@ bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restr
                 char *name = NULL;
                 if (delim != NULL) {
                     // not last
-                    name = strndup(p, delim - p);
+                    name = strndup_ck(p, delim - p);
                     p = delim + 1;
                 } else {
                     // last name
-                    name = strdup(p);
+                    name = strdup_ck(p);
                     p = NULL; // quit after this loop ends
                 }
                 assert_param(name);
                 Unit *pUnit = ureg_instantiate(driver_name);
                 if (!pUnit) {
-                    free(name);
+                    free_ck(name);
                     return false;
                 }
 
@@ -331,18 +326,24 @@ bool ureg_finalize_all_init(void)
     while (li != NULL) {
         Unit *const pUnit = &li->unit;
 
-        pUnit->status = pUnit->driver->init(pUnit);
-        if (pUnit->status != E_SUCCESS) {
-            dbg("!!! error initing unit %s: %s", pUnit->name, error_get_message(pUnit->status));
-        }
-
-        // try to assign unique callsigns
-        // FIXME this is wrong, sometimes leads to duplicate CS
-        if (pUnit->callsign == 0) {
-            pUnit->callsign = callsign++;
+        if (pUnit->status == E_SUCCESS) {
+            dbg("! Unit seems already loaded, skipping");
         } else {
-            if (pUnit->callsign >= callsign) {
-                callsign = (uint8_t) (pUnit->callsign + 1);
+            pUnit->status = pUnit->driver->init(pUnit);
+            if (pUnit->status != E_SUCCESS) {
+                dbg("!!! error initing unit %s: %s", pUnit->name,
+                    error_get_message(pUnit->status));
+            }
+
+            // try to assign unique callsigns
+            // FIXME this is wrong, sometimes leads to duplicate CS
+            if (pUnit->callsign == 0) {
+                pUnit->callsign = callsign++;
+            }
+            else {
+                if (pUnit->callsign >= callsign) {
+                    callsign = (uint8_t) (pUnit->callsign + 1);
+                }
             }
         }
 
@@ -364,12 +365,12 @@ static void export_unit_do(UlistEntry *li, IniWriter *iw)
         {
             // special message for failed unit die to resource
             if (pUnit->status == E_RESOURCE_NOT_AVAILABLE) {
-                iw_comment(iw, "!!! %s not available, already held by %s",
+                iw_commentf(iw, "!!! %s not available, already held by %s",
                            rsc_get_name(pUnit->failed_rsc),
                            rsc_get_owner_name(pUnit->failed_rsc));
             }
             else {
-                iw_comment(iw, "!!! %s", error_get_message(pUnit->status));
+                iw_commentf(iw, "!!! %s", error_get_message(pUnit->status));
             }
             iw_cmt_newline(iw);
         }
@@ -514,9 +515,8 @@ void ureg_report_active_units(TF_ID frame_id)
     }
     msglen += count; // one byte per message for the callsign
 
-    bool suc = true;
-    uint8_t *buff = calloc_ck(1, msglen, &suc);
-    if (!suc) {
+    uint8_t *buff = calloc_ck(1, msglen);
+    if (buff == NULL) {
         com_respond_error(frame_id, E_OUT_OF_MEM);
         return;
     }
@@ -539,7 +539,7 @@ void ureg_report_active_units(TF_ID frame_id)
 
         com_respond_buf(frame_id, MSG_SUCCESS, buff, msglen);
     }
-    free(buff);
+    free_ck(buff);
 }
 
 Unit *ureg_get_rsc_owner(Resource resource)
@@ -582,4 +582,22 @@ void ureg_print_unit_resources(IniWriter *iw)
         li = li->next;
     }
     iw_newline(iw);
+}
+
+void ureg_tick_units(void)
+{
+    UlistEntry *li = ulist_head;
+    while (li != NULL) {
+        Unit *const pUnit = &li->unit;
+        if (pUnit->status == E_SUCCESS && pUnit->tick_interval > 0) {
+            if (pUnit->_tick_cnt == 0) {
+                if (pUnit->driver->updateTick) {
+                    pUnit->driver->updateTick(pUnit);
+                }
+                pUnit->_tick_cnt = pUnit->tick_interval;
+            }
+            pUnit->_tick_cnt--;
+        }
+        li = li->next;
+    }
 }

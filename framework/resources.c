@@ -5,7 +5,7 @@
 #include "platform.h"
 #include "unit.h"
 #include "resources.h"
-#include "pin_utils.h"
+#include "hw_utils.h"
 #include "unit_registry.h"
 
 static bool rsc_initialized = false;
@@ -73,7 +73,7 @@ error_t rsc_claim(Unit *unit, Resource rsc)
     assert_param(rsc < RESOURCE_COUNT);
     assert_param(unit != NULL);
 
-//    dbg("%s claims %s", unit->name, rsc_get_name(rsc));
+    rsc_dbg("%s claims %s", unit->name, rsc_get_name(rsc));
 
     if (RSC_IS_HELD(global_rscmap, rsc)) {
         // this whole branch is just reporting the error
@@ -81,10 +81,12 @@ error_t rsc_claim(Unit *unit, Resource rsc)
         Unit *holder = ureg_get_rsc_owner(rsc);
         assert_param(holder != NULL);
 
-        dbg("ERROR!! Unit %s failed to claim resource %s, already held by %s!",
+        dbg("ERROR!! Unit %s failed to claim rsc %s, already held by %s!",
             unit->name,
             rsc_get_name(rsc),
             holder->name);
+
+        if (holder == unit) dbg("DOUBLE CLAIM, This is probably a bug!");
 
         unit->failed_rsc = rsc;
 
@@ -127,7 +129,7 @@ error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
 
     for (int i = 0; i < 16; i++) {
         if (pins & (1 << i)) {
-            Resource rsc = pin2resource(port_name, (uint8_t) i, &suc);
+            Resource rsc = hw_pin2resource(port_name, (uint8_t) i, &suc);
             if (!suc) return E_BAD_CONFIG;
 
             TRY(rsc_claim(unit, rsc));
@@ -139,7 +141,7 @@ error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
 error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin)
 {
     bool suc = true;
-    Resource rsc = pin2resource(port_name,  pin, &suc);
+    Resource rsc = hw_pin2resource(port_name, pin, &suc);
     if (!suc) return E_BAD_CONFIG;
     TRY(rsc_claim(unit, rsc));
     return E_SUCCESS;
@@ -156,7 +158,7 @@ void rsc_free(Unit *unit, Resource rsc)
     assert_param(rsc_initialized);
     assert_param(rsc < RESOURCE_COUNT);
 
-//    dbg("Free resource %s", rsc_get_name(rsc));
+    rsc_dbg("Free resource %s", rsc_get_name(rsc));
 
     if (RSC_IS_FREE(global_rscmap, rsc)) return;
 
@@ -211,8 +213,8 @@ void rsc_teardown(Unit *unit)
     assert_param(rsc_initialized);
     assert_param(unit != NULL);
 
-//    dbg("Tearing down unit %s", unit->name);
-    deinit_unit_pins(unit);
+    rsc_dbg("Tearing down unit %s", unit->name);
+    hw_deinit_unit_pins(unit);
 
     for (uint32_t i = 0; i < RSCMAP_LEN; i++) {
         global_rscmap[i] &= ~unit->resources[i];
@@ -223,8 +225,6 @@ void rsc_teardown(Unit *unit)
 void rsc_print_all_available(IniWriter *iw)
 {
     if (iw->count == 0) return;
-
-    static char buf[80];
 
     iw_string(iw, "Resources available on this platform\r\n"
                   "------------------------------------\r\n");
@@ -256,7 +256,7 @@ void rsc_print_all_available(IniWriter *iw)
         if (i%16 == 0) {
             // here we print the previous port
             if (bitmap != 0) {
-                iw_string(iw, str_pinmask(bitmap, buf));
+                iw_string(iw, pinmask2str(bitmap, iwbuffer));
                 bitmap = 0;
             }
 
@@ -271,7 +271,7 @@ void rsc_print_all_available(IniWriter *iw)
     }
     // the last one
     if (bitmap != 0) {
-        iw_string(iw, str_pinmask(bitmap, buf));
+        iw_string(iw, pinmask2str(bitmap, iwbuffer));
     }
     iw_newline(iw);
     iw_newline(iw);

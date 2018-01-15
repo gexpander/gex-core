@@ -7,7 +7,7 @@
 #include "framework/settings.h"
 #include "framework/resources.h"
 #include "framework/system_settings.h"
-#include "pin_utils.h"
+#include "hw_utils.h"
 #include "lock_jumper.h"
 #include "status_led.h"
 
@@ -27,14 +27,14 @@ void LockJumper_Init(void)
     bool suc = true;
 
     // Resolve and claim resource
-    Resource rsc = pin2resource(LOCK_JUMPER_PORT, LOCK_JUMPER_PIN, &suc);
+    Resource rsc = hw_pin2resource(LOCK_JUMPER_PORT, LOCK_JUMPER_PIN, &suc);
     assert_param(suc);
 
     assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, rsc));
 
     // Resolve pin
-    lock_periph = port2periph(LOCK_JUMPER_PORT, &suc);
-    lock_llpin = pin2ll(LOCK_JUMPER_PIN, &suc);
+    lock_periph = hw_port2periph(LOCK_JUMPER_PORT, &suc);
+    lock_llpin = hw_pin2ll(LOCK_JUMPER_PIN, &suc);
     assert_param(suc);
 
     // Configure for input

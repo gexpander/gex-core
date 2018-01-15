@@ -5,6 +5,7 @@
 #include "platform.h"
 #include "unit.h"
 #include "resources.h"
+#include "unit_base.h"
 
 char unit_tmp512[UNIT_TMP_LEN];
 
@@ -16,16 +17,8 @@ void clean_failed_unit(Unit *unit)
     dbg("!! Init of [%s] failed!", unit->name);
 
     // Free if it looks like it might've been allocated
-    if (isDynAlloc(unit->data)) {
-        dbg("Freeing allocated unit data");
-        free(unit->data);
-        unit->data = NULL;
-    }
-    if (isDynAlloc(unit->name)) {
-        dbg("Freeing allocated name");
-        free((void *) unit->name);
-        unit->name = NULL;
-    }
+    free_ck(unit->data);
+    free_ck(unit->name);
 
     dbg("Releasing any held resources");
     // Release any already claimed resources

@@ -40,3 +40,75 @@ uint8_t str_parse_012(const char *str, const char *a, const char *b, const char 
     *suc = false;
     return 0;
 }
+
+/** Convert number to one of 2 options */
+const char *str_2(uint32_t n,
+                  uint32_t na, const char *a,
+                  uint32_t nb, const char *b)
+{
+    if (n == nb) return b;
+    return a;
+}
+
+/** Convert number to one of 3 options */
+const char *str_3(uint32_t n,
+                  uint32_t na, const char *a,
+                  uint32_t nb, const char *b,
+                  uint32_t nc, const char *c)
+{
+    if (n == nb) return b;
+    if (n == nc) return c;
+    return a;
+}
+
+/** Convert number to one of 4 options */
+const char *str_4(uint32_t n,
+                  uint32_t na, const char *a,
+                  uint32_t nb, const char *b,
+                  uint32_t nc, const char *c,
+                  uint32_t nd, const char *d)
+{
+    if (n == nb) return b;
+    if (n == nc) return c;
+    if (n == nd) return d;
+    return a;
+}
+
+uint32_t str_parse_2(const char *tpl,
+                     const char *a, uint32_t na,
+                     const char *b, uint32_t nb,
+                     bool *suc)
+{
+    if (streq(tpl, a)) return na;
+    if (streq(tpl, b)) return nb;
+    *suc = false;
+    return na;
+}
+
+uint32_t str_parse_3(const char *tpl,
+                     const char *a, uint32_t na,
+                     const char *b, uint32_t nb,
+                     const char *c, uint32_t nc,
+                     bool *suc)
+{
+    if (streq(tpl, a)) return na;
+    if (streq(tpl, b)) return nb;
+    if (streq(tpl, c)) return nc;
+    *suc = false;
+    return na;
+}
+
+uint32_t str_parse_4(const char *tpl,
+                     const char *a, uint32_t na,
+                     const char *b, uint32_t nb,
+                     const char *c, uint32_t nc,
+                     const char *d, uint32_t nd,
+                     bool *suc)
+{
+    if (streq(tpl, a)) return na;
+    if (streq(tpl, b)) return nb;
+    if (streq(tpl, c)) return nc;
+    if (streq(tpl, d)) return nd;
+    *suc = false;
+    return na;
+}

@@ -142,4 +142,9 @@ Unit *ureg_get_rsc_owner(Resource resource);
  */
 void ureg_print_unit_resources(IniWriter *iw);
 
+/**
+ * 1ms tick for all units that want it
+ */
+void ureg_tick_units(void);
+
 #endif //GEX_UNIT_REGISTRY_H

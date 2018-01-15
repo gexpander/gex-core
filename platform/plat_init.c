@@ -11,6 +11,7 @@
 #include "lock_jumper.h"
 #include "status_led.h"
 #include "debug_uart.h"
+#include "irq_dispatcher.h"
 
 void plat_init(void)
 {
@@ -30,4 +31,5 @@ void plat_init(void)
     settings_load(); // XXX maybe this should be moved to the main task
 
     comm_init();
+    irqd_init();
 }

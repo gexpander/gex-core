@@ -15,12 +15,13 @@
  #define TSK_STACK_MAIN      160
 #endif
 
-#define TSK_STACK_MSG       220 // TF message handler task stack size (all unit commands run on this thread)
+// 180 is normally enough if not doing extensive debug logging
+#define TSK_STACK_MSG       200 // TF message handler task stack size (all unit commands run on this thread)
 
 #define BULK_READ_BUF_LEN 256   // Buffer for TF bulk reads
-#define UNIT_TMP_LEN      512   // Buffer for bulk read and varions internal unit operations
+#define UNIT_TMP_LEN      512   // Buffer for internal unit operations
 
-#define FLASH_SAVE_BUF_LEN  128 // Static buffer for saving to flash
+#define FLASH_SAVE_BUF_LEN  128 // Malloc'd buffer for saving to flash
 
 #define MSG_QUE_SLOT_SIZE 64 // FIXME this should be possible to lower, but there's some bug with bulk transfer / INI parser
 #define RX_QUE_CAPACITY    8 // TinyFrame rx queue size (64 bytes each)
@@ -57,16 +58,19 @@
 // PLAT_USB_OTGFS - uses the USB OTG IP, needs different config code
 // PLAT_LOCK_BTN - use a lock button instead of a lock jumper (push to toggle)
 // PLAT_LOCK_1CLOSED - lock jumper is active (closed / button pressed) in logical 1
+// PLAT_NO_AFNUM - legacy platform without numbered AF alternatives
 
 #if defined(GEX_PLAT_F103_BLUEPILL)
 
     // platform name for the version string
     #define GEX_PLATFORM "STM32F103-Bluepill"
     #define PLAT_AHB_MHZ 72
+    #define PLAT_APB1_MHZ 36
 
     // feature flags
     #define PLAT_FLASHBANKS 1
     #define PLAT_NO_FLOATING_INPUTS 1
+    #define PLAT_NO_AFNUM 1
 
     #include <stm32f1xx.h>
     #include <stm32f1xx_hal.h>
@@ -114,6 +118,7 @@
     // platform name for the version string
     #define GEX_PLATFORM "STM32F072-Discovery"
     #define PLAT_AHB_MHZ 48
+    #define PLAT_APB1_MHZ 48
 
     #include <stm32f0xx.h>
     #include <stm32f0xx_ll_adc.h>
@@ -161,6 +166,8 @@
     // platform name for the version string
     #define GEX_PLATFORM "STM32F303-Discovery"
     #define PLAT_AHB_MHZ 72
+    #define PLAT_APB1_MHZ 36
+    #define PLAT_APB2_MHZ 72
 
     #include <stm32f3xx.h>
     #include <stm32f3xx_hal.h>
@@ -211,6 +218,8 @@
     // platform name for the version string
     #define GEX_PLATFORM "STM32F407-Discovery"
     #define PLAT_AHB_MHZ 168
+    #define PLAT_APB1_MHZ 48
+    #define PLAT_APB2_MHZ 96
 
     #define PLAT_USB_PHYCLOCK 1
     #define PLAT_USB_OTGFS 1
@@ -262,5 +271,9 @@
 #else
     #error "BAD PLATFORM! Please select GEX platform using a -DGEX_PLAT_* compile flag"
 #endif
+
+#define PLAT_AHB_HZ (PLAT_AHB_MHZ*1000000)
+#define PLAT_APB1_HZ (PLAT_APB1_MHZ*1000000)
+#define PLAT_APB2_HZ (PLAT_APB2_MHZ*1000000)
 
 #endif //GEX_PLAT_COMPAT_H

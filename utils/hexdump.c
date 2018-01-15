@@ -16,7 +16,7 @@ void hexDump(const char *restrict desc, const void *restrict addr, uint32_t len)
         PRINTF ("%s:\r\n", desc);
 
     if (len == 0) {
-        PRINTF("  ZERO LENGTH\r\n");
+        PUTS("  ZERO LENGTH\r\n");
         return;
     }
 
@@ -26,8 +26,11 @@ void hexDump(const char *restrict desc, const void *restrict addr, uint32_t len)
 
         if ((i % 16) == 0) {
             // Just don't print ASCII for the zeroth line.
-            if (i != 0)
-                PRINTF ("  %s\r\n", buff);
+            if (i != 0) {
+                PUTS("  ");
+                PUTS((const char *) buff);
+                PUTS("\r\n");
+            }
 
             // Output the offset.
             PRINTF ("  %04"PRIx32" ", i);
@@ -38,7 +41,7 @@ void hexDump(const char *restrict desc, const void *restrict addr, uint32_t len)
 
         // And store a printable ASCII character for later.
         if ((pc[i] < 0x20) || (pc[i] > 0x7e))
-            buff[i % 16] = '.';
+            buff[i % 16] = (uint8_t) ((pc[i] == 0xA5) ? ' ' : '.'); // special treatment for 0xA5 which is used as a filler in stacks
         else
             buff[i % 16] = pc[i];
         buff[(i % 16) + 1] = '\0';
@@ -46,7 +49,7 @@ void hexDump(const char *restrict desc, const void *restrict addr, uint32_t len)
 
     // Pad out last line if not exactly 16 characters.
     while ((i % 16) != 0) {
-        PRINTF ("   ");
+        PUTS("   ");
         i++;
     }
 

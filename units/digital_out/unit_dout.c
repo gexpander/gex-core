@@ -54,7 +54,7 @@ static error_t DO_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "port")) {
-        suc = parse_port(value, &priv->port_name);
+        suc = parse_port_name(value, &priv->port_name);
     }
     else if (streq(key, "pins")) {
         priv->pins = parse_pinmask(value, &suc);
@@ -82,13 +82,13 @@ static void DO_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "port", "%c", priv->port_name);
 
     iw_comment(iw, "Pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", "%s", str_pinmask(priv->pins, unit_tmp512));
+    iw_entry(iw, "pins", "%s", pinmask2str(priv->pins, unit_tmp512));
 
     iw_comment(iw, "Initially high pins");
-    iw_entry(iw, "initial", "%s", str_pinmask(priv->initial, unit_tmp512));
+    iw_entry(iw, "initial", "%s", pinmask2str(priv->initial, unit_tmp512));
 
     iw_comment(iw, "Open-drain pins");
-    iw_entry(iw, "open-drain", "%s", str_pinmask(priv->open_drain, unit_tmp512));
+    iw_entry(iw, "open-drain", "%s", pinmask2str(priv->open_drain, unit_tmp512));
 }
 
 // ------------------------------------------------------------------------
@@ -96,9 +96,8 @@ static void DO_writeIni(Unit *unit, IniWriter *iw)
 /** Allocate data structure and set defaults */
 static error_t DO_preInit(Unit *unit)
 {
-    bool suc = true;
-    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv), &suc);
-    if (!suc) return E_OUT_OF_MEM;
+    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
+    if (priv == NULL) return E_OUT_OF_MEM;
 
     // some defaults
     priv->port_name = 'A';
@@ -119,7 +118,7 @@ static error_t DO_init(Unit *unit)
     priv->open_drain &= priv->pins;
 
     // --- Parse config ---
-    priv->port = port2periph(priv->port_name, &suc);
+    priv->port = hw_port2periph(priv->port_name, &suc);
     if (!suc) return E_BAD_CONFIG;
 
     // Claim all needed pins
@@ -127,7 +126,7 @@ static error_t DO_init(Unit *unit)
 
     for (int i = 0; i < 16; i++) {
         if (priv->pins & (1 << i)) {
-            uint32_t ll_pin = pin2ll((uint8_t) i, &suc);
+            uint32_t ll_pin = hw_pin2ll((uint8_t) i, &suc);
 
             // --- Init hardware ---
             LL_GPIO_SetPinMode(priv->port, ll_pin, LL_GPIO_MODE_OUTPUT);
@@ -153,8 +152,7 @@ static void DO_deInit(Unit *unit)
     rsc_teardown(unit);
 
     // Free memory
-    free(unit->data);
-    unit->data = NULL;
+    free_ck(unit->data);
 }
 
 // ------------------------------------------------------------------------
@@ -165,7 +163,7 @@ error_t UU_DO_Write(Unit *unit, uint16_t packed)
 
     struct priv *priv = unit->data;
     uint16_t mask = priv->pins;
-    uint16_t spread = port_spread(packed, mask);
+    uint16_t spread = pinmask_spread(packed, mask);
 
     uint16_t set = spread;
     uint16_t reset = ((~spread) & mask);
@@ -179,7 +177,7 @@ error_t UU_DO_Set(Unit *unit, uint16_t packed)
 
     struct priv *priv = unit->data;
     uint16_t mask = priv->pins;
-    uint16_t spread = port_spread(packed, mask);
+    uint16_t spread = pinmask_spread(packed, mask);
 
     priv->port->BSRR = spread;
     return E_SUCCESS;
@@ -191,7 +189,7 @@ error_t UU_DO_Clear(Unit *unit, uint16_t packed)
 
     struct priv *priv = unit->data;
     uint16_t mask = priv->pins;
-    uint16_t spread = port_spread(packed, mask);
+    uint16_t spread = pinmask_spread(packed, mask);
 
     priv->port->BSRR = (spread<<16);
     return E_SUCCESS;
@@ -203,7 +201,7 @@ error_t UU_DO_Toggle(Unit *unit, uint16_t packed)
 
     struct priv *priv = unit->data;
     uint16_t mask = priv->pins;
-    uint16_t spread = port_spread(packed, mask);
+    uint16_t spread = pinmask_spread(packed, mask);
 
     uint16_t flipped = (uint16_t) (~priv->port->ODR) & mask;
     uint16_t set = flipped & spread;
@@ -217,7 +215,7 @@ error_t UU_DO_GetPinCount(Unit *unit, uint8_t *count)
     CHECK_TYPE(unit, &UNIT_DOUT);
     struct priv *priv = unit->data;
 
-    uint32_t packed = port_pack(0xFFFF, priv->pins);
+    uint32_t packed = pinmask_pack(0xFFFF, priv->pins);
     *count = (uint8_t)(32 - __CLZ(packed));
     return E_SUCCESS;
 }
