@@ -50,11 +50,13 @@ struct priv {
 
     // DMA stuff
     volatile uint8_t *rx_buffer;
-    volatile uint8_t *tx_buffer;
     volatile uint16_t rx_buf_readpos;
+
+    volatile uint8_t *tx_buffer;
     volatile uint16_t tx_buf_nr;
     volatile uint16_t tx_buf_nw;
     volatile uint16_t tx_buf_chunk;
+    volatile bool tx_dma_busy;
 };
 
 /** Allocate data structure and set defaults */
