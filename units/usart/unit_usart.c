@@ -38,32 +38,6 @@ void UUSART_DMA_HandleRxFromIRQ(Unit *unit, uint16_t endpos)
     priv->rx_buf_readpos = endpos;
 }
 
-
-#if 0
-static error_t usart_wait_until_flag(struct priv *priv, uint32_t flag, bool stop_state)
-{
-    uint32_t t_start = HAL_GetTick();
-    while (((priv->periph->ISR & flag) != 0) != stop_state) {
-        if (HAL_GetTick() - t_start > 10) {
-            return E_HW_TIMEOUT;
-        }
-    }
-    return E_SUCCESS;
-}
-
-static error_t sync_send(struct priv *priv, const uint8_t *buf, uint32_t len)
-{
-    while (len > 0) {
-        TRY(usart_wait_until_flag(priv, USART_ISR_TXE, 1));
-        priv->periph->TDR = *buf++;
-        len--;
-    }
-    TRY(usart_wait_until_flag(priv, USART_ISR_TC, 1));
-    return E_SUCCESS;
-}
-#endif
-
-
 enum PinCmd_ {
     CMD_WRITE = 0,
 };
