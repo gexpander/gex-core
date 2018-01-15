@@ -48,7 +48,7 @@ struct PayloadBuilder_ {
 // --- initializer helper macros ---
 
 /** Start the builder. */
-#define pb_start_e(buf, capacity, bigendian, full_handler) ((PayloadBuilder){buf, buf, (buf)+(capacity), full_handler, bigendian, 1})
+#define pb_start_e(buf, capacity, bigendian, full_handler) ((PayloadBuilder){(uint8_t*)buf, (uint8_t*)buf, (uint8_t*)((buf)+(capacity)), full_handler, bigendian, 1})
 
 /** Start the builder in big-endian mode */
 #define pb_start_be(buf, capacity, full_handler) pb_start_e(buf, capacity, 1, full_handler)
@@ -67,6 +67,12 @@ struct PayloadBuilder_ {
 /** Reset the current pointer to start */
 #define pb_rewind(pb) do { pb->current = pb->start; } while (0)
 
+/** Finalize the buffer composition and get the size */
+static inline uint8_t *pb_close(PayloadBuilder *pb, uint32_t *lendst)
+{
+    *lendst = pb_length(pb);
+    return pb->start;
+}
 
 /** Write from a buffer */
 bool pb_buf(PayloadBuilder *pb, const uint8_t *buf, uint32_t len);

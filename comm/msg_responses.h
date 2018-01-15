@@ -9,6 +9,8 @@
 #error "Include messages.h instead!"
 #endif
 
+#include "payload_builder.h"
+
 /**
  * Respond to a TF message using printf-like formatting.
  *
@@ -53,6 +55,14 @@ void com_respond_error(TF_ID frame_id, error_t error);
  * @param len - buffer size
  */
 void com_send_buf(TF_TYPE type, const uint8_t *buf, uint32_t len);
+
+/**
+ * Send a payload builder's content
+ *
+ * @param type - response type byte
+ * @param pb - builder
+ */
+void com_send_pb(TF_TYPE type, PayloadBuilder *pb);
 
 /**
  * Same like tf_respond_buf(), but the buffer length is measured with strlen.
