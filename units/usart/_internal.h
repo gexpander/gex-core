@@ -11,7 +11,7 @@
 
 #include "platform.h"
 
-#define UUSART_RXBUF_LEN 64
+#define UUSART_RXBUF_LEN 128
 #define UUSART_TXBUF_LEN 128
 
 /** Private data structure */

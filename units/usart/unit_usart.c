@@ -2,7 +2,6 @@
 // Created by MightyPork on 2018/01/02.
 //
 
-#include <stm32f072xb.h>
 #include "platform.h"
 #include "comm/messages.h"
 #include "unit_base.h"
