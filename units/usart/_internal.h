@@ -11,7 +11,7 @@
 
 #include "platform.h"
 
-#define UUSART_RXBUF_LEN 128
+#define UUSART_RXBUF_LEN 64
 #define UUSART_TXBUF_LEN 128
 
 /** Private data structure */
@@ -48,9 +48,52 @@ struct priv {
     uint8_t dma_rx_chnum;
     uint8_t dma_tx_chnum;
 
-    uint8_t *rx_buffer;
-    uint8_t *tx_buffer;
-    uint16_t rx_buf_readpos;
+    // DMA stuff
+    volatile uint8_t *rx_buffer;
+    volatile uint8_t *tx_buffer;
+    volatile uint16_t rx_buf_readpos;
+    volatile uint16_t tx_buf_nr;
+    volatile uint16_t tx_buf_nw;
+    volatile uint16_t tx_buf_chunk;
 };
+
+/** Allocate data structure and set defaults */
+error_t UUSART_preInit(Unit *unit);
+// ------------------------------------------------------------------------
+/** Load from a binary buffer stored in Flash */
+void UUSART_loadBinary(Unit *unit, PayloadParser *pp);
+/** Write to a binary buffer for storing in Flash */
+void UUSART_writeBinary(Unit *unit, PayloadBuilder *pb);
+// ------------------------------------------------------------------------
+/** Parse a key-value pair from the INI file */
+error_t UUSART_loadIni(Unit *unit, const char *key, const char *value);
+/** Generate INI file section for the unit */
+void UUSART_writeIni(Unit *unit, IniWriter *iw);
+// ------------------------------------------------------------------------
+/** Tear down the unit */
+void UUSART_deInit(Unit *unit);
+/** Finalize unit set-up */
+error_t UUSART_init(Unit *unit);
+
+/**
+ * Handle received data (we're inside the IRQ)
+ *
+ * @param unit - handled unit
+ * @param endpos - end position in the buffer
+ */
+void UUSART_DMA_HandleRxFromIRQ(Unit *unit, uint16_t endpos);
+
+/**
+ * Put data on the queue. Only a part may be sent due to a buffer size limit.
+ *
+ * @param priv
+ * @param buffer - buffer to send
+ * @param len - buffer size
+ * @return number of bytes that were really written (from the beginning)
+ */
+uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t len);
+
+// ------------------------------------------------------------------------
+
 
 #endif //GEX_F072_UUSART_INTERNAL_H

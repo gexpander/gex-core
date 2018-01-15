@@ -10,25 +10,36 @@
 #define UUSART_INTERNAL
 #include "_internal.h"
 
-/** Allocate data structure and set defaults */
-extern error_t UUSART_preInit(Unit *unit);
-// ------------------------------------------------------------------------
-/** Load from a binary buffer stored in Flash */
-extern void UUSART_loadBinary(Unit *unit, PayloadParser *pp);
-/** Write to a binary buffer for storing in Flash */
-extern void UUSART_writeBinary(Unit *unit, PayloadBuilder *pb);
-// ------------------------------------------------------------------------
-/** Parse a key-value pair from the INI file */
-extern error_t UUSART_loadIni(Unit *unit, const char *key, const char *value);
-/** Generate INI file section for the unit */
-extern void UUSART_writeIni(Unit *unit, IniWriter *iw);
-// ------------------------------------------------------------------------
-/** Tear down the unit */
-extern void UUSART_deInit(Unit *unit);
-/** Finalize unit set-up */
-extern error_t UUSART_init(Unit *unit);
-// ------------------------------------------------------------------------
+/**
+ * Handle received data (we're inside the IRQ)
+ *
+ * @param unit - handled unit
+ * @param endpos - end position in the buffer
+ */
+void UUSART_DMA_HandleRxFromIRQ(Unit *unit, uint16_t endpos)
+{
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
 
+    uint16_t readpos = priv->rx_buf_readpos;
+
+    assert_param(endpos > readpos);
+
+    uint16_t count = (endpos - readpos);
+    uint8_t *start = (uint8_t *) (priv->rx_buffer + readpos);
+
+    // Do something with the data...
+    PUTSN((char *) start, count);
+    PUTNL();
+
+    // Move the read cursor, wrap around if needed
+    if (endpos == UUSART_RXBUF_LEN) endpos = 0;
+    priv->rx_buf_readpos = endpos;
+}
+
+
+#if 0
 static error_t usart_wait_until_flag(struct priv *priv, uint32_t flag, bool stop_state)
 {
     uint32_t t_start = HAL_GetTick();
@@ -50,6 +61,7 @@ static error_t sync_send(struct priv *priv, const uint8_t *buf, uint32_t len)
     TRY(usart_wait_until_flag(priv, USART_ISR_TC, 1));
     return E_SUCCESS;
 }
+#endif
 
 
 enum PinCmd_ {
@@ -66,7 +78,17 @@ static error_t UUSART_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
             uint32_t len;
             const uint8_t *pld = pp_tail(pp, &len);
 
-            TRY(sync_send(priv, pld, len));
+            while (len > 0) {
+                uint16_t chunk = UUSART_DMA_TxQueue(priv, pld, (uint16_t) len);
+                pld += chunk;
+                len -= chunk;
+
+                // We give up control if there's another thread waiting
+                if (len > 0) {
+                    osThreadYield();
+                }
+            }
+
             return E_SUCCESS;
             //return E_NOT_IMPLEMENTED;
 

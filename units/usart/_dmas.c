@@ -110,7 +110,7 @@ error_t UUSART_ClaimDMAs(Unit *unit)
             trap("Missing DMA mapping for USART%d", (int)priv->periph_num);
     }
 
-    dbg("USART %d - selected DMA ch Tx(%d), Rx(%d)", priv->periph_num, priv->dma_tx_chnum, priv->dma_rx_chnum);
+//    dbg("USART %d - selected DMA ch Tx(%d), Rx(%d)", priv->periph_num, priv->dma_tx_chnum, priv->dma_rx_chnum);
 
     return E_SUCCESS;
 }
@@ -135,7 +135,7 @@ error_t UUSART_SetupDMAs(Unit *unit)
     {
         LL_DMA_StructInit(&init);
         init.Direction = LL_DMA_DIRECTION_MEMORY_TO_PERIPH;
-        init.Mode = LL_DMA_MODE_CIRCULAR;
+        init.Mode = LL_DMA_MODE_NORMAL;
 
         init.PeriphOrM2MSrcAddress = (uint32_t) &priv->periph->TDR;
         init.PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_BYTE;
@@ -184,6 +184,10 @@ error_t UUSART_SetupDMAs(Unit *unit)
     return E_SUCCESS;
 }
 
+/**
+ * Handler for the Rx DMA half or full interrupt
+ * @param arg - unit instance
+ */
 static void UUSART_DMA_RxHandler(void *arg)
 {
     Unit *unit = arg;
@@ -197,29 +201,147 @@ static void UUSART_DMA_RxHandler(void *arg)
         bool tc = LL_DMA_IsActiveFlag_TC(isrsnapshot, priv->dma_rx_chnum);
         bool ht = LL_DMA_IsActiveFlag_HT(isrsnapshot, priv->dma_rx_chnum);
 
+        // Here we have to either copy it somewhere else, or notify another thread (queue?)
+        // that the data is ready for reading
 
-        uint16_t end = (uint16_t) (ht ? UUSART_RXBUF_LEN / 2 : UUSART_RXBUF_LEN);
+        if (ht) {
+            uint16_t end = (uint16_t) UUSART_RXBUF_LEN / 2;
+            UUSART_DMA_HandleRxFromIRQ(unit, end);
+            LL_DMA_ClearFlag_HT(priv->dma, priv->dma_rx_chnum);
+        }
 
-        uint16_t toRead = (uint16_t) (end - priv->rx_buf_readpos);
+        if (tc) {
+            uint16_t end = (uint16_t) UUSART_RXBUF_LEN;
+            UUSART_DMA_HandleRxFromIRQ(unit, end);
+            LL_DMA_ClearFlag_TC(priv->dma, priv->dma_rx_chnum);
+        }
 
-        PUTS(">");
-        PUTSN((char *) priv->rx_buffer+priv->rx_buf_readpos, toRead);
-        PUTS("<\r\n");
-
-        // Prepare position for next read
-        if (ht) priv->rx_buf_readpos = (uint16_t) (end);
-        else priv->rx_buf_readpos = 0;
-
-
-        if (ht) LL_DMA_ClearFlag_HT(priv->dma, priv->dma_rx_chnum);
-        if (tc) LL_DMA_ClearFlag_TC(priv->dma, priv->dma_rx_chnum);
         if (LL_DMA_IsActiveFlag_TE(isrsnapshot, priv->dma_rx_chnum)) {
-            dbg("Rx TE"); // this shouldn't happen
+            // this shouldn't happen
             LL_DMA_ClearFlag_TE(priv->dma, priv->dma_rx_chnum);
         }
     }
 }
 
+/**
+ * Start sending a chunk of data.
+ * This must be called when the DMA is completed.
+ *
+ * @param priv
+ */
+static void UUSART_DMA_TxStart(struct priv *priv)
+{
+    dbg("DMA_TxStart (nr %d, nw %d)", (int)priv->tx_buf_nr, (int)priv->tx_buf_nw);
+
+    assert_param(priv->dma_tx->CNDTR == 0);
+    uint16_t nr = priv->tx_buf_nr;
+    uint16_t nw = priv->tx_buf_nw;
+
+//    if (nr == nw-1 || nr==0&&nw==UUSART_TXBUF_LEN-1) {
+//        dbg("FULL buf, cant start")
+//    }
+
+    if (nr == nw) {
+        dbg("remain=0,do nothing");
+        return;
+    } // do nothing if we're done
+
+    uint16_t chunk = 0;
+    if (nr < nw) {
+        // linear forward
+        chunk = nw - nr;
+    } else {
+        // wrapped
+        chunk = (uint16_t) (UUSART_TXBUF_LEN - nr);
+    }
+    dbg("chunk %d", (int)chunk);
+
+    priv->tx_buf_chunk = chunk;
+
+    LL_DMA_DisableChannel(priv->dma, priv->dma_tx_chnum);
+    {
+        LL_DMA_SetMemoryAddress(priv->dma, priv->dma_tx_chnum, (uint32_t) (priv->tx_buffer + nr));
+        LL_DMA_SetDataLength(priv->dma, priv->dma_tx_chnum, chunk);
+        LL_USART_ClearFlag_TC(priv->periph);
+    }
+    LL_DMA_EnableChannel(priv->dma, priv->dma_tx_chnum);
+}
+
+/**
+ * Put data on the queue. Only a part may be sent due to a buffer size limit.
+ *
+ * @param priv
+ * @param buffer - buffer to send
+ * @param len - buffer size
+ * @return number of bytes that were really written (from the beginning)
+ */
+uint16_t UUSART_DMA_TxQueue(struct priv *priv, const uint8_t *buffer, uint16_t len)
+{
+    const uint16_t nr = priv->tx_buf_nr;
+    uint16_t nw = priv->tx_buf_nw;
+
+    if (nw == nr-1 || (nr==0&&nw==UUSART_TXBUF_LEN-1)) {
+        dbg("Buffer full, cant queue");
+        return 0;
+    }
+
+    dbg("\r\nQueue..");
+
+    uint16_t used = 0;
+    if (nr == nw) {
+        used = 0;
+    }
+    else if (nw > nr) {
+        // simple linear
+        used = (uint16_t) (nw - nr);
+    }
+    else if (nw < nr) {
+        // wrapped
+        used = (uint16_t) ((UUSART_TXBUF_LEN - nr) + nw);
+    }
+
+    dbg("Trying to send buffer of len %d", (int)len);
+    uint16_t avail = (const uint16_t) (UUSART_TXBUF_LEN - 1 - used);
+    dbg("nr %d, nw %d, used %d, avail %d", (int)nr, (int)nw, (int)used, (int)avail);
+
+    uint16_t towrite = MIN(avail, len);
+    const uint16_t towrite_orig = towrite;
+
+    uint32_t cnt = 0;
+    while (towrite > 0) {
+        // this should run max 2x
+        assert_param(cnt < 2);
+        cnt++;
+
+        uint16_t chunk = (uint16_t) MIN(towrite, UUSART_TXBUF_LEN - nw);
+        memcpy((uint8_t *) (priv->tx_buffer + nw), buffer, chunk);
+        dbg("- memcpy %d bytes at %d", (int)chunk, (int)nw);
+        nw += chunk;
+        towrite -= chunk;
+
+        if (nw == UUSART_TXBUF_LEN) {
+            nw = 0;
+        }
+    }
+    priv->tx_buf_nw = nw;
+
+    dbg("Written. -> nr %d, nw %d, used %d, avail %d", (int)nr, (int)nw, (int)used, (int)avail);
+
+    // start the DMA if it's idle
+    if (priv->dma_tx->CNDTR == 0) {
+        dbg("Write done, requesting DMA.");
+        UUSART_DMA_TxStart(priv);
+    } else {
+        dbg("DMA in progress, not requesting");
+    }
+
+    return towrite_orig;
+}
+
+/**
+ * Handler for the Tx DMA - completion interrupt
+ * @param arg - unit instance
+ */
 static void UUSART_DMA_TxHandler(void *arg)
 {
     Unit *unit = arg;
@@ -228,12 +350,25 @@ static void UUSART_DMA_TxHandler(void *arg)
     assert_param(priv);
 
     uint32_t isrsnapshot = priv->dma->ISR;
-    if (LL_DMA_IsActiveFlag_G(isrsnapshot, priv->dma_tx_chnum)) {
-        if (LL_DMA_IsActiveFlag_TC(isrsnapshot, priv->dma_tx_chnum)) {
-            dbg("Tx TC");
-        }
+    if (LL_DMA_IsActiveFlag_TC(isrsnapshot, priv->dma_tx_chnum)) {
+        // chunk Tx is finished
+        dbg("DMA_TxHandler, lr %d, nw %d, chunk %d", (int)priv->tx_buf_nr, (int)priv->tx_buf_nw, (int)priv->tx_buf_chunk);
 
-        LL_DMA_ClearFlags(priv->dma, priv->dma_tx_chnum);
+//        dbg("StartPos advance...");
+        priv->tx_buf_nr += priv->tx_buf_chunk;
+        if (UUSART_TXBUF_LEN == priv->tx_buf_nr) priv->tx_buf_nr = 0;
+        priv->tx_buf_chunk = 0;
+
+        LL_DMA_ClearFlag_TC(priv->dma, priv->dma_tx_chnum);
+
+        // Wait for TC
+        while (!LL_USART_IsActiveFlag_TC(priv->periph));
+
+        // start the next chunk
+        if (priv->tx_buf_nr != priv->tx_buf_nw) {
+            dbg("Flag cleared ... asking for more. lr %d, nw %d", (int)priv->tx_buf_nr, (int)priv->tx_buf_nw);
+            UUSART_DMA_TxStart(priv);
+        }
     }
 }
 
