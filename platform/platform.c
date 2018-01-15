@@ -22,13 +22,7 @@ void plat_init_resources(void)
 {
     uint32_t rv = 0;
 
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOC_CLK_ENABLE();
-    __HAL_RCC_GPIOD_CLK_ENABLE();
-    __HAL_RCC_GPIOE_CLK_ENABLE();
-    __HAL_RCC_GPIOF_CLK_ENABLE();
-
+    // enable clock for units we use
     hw_periph_clock_enable(DMA1);
 #ifdef DMA2
     hw_periph_clock_enable(DMA2);

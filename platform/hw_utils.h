@@ -7,7 +7,6 @@
 #ifndef GEX_PIN_UTILS_H
 #define GEX_PIN_UTILS_H
 
-#include <stm32f072xb.h>
 #include "platform.h"
 #include "resources.h"
 
