@@ -14,24 +14,37 @@ static ResourceMap global_rscmap;
 
 // here are the resource names for better debugging
 
-// this list doesn't include GPIO names, they can be easily generated
+// this list doesn't include GPIO and EXTI names, they can be easily generated
 const char *const rsc_names[] = {
 #define X(res_name) #res_name,
     XX_RESOURCES
 #undef X
 };
 
+// Check that EXTI have higher values than GPIOs in the enum
+// (determines the logic in the name generation code below)
+COMPILER_ASSERT(R_EXTI0 > R_PA0);
+
 /** Get rsc name */
 const char * rsc_get_name(Resource rsc)
 {
     assert_param(rsc < RESOURCE_COUNT);
 
-    static char gpionamebuf[5];
+    static char gpionamebuf[8];
+    // we assume the returned value is not stored anywhere
+    // and is directly used in a sprintf call, hence a static buffer is OK to use
+
+    if (rsc >= R_EXTI0) {
+        uint8_t index = rsc - R_EXTI0;
+        SNPRINTF(gpionamebuf, 8, "EXTI%d", index);
+        return gpionamebuf;
+    }
+
     if (rsc >= R_PA0) {
         // we assume the returned value is not stored anywhere
         // and is directly used in a sprintf call.
         uint8_t index = rsc - R_PA0;
-        SNPRINTF(gpionamebuf, 5, "P%c%d", 'A'+(index/16), index%16);
+        SNPRINTF(gpionamebuf, 8, "P%c%d", 'A'+(index/16), index%16);
         return gpionamebuf;
     }
 

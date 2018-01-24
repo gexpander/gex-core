@@ -45,29 +45,10 @@
     X(PF0) X(PF1) X(PF2) X(PF3) X(PF4) X(PF5) X(PF6) X(PF7) \
     X(PF8) X(PF9) X(PF10) X(PF11) X(PF12) X(PF13) X(PF14) X(PF15) \
 
-// GPIOs are allocated whenever the pin is needed
-//  (e.g. when used for SPI, the R_SPI resource as well as the corresponding R_GPIO resources must be claimed)
+#define XX_RESOURCES_EXTI \
+    X(EXTI0) X(EXTI1) X(EXTI2) X(EXTI3) X(EXTI4) X(EXTI5) X(EXTI6) X(EXTI7) \
+    X(EXTI8) X(EXTI9) X(EXTI10) X(EXTI11) X(EXTI12) X(EXTI13) X(EXTI14) X(EXTI15)
 
-// Peripheral blocks (IPs) - not all chips have all blocks, usually the 1 and 2 are present as a minimum, if any.
-//  It doesn't really make sense to expose multiple instances of buses that support addressing
-
-// ADCs - some more advanced chips support differential input mode on some (not all!) inputs
-//  Usually only one or two instances are present
-
-// DAC - often only one is present, or none.
-
-// UARTs
-//  - 1 and 2 are present universally, 2 is connected to VCOM on Nucleo/Discovery boards, good for debug messages
-//  4 and 5 don't support synchronous mode.
-
-// Timers
-//  - some support quadrature input, probably all support external clock / gating / clock-out/PWM generation
-//  Not all chips have all timers and not all timers are equal.
-
-// DMA - Direct memory access lines
-
-// The resource registry will be pre-loaded with platform-specific config of which blocks are available - the rest will be "pre-claimed"
-// (i.e. unavailable to functional modules)
 
 typedef enum hw_resource Resource;
 
@@ -75,6 +56,7 @@ enum hw_resource {
 #define X(res_name) R_##res_name,
     XX_RESOURCES
     XX_RESOURCES_GPIO
+    XX_RESOURCES_EXTI
 #undef X
     R_NONE,
     RESOURCE_COUNT = R_NONE,
