@@ -1,9 +1,15 @@
 //
 // Created by MightyPork on 2017/12/23.
 //
+// Bulk write (receiving bulk write from the PC)
+//
 
 #ifndef GEX_F072_MSG_BULKWRITE_H
 #define GEX_F072_MSG_BULKWRITE_H
+
+#ifndef GEX_MESSAGES_H
+#error "Include messages.h instead!"
+#endif
 
 #include <TinyFrame.h>
 

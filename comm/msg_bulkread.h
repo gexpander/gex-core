@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/12/23.
 //
+// Bulk read (providing data for bulk read by the PC)
+//
 
 #ifndef GEX_F072_MSG_BULKREAD_H
 #define GEX_F072_MSG_BULKREAD_H

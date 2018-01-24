@@ -38,12 +38,14 @@ void com_respond_ok(TF_ID frame_id)
     com_respond_buf(frame_id, MSG_SUCCESS, NULL, 0);
 }
 
+
 void com_send_pb(TF_TYPE type, PayloadBuilder *pb)
 {
     uint32_t len;
     uint8_t *buf = pb_close(pb, &len);
     com_send_buf(type, buf, len);
 }
+
 
 void com_send_buf(TF_TYPE type, const uint8_t *buf, uint32_t len)
 {

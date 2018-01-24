@@ -62,7 +62,7 @@ close:
     return TF_CLOSE;
 }
 
-/** Start the bulk write flow */
+
 void bulkwrite_start(TinyFrame *tf, BulkWrite *bulk)
 {
     assert_param(bulk);

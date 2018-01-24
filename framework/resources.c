@@ -25,7 +25,7 @@ const char *const rsc_names[] = {
 // (determines the logic in the name generation code below)
 COMPILER_ASSERT(R_EXTI0 > R_PA0);
 
-/** Get rsc name */
+
 const char * rsc_get_name(Resource rsc)
 {
     assert_param(rsc < RESOURCE_COUNT);
@@ -51,7 +51,7 @@ const char * rsc_get_name(Resource rsc)
     return rsc_names[rsc];
 }
 
-/** Get rsc owner name */
+
 const char * rsc_get_owner_name(Resource rsc)
 {
     assert_param(rsc < RESOURCE_COUNT);
@@ -61,9 +61,7 @@ const char * rsc_get_owner_name(Resource rsc)
     return pUnit->name;
 }
 
-/**
- * Initialize the resources registry
- */
+
 void rsc_init_registry(void)
 {
     for(uint32_t i = 0; i < RSCMAP_LEN; i++) {
@@ -73,13 +71,7 @@ void rsc_init_registry(void)
     rsc_initialized = true;
 }
 
-/**
- * Claim a resource for a unit
- *
- * @param unit - claiming unit
- * @param rsc - resource to claim
- * @return true on successful claim
- */
+
 error_t rsc_claim(Unit *unit, Resource rsc)
 {
     assert_param(rsc_initialized);
@@ -113,14 +105,7 @@ error_t rsc_claim(Unit *unit, Resource rsc)
     return E_SUCCESS;
 }
 
-/**
- * Claim a range of resources for a unit (useful for GPIO)
- *
- * @param unit - claiming unit
- * @param rsc0 - first resource to claim
- * @param rsc1 - last resource to claim
- * @return true on complete claim, false if any failed (none are claimed in that case)
- */
+
 error_t rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1)
 {
     assert_param(rsc_initialized);
@@ -135,6 +120,7 @@ error_t rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1)
 
     return E_SUCCESS;
 }
+
 
 error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
 {
@@ -151,6 +137,7 @@ error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
     return E_SUCCESS;
 }
 
+
 error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin)
 {
     bool suc = true;
@@ -160,12 +147,7 @@ error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin)
     return E_SUCCESS;
 }
 
-/**
- * Free a resource for other use
- *
- * @param unit - owning unit; if not null, free only resources claimed by this unit
- * @param rsc - resource to free
- */
+
 void rsc_free(Unit *unit, Resource rsc)
 {
     assert_param(rsc_initialized);
@@ -196,13 +178,7 @@ void rsc_free(Unit *unit, Resource rsc)
     RSC_FREE(global_rscmap, rsc);
 }
 
-/**
- * Free a range of resources (useful for GPIO)
- *
- * @param unit - owning unit; if not null, free only resources claimed by this unit
- * @param rsc0 - first resource to free
- * @param rsc1 - last resource to free
- */
+
 void rsc_free_range(Unit *unit, Resource rsc0, Resource rsc1)
 {
     assert_param(rsc_initialized);
@@ -215,12 +191,7 @@ void rsc_free_range(Unit *unit, Resource rsc0, Resource rsc1)
     }
 }
 
-/**
- * Tear down a unit - release all resources owned by the unit.
- * Also de-init all GPIOs
- *
- * @param unit - unit to tear down; free only resources claimed by this unit
- */
+
 void rsc_teardown(Unit *unit)
 {
     assert_param(rsc_initialized);
@@ -235,6 +206,8 @@ void rsc_teardown(Unit *unit)
     }
 }
 
+
+// build the pins part of the PINOUT.TXT file
 void rsc_print_all_available(IniWriter *iw)
 {
     if (iw->count == 0) return;

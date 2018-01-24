@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/12/22.
 //
+// Routines for sending TinyFrame responses.
+//
 
 #ifndef GEX_F072_MSG_RESPONSES_H
 #define GEX_F072_MSG_RESPONSES_H

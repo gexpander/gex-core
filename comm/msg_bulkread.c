@@ -68,7 +68,7 @@ close:
     return TF_CLOSE;
 }
 
-/** Start the bulk read flow */
+
 void bulkread_start(TinyFrame *tf, BulkRead *bulk)
 {
     assert_param(bulk);

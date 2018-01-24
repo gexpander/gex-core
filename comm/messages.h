@@ -1,6 +1,12 @@
 //
 // Created by MightyPork on 2017/11/21.
 //
+// This is the only file to include from the comm/ folder directly.
+// Provides TinyFrame message types, utilities for forming payloads,
+// bulk read and write routines.
+//
+// See the other headers in the folder for prototypes.
+//
 
 #ifndef GEX_MESSAGES_H
 #define GEX_MESSAGES_H
@@ -36,9 +42,10 @@ enum Message_Types_ {
     MSG_PERSIST_CFG = 0x23,      //!< Write current settings to Flash (the equivalent of replacing the lock jumper)
 };
 
+/** The shared USB-serial TinyFrame instance */
 extern TinyFrame *comm;
 
-// Must be after the enum because it's used in the header file.
+// those must be after the enum because it's used in the header files
 #include "msg_responses.h"
 #include "msg_bulkread.h"
 #include "msg_bulkwrite.h"
