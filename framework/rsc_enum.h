@@ -66,10 +66,34 @@ enum hw_resource {
 
 typedef uint8_t ResourceMap[RSCMAP_LEN];
 
-#define RSC_IS_FREE(rscmap, rsc) (0 == (rscmap[((rsc)>>3)&0xFF] & (1<<((rsc)&0x7))))
-#define RSC_IS_HELD(rscmap, rsc) (!RSC_IS_FREE(rscmap, rsc))
-#define RSC_CLAIM(rscmap, rsc)   do { rscmap[((rsc)>>3)&0xFF] |= (1<<((rsc)&0x7)); } while(0)
-#define RSC_FREE(rscmap, rsc)   do { rscmap[((rsc)>>3)&0xFF] &= ~(1<<((rsc)&0x7)); } while(0)
+static inline bool rscmap_is_free(ResourceMap *rscmap, Resource rsc)
+{
+    return (0 == (*rscmap[((rsc)>>3)&0xFF] & (1<<((rsc)&0x7))));
+}
 
+static inline bool rscmap_is_held(ResourceMap *rscmap, Resource rsc)
+{
+    return !rscmap_is_free(rscmap, rsc);
+}
+
+static inline void rscmap_claim(ResourceMap *rscmap, Resource rsc)
+{
+    *rscmap[((rsc)>>3)&0xFF] |= (1<<((rsc)&0x7));
+}
+
+static inline void rscmap_free(ResourceMap *rscmap, Resource rsc)
+{
+    *rscmap[((rsc)>>3)&0xFF] &= ~(1<<((rsc)&0x7));
+}
+
+//#define RSC_IS_FREE(rscmap, rsc) (0 == (rscmap[((rsc)>>3)&0xFF] & (1<<((rsc)&0x7))))
+//#define RSC_IS_HELD(rscmap, rsc) (!RSC_IS_FREE(rscmap, rsc))
+//#define RSC_CLAIM(rscmap, rsc)   do { rscmap[((rsc)>>3)&0xFF] |= (1<<((rsc)&0x7)); } while(0)
+//#define RSC_FREE(rscmap, rsc)   do { rscmap[((rsc)>>3)&0xFF] &= ~(1<<((rsc)&0x7)); } while(0)
+
+#define RSC_IS_FREE(rscmap, rsc) rscmap_is_free(&rscmap, (rsc))
+#define RSC_IS_HELD(rscmap, rsc) rscmap_is_held(&rscmap, (rsc))
+#define RSC_CLAIM(rscmap, rsc)   rscmap_claim(&rscmap, (rsc))
+#define RSC_FREE(rscmap, rsc)    rscmap_free(&rscmap, (rsc))
 
 #endif //GEX_F072_RSC_ENUM_H

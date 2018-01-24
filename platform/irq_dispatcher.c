@@ -2,12 +2,50 @@
 // Created by MightyPork on 2018/01/14.
 //
 
-#include <stm32f072xb.h>
+#include <utils/hexdump.h>
 #include "platform.h"
 #include "irq_dispatcher.h"
 
+struct cbslot {
+    IrqCallback callback;
+    void *arg;
+};
+
+static struct callbacks_ {
+    struct cbslot usart1;
+    struct cbslot usart2;
+    struct cbslot usart3;
+#ifdef USART4
+    struct cbslot usart4;
+#endif
+#ifdef USART5
+    struct cbslot usart5;
+#endif
+    struct cbslot dma1_1;
+    struct cbslot dma1_2;
+    struct cbslot dma1_3;
+    struct cbslot dma1_4;
+    struct cbslot dma1_5;
+    struct cbslot dma1_6;
+    struct cbslot dma1_7;
+    struct cbslot dma1_8;
+
+    struct cbslot dma2_1;
+    struct cbslot dma2_2;
+    struct cbslot dma2_3;
+    struct cbslot dma2_4;
+    struct cbslot dma2_5;
+    struct cbslot dma2_6;
+    struct cbslot dma2_7;
+    struct cbslot dma2_8;
+
+    // XXX add more callbacks here when needed
+} callbacks;
+
 void irqd_init(void)
 {
+    memset(&callbacks, 0, sizeof(callbacks));
+
 //    NVIC_EnableIRQ(WWDG_IRQn);                  /*!< Window WatchDog Interrupt                                       */
 //    NVIC_EnableIRQ(PVD_VDDIO2_IRQn);            /*!< PVD & VDDIO2 Interrupt through EXTI Lines 16 and 31             */
 //    NVIC_EnableIRQ(RTC_IRQn);                   /*!< RTC Interrupt through EXTI Lines 17, 19 and 20                  */
@@ -47,6 +85,8 @@ void irqd_init(void)
 //    NVIC_EnableIRQ(TIM1_BRK_UP_TRG_COM_IRQn);   /*!< TIM1 Break, Update, Trigger and Commutation Interrupt           */ // - handled by hal msp init
 //    NVIC_EnableIRQ(TIM1_CC_IRQn);               /*!< TIM1 Capture Compare Interrupt                                  */
 //    NVIC_EnableIRQ(USB_IRQn);                   /*!< USB global Interrupt  & EXTI Line18 Interrupt                   */ // - USB IRQ is handled by the USB library
+
+    hexDump("Callbacks", &callbacks, sizeof(callbacks));
 }
 
 //void Default_Handler(void)
@@ -54,41 +94,6 @@ void irqd_init(void)
 //    warn("Missing IRQHandler, ISPR[0]=0x%p", (void*)NVIC->ISPR[0]);
 //}
 
-struct cbslot {
-    IrqCallback callback;
-    void *arg;
-};
-
-static struct callbacks_ {
-    struct cbslot usart1;
-    struct cbslot usart2;
-    struct cbslot usart3;
-#ifdef USART4
-    struct cbslot usart4;
-#endif
-#ifdef USART5
-    struct cbslot usart5;
-#endif
-    struct cbslot dma1_1;
-    struct cbslot dma1_2;
-    struct cbslot dma1_3;
-    struct cbslot dma1_4;
-    struct cbslot dma1_5;
-    struct cbslot dma1_6;
-    struct cbslot dma1_7;
-    struct cbslot dma1_8;
-
-    struct cbslot dma2_1;
-    struct cbslot dma2_2;
-    struct cbslot dma2_3;
-    struct cbslot dma2_4;
-    struct cbslot dma2_5;
-    struct cbslot dma2_6;
-    struct cbslot dma2_7;
-    struct cbslot dma2_8;
-
-    // XXX add more callbacks here when needed
-} callbacks = {0};
 
 static struct cbslot *get_slot_for_periph(void *periph)
 {
@@ -142,7 +147,12 @@ static struct cbslot *get_slot_for_periph(void *periph)
 
 void irqd_attach(void *periph, IrqCallback callback, void *arg)
 {
+    dbg("Attach irqd for periph %p, cb %p()", periph, callback);
+
+    hexDump("Callbacks", &callbacks, sizeof(callbacks));
+
     struct cbslot *slot = get_slot_for_periph(periph);
+    dbg("slot %p cb is %p()", slot, slot->callback);
     assert_param(slot->callback == NULL);
     slot->callback = callback;
     slot->arg = arg;

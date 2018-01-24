@@ -26,10 +26,11 @@ void plat_init(void)
     Indicator_Init();
     DebugUart_Init(); // <- only the resource claim
 
+    irqd_init();
+
     dbg("Loading settings ...");
     // Load settings from Flash and apply (includes System settings and all Unit settings)
     settings_load(); // XXX maybe this should be moved to the main task
 
     comm_init();
-    irqd_init();
 }
