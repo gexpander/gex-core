@@ -68,7 +68,7 @@ typedef uint8_t ResourceMap[RSCMAP_LEN];
 
 static inline bool rscmap_is_free(ResourceMap *rscmap, Resource rsc)
 {
-    return (0 == (*rscmap[((rsc)>>3)&0xFF] & (1<<((rsc)&0x7))));
+    return (0 == ((*rscmap)[((rsc)>>3)&0xFF] & (1<<((rsc)&0x7))));
 }
 
 static inline bool rscmap_is_held(ResourceMap *rscmap, Resource rsc)
@@ -78,12 +78,12 @@ static inline bool rscmap_is_held(ResourceMap *rscmap, Resource rsc)
 
 static inline void rscmap_claim(ResourceMap *rscmap, Resource rsc)
 {
-    *rscmap[((rsc)>>3)&0xFF] |= (1<<((rsc)&0x7));
+    (*rscmap)[((rsc)>>3)&0xFF] |= (1<<((rsc)&0x7));
 }
 
 static inline void rscmap_free(ResourceMap *rscmap, Resource rsc)
 {
-    *rscmap[((rsc)>>3)&0xFF] &= ~(1<<((rsc)&0x7));
+    (*rscmap)[((rsc)>>3)&0xFF] &= ~(1<<((rsc)&0x7));
 }
 
 //#define RSC_IS_FREE(rscmap, rsc) (0 == (rscmap[((rsc)>>3)&0xFF] & (1<<((rsc)&0x7))))

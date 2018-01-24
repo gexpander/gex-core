@@ -85,8 +85,6 @@ void irqd_init(void)
 //    NVIC_EnableIRQ(TIM1_BRK_UP_TRG_COM_IRQn);   /*!< TIM1 Break, Update, Trigger and Commutation Interrupt           */ // - handled by hal msp init
 //    NVIC_EnableIRQ(TIM1_CC_IRQn);               /*!< TIM1 Capture Compare Interrupt                                  */
 //    NVIC_EnableIRQ(USB_IRQn);                   /*!< USB global Interrupt  & EXTI Line18 Interrupt                   */ // - USB IRQ is handled by the USB library
-
-    hexDump("Callbacks", &callbacks, sizeof(callbacks));
 }
 
 //void Default_Handler(void)
@@ -147,12 +145,7 @@ static struct cbslot *get_slot_for_periph(void *periph)
 
 void irqd_attach(void *periph, IrqCallback callback, void *arg)
 {
-    dbg("Attach irqd for periph %p, cb %p()", periph, callback);
-
-    hexDump("Callbacks", &callbacks, sizeof(callbacks));
-
     struct cbslot *slot = get_slot_for_periph(periph);
-    dbg("slot %p cb is %p()", slot, slot->callback);
     assert_param(slot->callback == NULL);
     slot->callback = callback;
     slot->arg = arg;
