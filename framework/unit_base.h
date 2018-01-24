@@ -1,6 +1,9 @@
 //
 // Created by MightyPork on 2017/12/09.
 //
+// This is a common include file used in unit drivers to avoid repeating all the
+// needed includes everywhere.
+//
 
 #include "platform.h"
 #include "unit.h"

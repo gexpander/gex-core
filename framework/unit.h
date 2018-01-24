@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/11/24.
 //
+// Structures and basic scaffolding for defining unit drivers
+//
 
 #ifndef GEX_UNIT_H
 #define GEX_UNIT_H
@@ -12,18 +14,27 @@
 #include "utils/payload_parser.h"
 #include "rsc_enum.h"
 
+/** Helper macro that returns E_BAD_UNIT_TYPE if unit is not of the given type */
 #define CHECK_TYPE(_unit, _driver) do { \
-    if ((_unit->driver) != (_driver)) \
+    if (((_unit)->driver) != (_driver)) \
         return E_BAD_UNIT_TYPE; \
 } while (0)
 
+/** Shared unit scratch buffer */
 extern char unit_tmp512[UNIT_TMP_LEN]; // temporary static buffer - not expected to be accessed asynchronously
 // TODO add mutex?
 
+/** Unit typedef - a instance */
 typedef struct unit Unit;
+
+/** Unit driver typedef - type handlers / props object */
 typedef struct unit_driver UnitDriver;
 
+/**
+ * Unit instance structure
+ */
 struct unit {
+    /** Reference to the used driver */
     const UnitDriver *driver;
 
     /** Unit name (used in error messages) */
@@ -46,7 +57,10 @@ struct unit {
     /** Bit-map of held resources */
     ResourceMap resources;
 
+    /** Tick interval to run the updateTick() function, if defined */
     uint16_t tick_interval;
+
+    /** Current number of ticks since last interval completion */
     uint16_t _tick_cnt;
 };
 
@@ -125,8 +139,7 @@ struct unit_driver {
 
 /**
  * De-init a partially initialized unit (before 'init' succeeds)
- * This releases all held resources and frees the *data,
- * if it looks like it has been dynamically allocated.
+ * This releases all held resources and frees *data and *name.
  *
  * Does NOT free the unit struct itself
  *

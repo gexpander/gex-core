@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2018/01/06.
 //
+// Enum of all defined resources
+//
 
 #ifndef GEX_F072_RSC_ENUM_H
 #define GEX_F072_RSC_ENUM_H
@@ -31,6 +33,7 @@
 // X(HDMI_CEC)
 // X(COMP1) X(COMP2) X(COMP3) X(COMP4) X(COMP5) X(COMP6) X(COMP7)
 
+// GPIO resources have names generated dynamically to save ROM
 #define XX_RESOURCES_GPIO \
     X(PA0) X(PA1) X(PA2) X(PA3) X(PA4) X(PA5) X(PA6) X(PA7) \
     X(PA8) X(PA9) X(PA10) X(PA11) X(PA12) X(PA13) X(PA14) X(PA15) \
@@ -45,13 +48,15 @@
     X(PF0) X(PF1) X(PF2) X(PF3) X(PF4) X(PF5) X(PF6) X(PF7) \
     X(PF8) X(PF9) X(PF10) X(PF11) X(PF12) X(PF13) X(PF14) X(PF15) \
 
+// EXTI resources have names generated dynamically to save ROM
 #define XX_RESOURCES_EXTI \
     X(EXTI0) X(EXTI1) X(EXTI2) X(EXTI3) X(EXTI4) X(EXTI5) X(EXTI6) X(EXTI7) \
     X(EXTI8) X(EXTI9) X(EXTI10) X(EXTI11) X(EXTI12) X(EXTI13) X(EXTI14) X(EXTI15)
 
-
+/** Resource typedef for cleaner code */
 typedef enum hw_resource Resource;
 
+/** Enum of all resources */
 enum hw_resource {
 #define X(res_name) R_##res_name,
     XX_RESOURCES
@@ -62,35 +67,62 @@ enum hw_resource {
     RESOURCE_COUNT = R_NONE,
 };
 
+/** Length of the resource map */
 #define RSCMAP_LEN ((RESOURCE_COUNT/8)+1)
 
+/**
+ * Resource map is a bitfield byte array located in all component instances.
+ * Each bit corresponds to one resource claimed by the unit.
+ */
 typedef uint8_t ResourceMap[RSCMAP_LEN];
 
-static inline bool rscmap_is_free(ResourceMap *rscmap, Resource rsc)
+/**
+ * Check if a resource is free
+ *
+ * @param rscmap - resource map to look into
+ * @param rsc - tested resource
+ * @return is free
+ */
+static inline bool rscmap_is_free(const ResourceMap *rscmap, Resource rsc)
 {
-    return (0 == ((*rscmap)[((rsc)>>3)&0xFF] & (1<<((rsc)&0x7))));
+    return (0 == ((*rscmap)[(rsc >> 3) & 0xFF] & (1 << (rsc & 0x7))));
 }
 
-static inline bool rscmap_is_held(ResourceMap *rscmap, Resource rsc)
+/**
+ * Check if a resource is held
+ *
+ * @param rscmap - resource map to look into
+ * @param rsc - tested resource
+ * @return is not free
+ */
+static inline bool rscmap_is_held(const ResourceMap *rscmap, Resource rsc)
 {
     return !rscmap_is_free(rscmap, rsc);
 }
 
+/**
+ * Claim a resource in a resource map
+ *
+ * @param rscmap - resource map to modify
+ * @param rsc - resource to claim
+ */
 static inline void rscmap_claim(ResourceMap *rscmap, Resource rsc)
 {
-    (*rscmap)[((rsc)>>3)&0xFF] |= (1<<((rsc)&0x7));
+    (*rscmap)[(rsc >> 3) & 0xFF] |= (1 << (rsc & 0x7));
 }
 
+/**
+ * Release a resource in a resource map
+ *
+ * @param rscmap - resource map to modify
+ * @param rsc - resource to release
+ */
 static inline void rscmap_free(ResourceMap *rscmap, Resource rsc)
 {
-    (*rscmap)[((rsc)>>3)&0xFF] &= ~(1<<((rsc)&0x7));
+    (*rscmap)[(rsc >> 3) & 0xFF] &= ~(1 << (rsc & 0x7));
 }
 
-//#define RSC_IS_FREE(rscmap, rsc) (0 == (rscmap[((rsc)>>3)&0xFF] & (1<<((rsc)&0x7))))
-//#define RSC_IS_HELD(rscmap, rsc) (!RSC_IS_FREE(rscmap, rsc))
-//#define RSC_CLAIM(rscmap, rsc)   do { rscmap[((rsc)>>3)&0xFF] |= (1<<((rsc)&0x7)); } while(0)
-//#define RSC_FREE(rscmap, rsc)   do { rscmap[((rsc)>>3)&0xFF] &= ~(1<<((rsc)&0x7)); } while(0)
-
+// helper macros
 #define RSC_IS_FREE(rscmap, rsc) rscmap_is_free(&rscmap, (rsc))
 #define RSC_IS_HELD(rscmap, rsc) rscmap_is_held(&rscmap, (rsc))
 #define RSC_CLAIM(rscmap, rsc)   rscmap_claim(&rscmap, (rsc))

@@ -83,7 +83,7 @@ static bool savebuf_ovhandler(PayloadBuilder *pb, uint32_t more)
     return true;
 }
 
-/** Save settings to flash */
+// Save settings to flash
 void settings_save(void)
 {
     HAL_StatusTypeDef hst;
@@ -222,6 +222,7 @@ static void savebuf_flush(PayloadBuilder *pb, bool final)
 
 // ---------------------------------------------------------------
 
+/** Generate a file header */
 static void gex_file_preamble(IniWriter *iw, const char *filename)
 {
 // File header
@@ -231,6 +232,7 @@ static void gex_file_preamble(IniWriter *iw, const char *filename)
     iw_cmt_newline(iw);
 }
 
+/** Generate a config file header (write instructions) */
 static void ini_preamble(IniWriter *iw, const char *filename)
 {
     gex_file_preamble(iw, filename);
@@ -296,6 +298,7 @@ void settings_load_ini_begin(void)
     SystemSettings.loading_inifile = 0;
 }
 
+
 void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value)
 {
 //    dbg("[%s] %s = %s", section, key, value);
@@ -343,6 +346,7 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
         }
     }
 }
+
 
 void settings_load_ini_end(void)
 {

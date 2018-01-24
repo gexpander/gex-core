@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/11/26.
 //
+// This module manages the INI and binary settings storage.
+//
 
 #ifndef GEX_SETTINGS_H
 #define GEX_SETTINGS_H

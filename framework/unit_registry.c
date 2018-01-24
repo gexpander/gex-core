@@ -40,6 +40,7 @@ static int32_t unit_count = -1;
 
 // ---
 
+
 void ureg_add_type(const UnitDriver *driver)
 {
     bool suc = true;
@@ -72,6 +73,7 @@ void ureg_add_type(const UnitDriver *driver)
     ureg_tail = re;
 }
 
+
 /** Free unit in a list entry (do not free the list entry itself!) */
 static void free_le_unit(UlistEntry *le)
 {
@@ -84,6 +86,7 @@ static void free_le_unit(UlistEntry *le)
     free_ck(pUnit->name);
 }
 
+
 /** Add unit to the list, updating references as needed */
 static void add_unit_to_list(UlistEntry *le)
 {
@@ -95,6 +98,7 @@ static void add_unit_to_list(UlistEntry *le)
     }
     ulist_tail = le;
 }
+
 
 // create a unit instance (not yet loading or initing - just pre-init)
 Unit *ureg_instantiate(const char *driver_name)
@@ -141,6 +145,7 @@ Unit *ureg_instantiate(const char *driver_name)
     return NULL;
 }
 
+
 void ureg_save_units(PayloadBuilder *pb)
 {
     assert_param(pb->ok);
@@ -170,6 +175,7 @@ void ureg_save_units(PayloadBuilder *pb)
         }
     } // end units list
 }
+
 
 bool ureg_load_units(PayloadParser *pp)
 {
@@ -251,6 +257,7 @@ void ureg_remove_all_units(void)
     unit_count = -1;
 }
 
+
 /** Create unit instances from the [UNITS] overview section */
 bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restrict names)
 {
@@ -297,6 +304,7 @@ bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restr
     return false;
 }
 
+
 /** Load unit key-value */
 error_t ureg_load_unit_ini_key(const char *restrict name,
                             const char *restrict key,
@@ -315,6 +323,7 @@ error_t ureg_load_unit_ini_key(const char *restrict name,
     }
     return E_NO_SUCH_UNIT;
 }
+
 
 /** Finalize units init. Returns true if all inited OK. */
 bool ureg_finalize_all_init(void)
@@ -353,6 +362,7 @@ bool ureg_finalize_all_init(void)
     return suc;
 }
 
+/** helper foir ureg_build_ini() */
 static void export_unit_do(UlistEntry *li, IniWriter *iw)
 {
     Unit *const pUnit = &li->unit;
@@ -378,6 +388,7 @@ static void export_unit_do(UlistEntry *li, IniWriter *iw)
     }
     pUnit->driver->cfgWriteIni(pUnit, iw);
 }
+
 
 // unit to INI
 void ureg_build_ini(IniWriter *iw)
@@ -433,6 +444,7 @@ void ureg_build_ini(IniWriter *iw)
     }
 }
 
+
 // count units
 uint32_t ureg_get_num_units(void)
 {
@@ -449,6 +461,7 @@ uint32_t ureg_get_num_units(void)
 
     return (uint32_t) unit_count;
 }
+
 
 extern osMutexId mutScratchBufferHandle;
 
@@ -497,6 +510,7 @@ void ureg_deliver_unit_request(TF_Msg *msg)
     assert_param(osOK == osMutexRelease(mutScratchBufferHandle));
 }
 
+
 /** Send a response for a unit-list request */
 void ureg_report_active_units(TF_ID frame_id)
 {
@@ -542,6 +556,7 @@ void ureg_report_active_units(TF_ID frame_id)
     free_ck(buff);
 }
 
+
 Unit *ureg_get_rsc_owner(Resource resource)
 {
     UlistEntry *li = ulist_head;
@@ -557,6 +572,7 @@ Unit *ureg_get_rsc_owner(Resource resource)
 
     return NULL;
 }
+
 
 void ureg_print_unit_resources(IniWriter *iw)
 {
@@ -583,6 +599,7 @@ void ureg_print_unit_resources(IniWriter *iw)
     }
     iw_newline(iw);
 }
+
 
 void ureg_tick_units(void)
 {

@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/12/02.
 //
+// SYSTEM.INI system settings
+//
 
 #ifndef GEX_SYSTEM_SETTINGS_H
 #define GEX_SYSTEM_SETTINGS_H
@@ -10,6 +12,9 @@
 #include "utils/payload_parser.h"
 #include "utils/payload_builder.h"
 
+/**
+ * Struct of the global system settings storage
+ */
 struct system_settings {
     bool visible_vcom;
     bool ini_comments;
@@ -20,6 +25,7 @@ struct system_settings {
     volatile char loading_inifile; // S-system, U-units
 };
 
+/** Global system settings storage */
 extern struct system_settings SystemSettings;
 
 /**

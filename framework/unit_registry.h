@@ -1,12 +1,15 @@
 //
 // Created by MightyPork on 2017/11/26.
 //
+// Unit registry. This is a storage for dynamically allocated user units,
+// handling units init, deinit and message passing.
+//
 
 #ifndef GEX_UNIT_REGISTRY_H
 #define GEX_UNIT_REGISTRY_H
 
-#include <TinyFrame/TinyFrame.h>
 #include "platform.h"
+#include <TinyFrame/TinyFrame.h>
 #include "unit.h"
 
 /**
