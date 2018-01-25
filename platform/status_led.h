@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/12/15.
 //
+// Status LED blinking
+//
 
 #ifndef GEX_INDICATORS_H
 #define GEX_INDICATORS_H

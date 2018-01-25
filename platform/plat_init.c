@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/11/26.
 //
+// Initialize the platform. Belongs to platform.h
+//
 
 #include "platform.h"
 #include "comm/messages.h"

@@ -1,7 +1,8 @@
 //
-// Utilities for parsing pins from settings to LL and resources
-//
 // Created by MightyPork on 2017/12/08.
+//
+// Utilities for parsing pins from settings to LL and resources,
+// GPIO init, AF config and some LL driver extensions
 //
 
 #ifndef GEX_PIN_UTILS_H

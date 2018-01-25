@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2018/01/14.
 //
+// Provides a trampoline system for redirecting IRQ calls to assigned callbacks.
+//
 
 #ifndef GEX_F072_IRQ_DISPATCHER_H
 #define GEX_F072_IRQ_DISPATCHER_H

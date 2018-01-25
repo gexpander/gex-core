@@ -37,7 +37,7 @@
 // ---
 
 /**
- * Init the platform
+ * Init the platform (run before FreeRTOS starts)
  */
 void plat_init(void);
 

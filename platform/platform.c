@@ -2,7 +2,6 @@
 // Created by MightyPork on 2017/11/26.
 //
 
-#include <stm32f072xb.h>
 #include "platform.h"
 #include "usbd_core.h"
 #include "USB/usb_device.h"

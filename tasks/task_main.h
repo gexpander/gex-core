@@ -1,13 +1,19 @@
 //
 // Created by MightyPork on 2017/11/09.
 //
+// Main GEX thread. Handles USB communication, heartbeat LED blinking and VFS reconnect timeouts.
+// The thread is notified via flag bits about events from the USB IRQs
+//
 
 #ifndef GEX_TASK_MAIN_H
 #define GEX_TASK_MAIN_H
 
 #include "platform.h"
 
+/** Main thread handle */
 extern osThreadId tskMainHandle;
+
+/** Main thread entry point */
 void TaskMain(const void *argument);
 
 // Notify flags:

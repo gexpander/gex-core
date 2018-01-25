@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/12/15.
 //
+// Handling the lock jumper or button (used to make the config filesystem visible to the PC OS)
+//
 
 #ifndef GEX_LOCK_JUMPER_H
 #define GEX_LOCK_JUMPER_H
