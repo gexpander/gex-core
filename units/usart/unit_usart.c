@@ -19,14 +19,6 @@ static void UUSART_SendReceivedDataToMaster(Job *job)
     uint32_t readpos = job->d32;
     uint32_t count = job->len;
 
-    // Debug: print to debug port
-//    PUTS("Job rx >");
-//    PUTSN((char *) priv->rx_buffer + readpos, (uint16_t) count);
-//    PUTS("<\r\n");
-
-    // Debug: Write out
-//    UU_USART_Write(unit, (const uint8_t *) (priv->rx_buffer + readpos), count);
-
     // TODO modify TF to allow writing in multiple chunks to avoid this useless buffer copying
     PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
     pb_u8(&pb, unit->callsign);
@@ -68,6 +60,9 @@ void UUSART_DMA_HandleRxFromIRQ(Unit *unit, uint16_t endpos)
     priv->rx_buf_readpos = endpos;
 }
 
+/**
+ * Timed tick (ISR) - check timeout
+ */
 void UUSART_Tick(Unit *unit)
 {
     assert_param(unit);

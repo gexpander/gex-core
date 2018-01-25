@@ -1,6 +1,11 @@
 //
 // Created by MightyPork on 2018/01/02.
 //
+// USART driver using DMA buffers.
+// Provides a wide range of config options and supports driving a RS485 driver.
+//
+// The implementation is complex and split to multiple files for easier maintenance
+//
 
 #ifndef GEX_F072_UNIT_USART_H
 #define GEX_F072_UNIT_USART_H

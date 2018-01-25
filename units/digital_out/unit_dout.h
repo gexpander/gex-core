@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/11/25.
 //
+// Digital output unit; single or multiple pin write access on one port (A-F)
+//
 
 #ifndef U_DOUT_H
 #define U_DOUT_H

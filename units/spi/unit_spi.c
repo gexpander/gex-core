@@ -1,8 +1,9 @@
 //
 // Created by MightyPork on 2018/01/02.
 //
+// SPI master with unicast and multicats support, up to 16 slave select lines
+//
 
-#include <stm32f072xb.h>
 #include "comm/messages.h"
 #include "unit_base.h"
 #include "utils/avrlibc.h"

@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2018/01/02.
 //
+// I2C master unit
+//
 
 #ifndef GEX_F072_UNIT_I2C_H
 #define GEX_F072_UNIT_I2C_H

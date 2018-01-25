@@ -1,6 +1,9 @@
 //
 // Created by MightyPork on 2017/11/25.
 //
+// NeoPixel RGB LED strip bit-banged output.
+// The nanosecond timing is derived from the AHB clock speed.
+//
 
 #ifndef U_NEOPIXEL_H
 #define U_NEOPIXEL_H
