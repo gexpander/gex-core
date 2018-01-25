@@ -1,23 +1,6 @@
-/**
- * @file    error.h
- * @brief   collection of known errors and accessor for the friendly string
- *
- * DAPLink Interface Firmware
- * Copyright (c) 2009-2016, ARM Limited, All Rights Reserved
- * SPDX-License-Identifier: Apache-2.0
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may
- * not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+//
+// Error codes and labels. Loosely based on DAPLink, with more codes added.
+//
 
 #ifndef ERROR_H
 #define ERROR_H
@@ -59,7 +42,10 @@
     X(OUT_OF_MEM, "Not enough RAM") \
     X(RESOURCE_NOT_AVAILABLE, NULL)
 
-// Keep in sync with the list error_message
+
+/**
+ * The return value for all functions with error reporting.
+ */
 typedef enum {
 #define X(name, text) E_##name,
     X_ERROR_CODES
@@ -67,8 +53,6 @@ typedef enum {
     ERROR_COUNT
 } error_t;
 
-const char *error_get_message(error_t error) __attribute__((pure));
-const char *error_get_name(error_t error) __attribute__((pure));
 
 /** Check return value and return it if not E_SUCCESS */
 #define TRY(call) do { \
@@ -76,6 +60,24 @@ const char *error_get_name(error_t error) __attribute__((pure));
     _rv = call; \
     if (E_SUCCESS != _rv) return _rv; \
 } while (0)
+
+
+/**
+ * Get a user-friendly message from a E_* enum value
+ *
+ * @param error - E_* value
+ * @return string, error name or description
+ */
+const char *error_get_message(error_t error) __attribute__((pure));
+
+
+/**
+ * Get error name from a E_* enum value
+ *
+ * @param error - E_* value
+ * @return string, error name
+ */
+const char *error_get_name(error_t error) __attribute__((pure));
 
 #ifdef __cplusplus
 }

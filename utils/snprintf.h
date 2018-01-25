@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/11/09.
 //
+// Small sprintf/snprintf implementation, used instead of the newlib one.
+//
 
 #ifndef GEX_SNPRINTF_H
 #define GEX_SNPRINTF_H
@@ -14,13 +16,6 @@ size_t fixup_snprintf(char *str, size_t count,const char *fmt,...);
 size_t fixup_vasprintf(char **ptr, const char *format, va_list ap);
 size_t fixup_asprintf(char **ptr, const char *format, ...);
 size_t fixup_sprintf(char *ptr, const char *format, ...);
-
-// Trap for using newlib functions
-//#define vsnprintf fuck1
-//#define snprintf fuck2
-//#define vasprintf fuck3
-//#define asprintf fuck4
-//#define sprintf fuck5
 
 #define VSNPRINTF(...) fixup_vsnprintf(__VA_ARGS__)
 #define SNPRINTF(...) fixup_snprintf(__VA_ARGS__)

@@ -1,6 +1,9 @@
 //
 // Created by MightyPork on 2017/12/04.
 //
+// Memory dumping utility from: https://stackoverflow.com/a/7776146/2180189
+// Prints bytes in the usual hexdump format (as HEX and ASCII)
+//
 
 #ifndef GEX_HEXDUMP_H
 #define GEX_HEXDUMP_H

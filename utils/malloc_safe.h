@@ -1,3 +1,9 @@
+//
+// Safe malloc with error file:line logging, using the FreeRTOS-provided malloc facility
+// The custom malloc implementation is safer than the poorly documented hacks provided by
+// newlib, written primarily for the desktop rather than embedded.
+//
+
 #ifndef MALLOC_SAFE_H
 #define MALLOC_SAFE_H
 

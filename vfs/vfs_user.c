@@ -1,3 +1,7 @@
+//
+// Here are defined the files and handlers
+//
+
 /**
  * @file    vfs_user.c
  * @brief   Implementation of vfs_user.h
@@ -27,6 +31,7 @@
 
 const vfs_filename_t daplink_drive_name = VFS_DRIVE_NAME;
 
+
 static uint32_t read_iw_sector(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors, void (*handler)(IniWriter *))
 {
     const uint32_t avail = num_sectors*VFS_SECTOR_SIZE;
@@ -38,6 +43,7 @@ static uint32_t read_iw_sector(uint32_t sector_offset, uint8_t *data, uint32_t n
     return avail - iw.count;
 }
 
+
 // File callback to be used with vfs_add_file to return file contents
 static uint32_t read_file_units_ini(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
 {
@@ -45,17 +51,20 @@ static uint32_t read_file_units_ini(uint32_t sector_offset, uint8_t *data, uint3
     return read_iw_sector(sector_offset, data, num_sectors, settings_build_units_ini);
 }
 
+
 static uint32_t read_file_system_ini(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
 {
     vfs_printf("Read SYSTEM.INI");
     return read_iw_sector(sector_offset, data, num_sectors, settings_build_system_ini);
 }
 
+
 static uint32_t read_file_pinout_txt(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors)
 {
     vfs_printf("Read PINOUT.TXT");
     return read_iw_sector(sector_offset, data, num_sectors, settings_build_pinout_txt);
 }
+
 
 void vfs_user_build_filesystem(void)
 {
@@ -68,6 +77,7 @@ void vfs_user_build_filesystem(void)
     vfs_create_file("SYSTEM  INI", read_file_system_ini, NULL, iw_measure_total(settings_build_system_ini));
     vfs_create_file("PINOUT  TXT", read_file_pinout_txt, NULL, iw_measure_total(settings_build_pinout_txt));
 }
+
 
 // Callback to handle changes to the root directory.  Should be used with vfs_set_file_change_callback
 void vfs_user_file_change_handler(const vfs_filename_t filename,
@@ -97,6 +107,7 @@ void vfs_user_file_change_handler(const vfs_filename_t filename,
         vfs_printf(">>> DELETED %s", filename);
     }
 }
+
 
 void vfs_user_disconnecting(void)
 {

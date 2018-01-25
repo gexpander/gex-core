@@ -1,3 +1,7 @@
+//
+// static assert and general purpose useful macros, borrowed in part from the DAPLink project
+//
+
 /**
  * @file    macro.h
  * @brief   useful things + Special asserts and macros

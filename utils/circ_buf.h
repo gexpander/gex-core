@@ -1,3 +1,7 @@
+//
+// This is a circular buffer implementation borrowed from the DAPLink firmware
+//
+
 /**
  * @file    circ_buf.h
  * @brief   Implementation of a circular buffer

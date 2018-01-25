@@ -1,12 +1,19 @@
 //
 // Created by MightyPork on 2017/12/01.
 //
+// Utility for generating a INI file with support for extracting individual sectors
+// and measuring total length without buffering. This is used to build the INI files
+// for the VFS and config.
+//
 
 #ifndef INIWRITER_H
 #define INIWRITER_H
 
 #include "platform.h"
 
+/**
+ * INI writer handle
+ */
 typedef struct iniwriter_ {
     char *ptr;
     uint32_t skip;
@@ -18,7 +25,7 @@ typedef struct iniwriter_ {
  *
  * This buffer is used internally by printf-like iw functions.
  * It can be used to prepare buffer for iw_buff or iw_string,
- * but must not be used for %s substitutions in iw_* functions.
+ * but must NOT be used for %s substitutions in iw_* functions.
  */
 extern char *iwbuffer;
 

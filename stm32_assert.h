@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/11/20.
 //
+// Assert handling with traps
+//
 
 #ifndef STM32_ASSERT_H
 #define STM32_ASSERT_H

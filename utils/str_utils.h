@@ -1,3 +1,8 @@
+//
+// Simple string testing / manipulation functions, mainly used when
+// building/parsing the config INI files
+//
+
 #ifndef PLATFORSTR_UTILS_H
 #define PLATFORSTR_UTILS_H
 
@@ -125,17 +130,20 @@ const char *str_4(uint32_t n,
                      uint32_t nc, const char *c,
                      uint32_t nd, const char *d);
 
+/** Convert string to one of two numeric options */
 uint32_t str_parse_2(const char *tpl,
                      const char *a, uint32_t na,
                      const char *b, uint32_t nb,
                      bool *suc);
 
+/** Convert string to one of three numeric options */
 uint32_t str_parse_3(const char *tpl,
                      const char *a, uint32_t na,
                      const char *b, uint32_t nb,
                      const char *c, uint32_t nc,
                      bool *suc);
 
+/** Convert string to one of four numeric options */
 uint32_t str_parse_4(const char *tpl,
                      const char *a, uint32_t na,
                      const char *b, uint32_t nb,
@@ -143,7 +151,7 @@ uint32_t str_parse_4(const char *tpl,
                      const char *d, uint32_t nd,
                      bool *suc);
 
-/** Convert bool to Y or N */
+/** Convert bool to a Y or N constant string */
 #define str_yn(cond) ((cond) ? ("Y") : ("N"))
 
 #endif

@@ -328,7 +328,7 @@ void vfs_if_usbd_msc_read_sect(uint32_t sector, uint8_t *buf, uint32_t num_of_se
     vfs_read(sector, buf, num_of_sectors);
 }
 
-void vfs_if_usbd_msc_write_sect(uint32_t sector, uint8_t *buf, uint32_t num_of_sectors)
+void vfs_if_usbd_msc_write_sect(uint32_t sector, const uint8_t *buf, uint32_t num_of_sectors)
 {
     sync_assert_usb_thread();
     vfs_printf("\033[32mWRITE @ %d, len %d\033[0m", (int)sector, (int)num_of_sectors);

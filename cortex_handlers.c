@@ -1,3 +1,8 @@
+//
+// Some FreeRTOS / CortexM callbacks are implemented here
+// (moved from the top level project for easier maintenance)
+//
+
 /* Includes ------------------------------------------------------------------*/
 
 #include "platform.h"

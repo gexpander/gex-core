@@ -1,3 +1,8 @@
+//
+// The guts of the virtual FAT16 are implemented here.
+// This is taken from DAPLink and some memory-wasting bits are commented out or removed.
+//
+
 /**
  * @file    virtual_fs.h
  * @brief   FAT 12/16 filesystem handling
@@ -28,6 +33,7 @@
 extern "C" {
 #endif
 
+// Toggleable debug funcs
 #if DEBUG_VFS
 #define vfs_printf(...)  do { dbg(__VA_ARGS__); } while(0)
 #define vfs_printf_nonl(...)  do { PRINTF(__VA_ARGS__); } while(0)
@@ -48,6 +54,7 @@ extern "C" {
 #define VFS_MAX_FILES           16
 #define VFS_DISK_SIZE MB(32)
 
+/** Filename typedef */
 typedef char vfs_filename_t[11];
 
 typedef enum {
@@ -69,51 +76,116 @@ typedef enum {
                                   notification will also occur*/
 } vfs_file_change_t;
 
+/** File typedef */
 typedef void *vfs_file_t;
+
+/** Sector struct typedef */
 typedef uint32_t vfs_sector_t;
 
-// Callback for when data is written to a file on the virtual filesystem
+/**
+ * Callback for when data is written to a file on the virtual filesystem
+ */
 typedef void (*vfs_write_cb_t)(uint32_t sector_offset, const uint8_t *data, uint32_t num_sectors);
-// Callback for when data is ready from the virtual filesystem
+
+/**
+ * Callback for when data is ready from the virtual filesystem
+ */
 typedef uint32_t (*vfs_read_cb_t)(uint32_t sector_offset, uint8_t *data, uint32_t num_sectors);
-// Callback for when a file's attributes are changed on the virtual filesystem.  Note that the 'file' parameter
-// can be saved and compared to other files to see if they are referencing the same object.  The
-// same cannot be done with new_file_data since it points to a temporary buffer.
+
+/**
+ * Callback for when a file's attributes are changed on the virtual filesystem.
+ * Note that the 'file' parameter can be saved and compared to other files to see if
+ * they are referencing the same object. The same cannot be done with new_file_data
+ * since it points to a temporary buffer.
+ */
 typedef void (*vfs_file_change_cb_t)(const vfs_filename_t filename, vfs_file_change_t change,
                                      vfs_file_t file, vfs_file_t new_file_data);
 
-// Initialize the filesystem with the given size and name
+/**
+ * Initialize the filesystem with the given size and name
+ *
+ * @param drive_name
+ * @param disk_size
+ */
 void vfs_init(const vfs_filename_t drive_name, uint32_t disk_size);
 
-// Get the total size of the virtual filesystem
+/**
+ * Get the total size of the virtual filesystem
+ */
 uint32_t vfs_get_total_size(void);
 
-// Add a file to the virtual FS and return a handle to this file.
-// This must be called before vfs_read or vfs_write are called.
-// Adding a new file after vfs_read or vfs_write have been called results in undefined behavior.
-vfs_file_t vfs_create_file(const vfs_filename_t filename, vfs_read_cb_t read_cb, vfs_write_cb_t write_cb, uint32_t len);
+/**
+ * Add a file to the virtual FS and return a handle to this file.
+ * This must be called before vfs_read or vfs_write are called.
+ * Adding a new file after vfs_read or vfs_write have been called results in undefined behavior.
+ *
+ * @param filename
+ * @param read_cb
+ * @param write_cb
+ * @param len
+ * @return
+ */
+vfs_file_t vfs_create_file(const vfs_filename_t filename,
+                           vfs_read_cb_t read_cb, vfs_write_cb_t write_cb,
+                           uint32_t len);
 
-// Set the attributes of a file
+/**
+ * Set the attributes of a file
+ *
+ * @param file
+ * @param attr
+ */
 void vfs_file_set_attr(vfs_file_t file, vfs_file_attr_bit_t attr);
 
-// Get the starting sector of this file.
-// NOTE - If the file size is 0 there is no starting
-// sector so VFS_INVALID_SECTOR will be returned.
+/**
+ * Get the starting sector of this file.
+ * NOTE - If the file size is 0 there is no starting
+ * sector so VFS_INVALID_SECTOR will be returned.
+ *
+ * @param file
+ * @return
+ */
 vfs_sector_t vfs_file_get_start_sector(vfs_file_t file);
 
-// Get the size of the file.
+/**
+ * Get the size of the file.
+ *
+ * @param file
+ * @return
+ */
 uint32_t vfs_file_get_size(vfs_file_t file);
 
-// Get the attributes of a file
+/**
+ * Get the attributes of a file
+ *
+ * @param file
+ * @return
+ */
 vfs_file_attr_bit_t vfs_file_get_attr(vfs_file_t file);
 
-// Set the callback when a file is created, deleted or has atributes changed.
+/**
+ * Set the callback when a file is created, deleted or has atributes changed.
+ *
+ * @param cb
+ */
 void vfs_set_file_change_callback(vfs_file_change_cb_t cb);
 
-// Read one or more sectors from the virtual filesystem
+/**
+ * Read one or more sectors from the virtual filesystem
+ *
+ * @param sector
+ * @param buf
+ * @param num_of_sectors
+ */
 void vfs_read(uint32_t sector, uint8_t *buf, uint32_t num_of_sectors);
 
-// Write one or more sectors to the virtual filesystem
+/**
+ * Write one or more sectors to the virtual filesystem
+ *
+ * @param sector
+ * @param buf
+ * @param num_of_sectors
+ */
 void vfs_write(uint32_t sector, const uint8_t *buf, uint32_t num_of_sectors);
 
 bool vfs_find_file(uint32_t start_sector, vfs_filename_t *destFilename, vfs_file_t **destFile);

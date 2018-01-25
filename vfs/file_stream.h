@@ -1,3 +1,8 @@
+//
+// File streams, this was used in DAPLink to capture and flash the firmware update image.
+// Here we detect only the settings INI files, which start by two hash symbols.
+//
+
 /**
  * @file    file_stream.h
  * @brief   Different file stream parsers that are supported
@@ -42,16 +47,19 @@ typedef enum {
     STREAM_TYPE_NONE
 } stream_type_t;
 
-// Stateless function to identify a filestream by its contents
+/** Stateless function to identify a filestream by its contents */
 stream_type_t stream_start_identify(const uint8_t *data, uint32_t size);
 
-// Stateless function to identify a filestream by its name
+/** Stateless function to identify a filestream by its name */
 stream_type_t stream_type_from_name(const vfs_filename_t filename);
 
+/** Open a stream (only one can be open at all times) */
 error_t stream_open(stream_type_t stream_type);
 
+/** Write some data to an open stream */
 error_t stream_write(const uint8_t *data, uint32_t size);
 
+/** Close the open stream */
 error_t stream_close(void);
 
 #ifdef __cplusplus

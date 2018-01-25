@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2017/11/26.
 //
+// Cortex-M utilities (low level stuff missing from CMSIS)
+//
 
 #ifndef GEX_CORTEX_UTILS_H
 #define GEX_CORTEX_UTILS_H
