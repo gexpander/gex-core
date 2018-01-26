@@ -146,7 +146,10 @@ static struct cbslot *get_slot_for_periph(void *periph)
 void irqd_attach(void *periph, IrqCallback callback, void *arg)
 {
     struct cbslot *slot = get_slot_for_periph(periph);
-    assert_param(slot->callback == NULL);
+    if (slot->callback != NULL) {
+        trap("Attach IRQ %p() to %p but %p() already bound", callback, periph, slot->callback);
+    }
+
     slot->callback = callback;
     slot->arg = arg;
 }
@@ -157,6 +160,8 @@ void irqd_detach(void *periph, IrqCallback callback)
     if (slot->callback == callback) {
         slot->callback = NULL;
         slot->arg = NULL;
+    } else {
+        trap("Detach IRQ %p() from %p but %p() bound instead", callback, periph, slot->callback);
     }
 }
 

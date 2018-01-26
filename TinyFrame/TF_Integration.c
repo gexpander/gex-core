@@ -14,7 +14,7 @@
 extern osSemaphoreId semVcomTxReadyHandle;
 extern osMutexId mutTinyFrameTxHandle;
 
-void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, size_t len)
+void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len)
 {
     (void) tf;
 #define CHUNK 64 // same as TF_SENDBUF_LEN, so we should always have only one run of the loop
@@ -30,13 +30,15 @@ void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, size_t len)
 }
 
 /** Claim the TX interface before composing and sending a frame */
-void TF_ClaimTx(TinyFrame *tf)
+bool TF_ClaimTx(TinyFrame *tf)
 {
     (void) tf;
     assert_param(osThreadGetId() != tskMainHandle);
     assert_param(!inIRQ());
 
     assert_param(osOK == osMutexWait(mutTinyFrameTxHandle, 5000));
+
+    return true;
 }
 
 /** Free the TX interface after composing and sending a frame */

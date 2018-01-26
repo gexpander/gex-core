@@ -433,8 +433,8 @@ void UUSART_DeInitDMAs(Unit *unit)
     struct priv *priv = unit->data;
     assert_param(priv);
 
-    irqd_detach(priv->dma_tx, UUSART_DMA_RxHandler);
-    irqd_detach(priv->dma_rx, UUSART_DMA_TxHandler);
+    irqd_detach(priv->dma_tx, UUSART_DMA_TxHandler);
+    irqd_detach(priv->dma_rx, UUSART_DMA_RxHandler);
 
     LL_DMA_DeInit(priv->dma, priv->dma_rx_chnum);
     LL_DMA_DeInit(priv->dma, priv->dma_tx_chnum);
