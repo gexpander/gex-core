@@ -30,10 +30,12 @@ struct sched_que_item {
     union {
         TF_ID frame_id; // typically used to pass frame id to the callback
         void *data1; // arbitrary pointer or int
+        uint32_t d32_1; // passing a number
     };
     /** Data word 2 */
     union {
         uint32_t d32; // passing a number
+        uint32_t d32_2; // passing a number
         uint8_t *buf; // uchar buffer
         const uint8_t *cbuf; // const uchar buffer
         const char *str; // string
@@ -43,6 +45,7 @@ struct sched_que_item {
     union {
         uint32_t len; // typically length of the buffer
         void *data3; // arbitrary pointer
+        uint32_t d32_3; // passing a number
     };
 };
 

@@ -19,7 +19,8 @@ static void UUSART_SendReceivedDataToMaster(Job *job)
     uint32_t readpos = job->d32;
     uint32_t count = job->len;
 
-    // TODO modify TF to allow writing in multiple chunks to avoid this useless buffer copying
+    // TODO use TF's Multipart sending
+    // TODO add API for building reports
     PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
     pb_u8(&pb, unit->callsign);
     pb_u8(&pb, 0x00); // report type "Data received"

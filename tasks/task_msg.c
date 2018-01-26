@@ -17,11 +17,12 @@ static void que_safe_post(struct rx_sched_combined_que_item *slot)
     if (inIRQ()) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         assert_param(pdPASS == xQueueSendFromISR(queMsgJobHandle, slot, &xHigherPriorityTaskWoken));
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 
         #if USE_STACK_MONITOR
             count = (uint32_t) uxQueueMessagesWaitingFromISR(queMsgJobHandle);
         #endif
+
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     } else {
         assert_param(pdPASS == xQueueSend(queMsgJobHandle, slot, MSG_QUE_POST_TIMEOUT));
 

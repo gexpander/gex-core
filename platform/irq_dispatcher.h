@@ -7,6 +7,9 @@
 #ifndef GEX_F072_IRQ_DISPATCHER_H
 #define GEX_F072_IRQ_DISPATCHER_H
 
+// Dummy peripherals for use with the
+extern void * const EXTIS[16];
+
 /**
  * Initialize the interrupt dispatcher
  */
@@ -35,7 +38,8 @@ void irqd_attach(void *periph, IrqCallback callback, void *data);
  *
  * @param periph - peripheral we're attaching to
  * @param callback - callback to remove, if it doesn't match, do nothing
+ * @return the arg, if any
  */
-void irqd_detach(void *periph, IrqCallback callback);
+void* irqd_detach(void *periph, IrqCallback callback);
 
 #endif //GEX_F072_IRQ_DISPATCHER_H

@@ -20,7 +20,7 @@ void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len)
 #define CHUNK 64 // same as TF_SENDBUF_LEN, so we should always have only one run of the loop
     int32_t total = (int32_t) len;
     while (total > 0) {
-        assert_param(osOK == osSemaphoreWait(semVcomTxReadyHandle, 5000));
+        assert_param(osOK == osSemaphoreWait(semVcomTxReadyHandle, 1000));
         uint16_t chunksize = (uint16_t) MIN(total, CHUNK);
         assert_param(USBD_OK == CDC_Transmit_FS((uint8_t *) buff, chunksize));
 

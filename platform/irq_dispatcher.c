@@ -2,9 +2,29 @@
 // Created by MightyPork on 2018/01/14.
 //
 
-#include <utils/hexdump.h>
 #include "platform.h"
 #include "irq_dispatcher.h"
+#include "hw_utils.h"
+
+void * const EXTIS[16] = {
+    // dumym values for easier debug - those are used instead of periph addresses because EXTIs have no dedicated periph control blocks
+    (void *const) 0x9000,
+    (void *const) 0x9001,
+    (void *const) 0x9002,
+    (void *const) 0x9003,
+    (void *const) 0x9004,
+    (void *const) 0x9005,
+    (void *const) 0x9006,
+    (void *const) 0x9007,
+    (void *const) 0x9008,
+    (void *const) 0x9009,
+    (void *const) 0x900A,
+    (void *const) 0x900B,
+    (void *const) 0x900C,
+    (void *const) 0x900D,
+    (void *const) 0x900E,
+    (void *const) 0x900F,
+};
 
 struct cbslot {
     IrqCallback callback;
@@ -12,6 +32,8 @@ struct cbslot {
 };
 
 static struct callbacks_ {
+    struct cbslot exti[16];
+
     struct cbslot usart1;
     struct cbslot usart2;
     struct cbslot usart3;
@@ -51,9 +73,9 @@ void irqd_init(void)
 //    NVIC_EnableIRQ(RTC_IRQn);                   /*!< RTC Interrupt through EXTI Lines 17, 19 and 20                  */
 //    NVIC_EnableIRQ(FLASH_IRQn);                 /*!< FLASH global Interrupt                                          */
 //    NVIC_EnableIRQ(RCC_CRS_IRQn);               /*!< RCC & CRS global Interrupt                                      */
-//    NVIC_EnableIRQ(EXTI0_1_IRQn);               /*!< EXTI Line 0 and 1 Interrupt                                     */
-//    NVIC_EnableIRQ(EXTI2_3_IRQn);               /*!< EXTI Line 2 and 3 Interrupt                                     */
-//    NVIC_EnableIRQ(EXTI4_15_IRQn);              /*!< EXTI Line 4 to 15 Interrupt                                     */
+    NVIC_EnableIRQ(EXTI0_1_IRQn);               /*!< EXTI Line 0 and 1 Interrupt                                     */
+    NVIC_EnableIRQ(EXTI2_3_IRQn);               /*!< EXTI Line 2 and 3 Interrupt                                     */
+    NVIC_EnableIRQ(EXTI4_15_IRQn);              /*!< EXTI Line 4 to 15 Interrupt                                     */
 //    NVIC_EnableIRQ(TSC_IRQn);                   /*!< Touch Sensing Controller Interrupts                             */
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);         /*!< DMA1 Channel 1 Interrupt                                        */
     NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);       /*!< DMA1 Channel 2 and Channel 3 Interrupt                          */
@@ -107,6 +129,10 @@ static struct cbslot *get_slot_for_periph(void *periph)
         else if (periph == USART5) slot = &callbacks.usart5;
 #endif
 
+    else if (periph >= EXTIS[0] && periph <= EXTIS[15]) {
+        slot = &callbacks.exti[periph - EXTIS[0]];
+    }
+
         // --- DMA1 ---
     else if (periph == DMA1_Channel1) slot = &callbacks.dma1_1;
     else if (periph == DMA1_Channel2) slot = &callbacks.dma1_2;
@@ -154,18 +180,24 @@ void irqd_attach(void *periph, IrqCallback callback, void *arg)
     slot->arg = arg;
 }
 
-void irqd_detach(void *periph, IrqCallback callback)
+void* irqd_detach(void *periph, IrqCallback callback)
 {
+    void *oldArg = NULL;
     struct cbslot *slot = get_slot_for_periph(periph);
     if (slot->callback == callback) {
+        oldArg = slot->arg;
         slot->callback = NULL;
         slot->arg = NULL;
+
+        return oldArg;
     } else {
         trap("Detach IRQ %p() from %p but %p() bound instead", callback, periph, slot->callback);
     }
 }
 
 #define CALL_IRQ_HANDLER(slot) do { if (slot.callback) slot.callback(slot.arg); } while (0)
+
+// ------------ USARTS ------------
 
 void USART1_IRQHandler(void)
 {
@@ -177,38 +209,14 @@ void USART2_IRQHandler(void)
     CALL_IRQ_HANDLER(callbacks.usart2);
 }
 
-#if 0
-static bool usart_check_irq(USART_TypeDef *USARTx)
-{
-    uint32_t isrflags   = USARTx->ISR;
-    uint32_t cr1its     = USARTx->CR1;
-    uint32_t cr2its     = USARTx->CR2;
-    uint32_t cr3its     = USARTx->CR3;
-
-    if ((cr1its & USART_CR1_RTOIE) && (isrflags & USART_ISR_RTOF)) return true;
-    if ((cr1its & USART_CR1_RXNEIE) && (isrflags & USART_ISR_RXNE)) return true;
-    if ((cr1its & USART_CR1_TCIE) && (isrflags & USART_ISR_TC)) return true;
-    if ((cr1its & USART_CR1_TXEIE) && (isrflags & USART_ISR_TXE)) return true;
-    if ((cr3its & USART_CR3_EIE) && (isrflags & (USART_ISR_PE | USART_ISR_FE | USART_ISR_ORE | USART_ISR_NE))) return true;
-
-    if ((cr1its & USART_CR1_IDLEIE) && (isrflags & USART_ISR_IDLE)) return true;
-    if ((cr1its & USART_CR1_PEIE) && (isrflags & USART_ISR_PE)) return true;
-    if ((cr1its & USART_CR1_CMIE) && (isrflags & USART_ISR_CMF)) return true;
-    if ((cr1its & USART_CR1_EOBIE) && (isrflags & USART_ISR_EOBF)) return true;
-    if ((cr2its & USART_CR2_LBDIE) && (isrflags & USART_ISR_LBDF)) return true;
-    if ((cr3its & USART_CR3_CTSIE) && (isrflags & USART_ISR_CTS)) return true;
-    if ((cr3its & USART_CR3_WUFIE) && (isrflags & USART_ISR_WUF)) return true;
-
-    return false;
-}
-#endif
-
 void USART3_4_IRQHandler(void)
 {
     // we won't check the flags here, both can be pending and it's better to let the handler deal with it
     CALL_IRQ_HANDLER(callbacks.usart3);
     CALL_IRQ_HANDLER(callbacks.usart4);
 }
+
+// ------------ DMA --------------
 
 void DMA1_Channel1_IRQHandler(void)
 {
@@ -228,6 +236,35 @@ void DMA1_Channel4_5_6_7_IRQHandler(void)
     if (LL_DMA_IsActiveFlag_GI6(DMA1)) CALL_IRQ_HANDLER(callbacks.dma1_6);
     if (LL_DMA_IsActiveFlag_GI7(DMA1)) CALL_IRQ_HANDLER(callbacks.dma1_7);
 }
+
+// ------------ EXTI ------------
+
+static void fire_exti_cb(uint8_t start, uint8_t end)
+{
+    for (int i = start; i <= end; i++) {
+        if (LL_EXTI_IsActiveFlag_0_31(LL_EXTI_LINES[i])) {
+            CALL_IRQ_HANDLER(callbacks.exti[i]);
+        }
+    }
+}
+
+void EXTI0_1_IRQHandler(void)
+{
+    fire_exti_cb(0, 1);
+}
+
+void EXTI2_3_IRQHandler(void)
+{
+    fire_exti_cb(2, 3);
+}
+
+void EXTI4_15_IRQHandler(void)
+{
+    fire_exti_cb(4, 15);
+}
+
+
+// other ISRs...
 
 #if 0
 void WWDG_IRQHandler(void)
@@ -251,21 +288,6 @@ void FLASH_IRQHandler(void)
 }
 
 void RCC_CRS_IRQHandler(void)
-{
-    //
-}
-
-void EXTI0_1_IRQHandler(void)
-{
-    //
-}
-
-void EXTI2_3_IRQHandler(void)
-{
-    //
-}
-
-void EXTI4_15_IRQHandler(void)
 {
     //
 }

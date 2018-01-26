@@ -2,14 +2,67 @@
 // Created by MightyPork on 2017/11/26.
 //
 
+#include "platform.h"
 #include <utils/avrlibc.h>
 #include "hw_utils.h"
 #include "macro.h"
 
-#define PINS_COUNT 16
+const uint32_t LL_SYSCFG_EXTI_PORTS[PORTS_COUNT] = {
+    LL_SYSCFG_EXTI_PORTA,
+    LL_SYSCFG_EXTI_PORTB,
+    LL_SYSCFG_EXTI_PORTC,
+    LL_SYSCFG_EXTI_PORTD,
+    LL_SYSCFG_EXTI_PORTE,
+#if PORTS_COUNT>5
+    LL_SYSCFG_EXTI_PORTF,
+#endif
+#if PORTS_COUNT>6
+    LL_SYSCFG_EXTI_PORTG,
+#endif
+};
+
+const uint32_t LL_SYSCFG_EXTI_LINES[16] = {
+    LL_SYSCFG_EXTI_LINE0,
+    LL_SYSCFG_EXTI_LINE1,
+    LL_SYSCFG_EXTI_LINE2,
+    LL_SYSCFG_EXTI_LINE3,
+    LL_SYSCFG_EXTI_LINE4,
+    LL_SYSCFG_EXTI_LINE5,
+    LL_SYSCFG_EXTI_LINE6,
+    LL_SYSCFG_EXTI_LINE7,
+    LL_SYSCFG_EXTI_LINE8,
+    LL_SYSCFG_EXTI_LINE9,
+    LL_SYSCFG_EXTI_LINE10,
+    LL_SYSCFG_EXTI_LINE11,
+    LL_SYSCFG_EXTI_LINE12,
+    LL_SYSCFG_EXTI_LINE13,
+    LL_SYSCFG_EXTI_LINE14,
+    LL_SYSCFG_EXTI_LINE15,
+};
+COMPILER_ASSERT(16 == ELEMENTS_IN_ARRAY(LL_SYSCFG_EXTI_LINES));
+
+const uint32_t LL_EXTI_LINES[16] = {
+    LL_EXTI_LINE_0,
+    LL_EXTI_LINE_1,
+    LL_EXTI_LINE_2,
+    LL_EXTI_LINE_3,
+    LL_EXTI_LINE_4,
+    LL_EXTI_LINE_5,
+    LL_EXTI_LINE_6,
+    LL_EXTI_LINE_7,
+    LL_EXTI_LINE_8,
+    LL_EXTI_LINE_9,
+    LL_EXTI_LINE_10,
+    LL_EXTI_LINE_11,
+    LL_EXTI_LINE_12,
+    LL_EXTI_LINE_13,
+    LL_EXTI_LINE_14,
+    LL_EXTI_LINE_15,
+};
+COMPILER_ASSERT(16 == ELEMENTS_IN_ARRAY(LL_EXTI_LINES));
 
 /** Pin number to LL bitfield mapping */
-static const uint32_t ll_pins[PINS_COUNT] = {
+const uint32_t LL_GPIO_PINS[16] = {
     LL_GPIO_PIN_0,
     LL_GPIO_PIN_1,
     LL_GPIO_PIN_2,
@@ -27,10 +80,10 @@ static const uint32_t ll_pins[PINS_COUNT] = {
     LL_GPIO_PIN_14,
     LL_GPIO_PIN_15,
 };
-COMPILER_ASSERT(16 == ELEMENTS_IN_ARRAY(ll_pins));
+COMPILER_ASSERT(16 == ELEMENTS_IN_ARRAY(LL_GPIO_PINS));
 
 /** Port number (A=0) to config struct pointer mapping */
-static GPIO_TypeDef * const port_periphs[] = {
+GPIO_TypeDef * const GPIO_PERIPHS[PORTS_COUNT] = {
     GPIOA,
     GPIOB,
     GPIOC,
@@ -43,20 +96,20 @@ static GPIO_TypeDef * const port_periphs[] = {
     GPIOG,
 #endif
 };
-COMPILER_ASSERT(PORTS_COUNT == ELEMENTS_IN_ARRAY(port_periphs));
+COMPILER_ASSERT(PORTS_COUNT == ELEMENTS_IN_ARRAY(GPIO_PERIPHS));
 
 /** Convert pin number to LL bitfield */
 uint32_t hw_pin2ll(uint8_t pin_number, bool *suc)
 {
     assert_param(suc != NULL);
 
-    if(pin_number >= PINS_COUNT) {
+    if(pin_number > 15) {
         dbg("Bad pin: %d", pin_number);
         // TODO proper report
         *suc = false;
         return 0;
     }
-    return ll_pins[pin_number];
+    return LL_GPIO_PINS[pin_number];
 }
 
 /** Convert port name (A,B,C...) to peripheral struct pointer */
@@ -71,7 +124,7 @@ GPIO_TypeDef *hw_port2periph(char port_name, bool *suc)
     }
 
     uint8_t num = (uint8_t) (port_name - 'A');
-    return port_periphs[num];
+    return GPIO_PERIPHS[num];
 }
 
 /** Convert a pin to resource handle */
@@ -85,7 +138,7 @@ Resource hw_pin2resource(char port_name, uint8_t pin_number, bool *suc)
         return R_NONE;
     }
 
-    if(pin_number >= PINS_COUNT) {
+    if(pin_number > 15) {
         dbg("Bad pin: %d", pin_number); // TODO proper report
         *suc = false;
         return R_NONE;
@@ -261,14 +314,27 @@ uint16_t pinmask_pack(uint16_t spread, uint16_t mask)
     return result;
 }
 
+/** Convert spread port pin number to a packed index using a mask */
+uint8_t pinmask_translate(uint16_t mask, uint8_t index)
+{
+    int cnt = 0;
+    for (int i = 0; i<16; i++) {
+        if (mask & (1<<i)) {
+            if (i == index) return (uint8_t) cnt;
+            cnt++;
+        }
+    }
+    return 0;
+}
+
 /** Configure unit pins as analog (part of unit teardown) */
 void hw_deinit_unit_pins(Unit *unit)
 {
     for (uint32_t rsc = R_PA0; rsc <= R_PF15; rsc++) {
         if (RSC_IS_HELD(unit->resources, rsc)) {
             rsc_dbg("Freeing pin %s", rsc_get_name((Resource)rsc));
-            GPIO_TypeDef *port = port_periphs[(rsc-R_PA0) / 16];
-            uint32_t ll_pin = ll_pins[(rsc-R_PA0)%16];
+            GPIO_TypeDef *port = GPIO_PERIPHS[(rsc-R_PA0) / 16];
+            uint32_t ll_pin = LL_GPIO_PINS[(rsc-R_PA0)%16];
             LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ANALOG);
         }
     }

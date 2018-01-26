@@ -11,6 +11,12 @@
 #include "platform.h"
 #include "resources.h"
 
+extern const uint32_t LL_SYSCFG_EXTI_PORTS[PORTS_COUNT];
+extern const uint32_t LL_SYSCFG_EXTI_LINES[16];
+extern GPIO_TypeDef * const GPIO_PERIPHS[PORTS_COUNT];
+extern const uint32_t LL_GPIO_PINS[16];
+extern const uint32_t LL_EXTI_LINES[16];
+
 /**
  * Convert pin number to LL driver bitfield for working with the pin.
  *
@@ -96,6 +102,13 @@ uint16_t pinmask_spread(uint16_t packed, uint16_t mask);
  * @return - packed bits, right aligned (eg. 0b1110)
  */
 uint16_t pinmask_pack(uint16_t spread, uint16_t mask);
+
+/**
+ * Convert spread port pin number to a packed index using a mask
+ *
+ * eg. with a mask 0b1010 and index 3, the result is 1 (bit 1 of the packed - 0bX0)
+ */
+uint8_t pinmask_translate(uint16_t mask, uint8_t index);
 
 /**
  * Set all GPIO resources held by unit to analog.
