@@ -125,6 +125,7 @@ static void DI_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Pins with pull-down");
     iw_entry(iw, "pull-down", "%s", pinmask2str(priv->pulldown, unit_tmp512));
 
+    iw_cmt_newline(iw);
     iw_comment(iw, "Trigger pins activated by rising/falling edge");
     iw_entry(iw, "trig-rise", "%s", pinmask2str(priv->trig_rise, unit_tmp512));
     iw_entry(iw, "trig-fall", "%s", pinmask2str(priv->trig_fall, unit_tmp512));
