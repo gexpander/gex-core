@@ -3,11 +3,11 @@
 //
 
 #include "unit_base.h"
-#include "utils/avrlibc.h"
 #include "platform/irq_dispatcher.h"
 #include "comm/messages.h"
 #include "unit_din.h"
 #include "tasks/task_msg.h"
+#include "utils/avrlibc.h"
 
 /** Private data structure */
 struct priv {
@@ -15,11 +15,14 @@ struct priv {
     uint16_t pins; // pin mask
     uint16_t pulldown; // pull-downs (default is pull-up)
     uint16_t pullup; // pull-ups
-    uint16_t trig_rise;
-    uint16_t trig_fall;
+    uint16_t trig_rise; // pins generating events on rising edge
+    uint16_t trig_fall; // pins generating events on falling edge
     uint16_t trig_holdoff; // ms
+    uint16_t def_auto; // initial auto triggers
 
-    uint16_t holdoff_countdowns[16];
+    uint16_t arm_auto;   // pins armed for auto reporting
+    uint16_t arm_single; // pins armed for single event
+    uint16_t holdoff_countdowns[16]; // countdowns to arm for each pin in the bit map
     GPIO_TypeDef *port;
 };
 
@@ -43,6 +46,9 @@ static void DI_loadBinary(Unit *unit, PayloadParser *pp)
         priv->trig_fall = pp_u16(pp);
         priv->trig_holdoff = pp_u16(pp);
     }
+    if (version >= 2) {
+        priv->def_auto = pp_u16(pp);
+    }
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -50,7 +56,7 @@ static void DI_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_u8(pb, 1); // version
+    pb_u8(pb, 2); // version
 
     pb_char(pb, priv->port_name);
     pb_u16(pb, priv->pins);
@@ -59,6 +65,7 @@ static void DI_writeBinary(Unit *unit, PayloadBuilder *pb)
     pb_u16(pb, priv->trig_rise);
     pb_u16(pb, priv->trig_fall);
     pb_u16(pb, priv->trig_holdoff);
+    pb_u16(pb, priv->def_auto);
 }
 
 // ------------------------------------------------------------------------
@@ -87,7 +94,10 @@ static error_t DI_loadIni(Unit *unit, const char *key, const char *value)
     else if (streq(key, "trig-fall")) {
         priv->trig_fall = parse_pinmask(value, &suc);
     }
-    else if (streq(key, "trig-hold-off")) {
+    else if (streq(key, "auto-trigger")) {
+        priv->def_auto = parse_pinmask(value, &suc);
+    }
+    else if (streq(key, "hold-off")) {
         priv->trig_holdoff = (uint16_t) avr_atoi(value);
     }
     else {
@@ -115,14 +125,15 @@ static void DI_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Pins with pull-down");
     iw_entry(iw, "pull-down", "%s", pinmask2str(priv->pulldown, unit_tmp512));
 
-    iw_comment(iw, "Trigger pins activated by rising edge");
+    iw_comment(iw, "Trigger pins activated by rising/falling edge");
     iw_entry(iw, "trig-rise", "%s", pinmask2str(priv->trig_rise, unit_tmp512));
-
-    iw_comment(iw, "Trigger pins activated by falling edge");
     iw_entry(iw, "trig-fall", "%s", pinmask2str(priv->trig_fall, unit_tmp512));
 
-    iw_comment(iw, "Trigger hold-off time (ms)");
-    iw_entry(iw, "trig-hold-off", "%d", (int)priv->trig_holdoff);
+    iw_comment(iw, "Trigger pins auto-armed by default");
+    iw_entry(iw, "auto-trigger", "%s", pinmask2str(priv->def_auto, unit_tmp512));
+
+    iw_comment(iw, "Triggers hold-off time (ms)");
+    iw_entry(iw, "hold-off", "%d", (int)priv->trig_holdoff);
 
 #if PLAT_NO_FLOATING_INPUTS
     iw_comment(iw, "NOTE: Pins use pull-up by default.\r\n");
@@ -145,7 +156,8 @@ static error_t DI_preInit(Unit *unit)
 
     priv->trig_rise = 0x0000;
     priv->trig_fall = 0x0000;
-    priv->trig_holdoff = 20;
+    priv->trig_holdoff = 100;
+    priv->def_auto = 0x0000;
 
     return E_SUCCESS;
 }
@@ -157,8 +169,11 @@ static void ID_SendTriggerReportToMaster(Job *job)
     PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
     pb_u8(&pb, unit->callsign);
     pb_u8(&pb, 0x00); // report type "Trigger"
-    pb_u16(&pb, (uint16_t) job->d32_2); // packed, 1 on the triggering pin
-    pb_u16(&pb, (uint16_t) job->d32_3); //
+    {
+        pb_u16(&pb, (uint16_t) job->d32_2); // packed, 1 on the triggering pin
+        pb_u16(&pb, (uint16_t) job->d32_3); // packed, snapshot
+        // the snapshot can be used to capture the other input pins
+    }
     assert_param(pb.ok);
     com_send_pb(MSG_UNIT_REPORT, &pb);
 }
@@ -167,30 +182,33 @@ static void DI_handleExti(void *arg)
 {
     Unit *unit = arg;
     struct priv *priv = unit->data;
-    uint16_t snapshot = (uint16_t) priv->port->IDR;
+    const uint16_t snapshot = (uint16_t) priv->port->IDR;
 
     uint16_t trigger_map = 0;
 
     uint16_t mask = 1;
+    const uint16_t armed_pins = priv->arm_single|priv->arm_auto;
     for (int i = 0; i < 16; i++, mask <<= 1) {
-        if ((priv->trig_rise|priv->trig_fall) & mask) {
-            if (LL_EXTI_ReadFlag_0_31(LL_EXTI_LINES[i])) {
-                if (priv->holdoff_countdowns[i] == 0) {
-                    trigger_map |= 1<<i;
-                    priv->holdoff_countdowns[i] = priv->trig_holdoff;
-                }
+        if (!LL_EXTI_ReadFlag_0_31(LL_EXTI_LINES[i])) continue;
+        LL_EXTI_ClearFlag_0_31(LL_EXTI_LINES[i]);
 
-                LL_EXTI_ClearFlag_0_31(LL_EXTI_LINES[i]);
-            }
+        // Armed and ready
+        if ((armed_pins & mask) && (priv->holdoff_countdowns[i] == 0)) {
+            // Mark as captured
+            trigger_map |= (1 << i);
+            // Start hold-off (no-op if zero hold-off)
+            priv->holdoff_countdowns[i] = priv->trig_holdoff;
         }
     }
 
-    // FIXME the job is not correctly handled, somehow. queue fills but is not collected
+    // Disarm all possibly used single triggers
+    priv->arm_single &= ~trigger_map;
+
     if (trigger_map != 0) {
         Job j = {
             .data1 = unit,
             .d32_2 = pinmask_pack(trigger_map, priv->pins),
-            .d32_3 = snapshot,
+            .d32_3 = pinmask_pack(snapshot, priv->pins),
             .cb = ID_SendTriggerReportToMaster
         };
         scheduleJob(&j);
@@ -205,6 +223,16 @@ static error_t DI_init(Unit *unit)
 
     priv->pulldown &= priv->pins;
     priv->pullup &= priv->pins;
+    priv->trig_rise &= priv->pins;
+    priv->trig_fall &= priv->pins;
+    priv->def_auto &= (priv->trig_rise|priv->trig_fall);
+
+    // copy auto-arm defaults to the auto-arm register (the register may be manipulated by commands)
+    priv->arm_auto = priv->def_auto;
+    priv->arm_single = 0;
+
+    // clear countdowns
+    memset(priv->holdoff_countdowns, 0, sizeof(priv->holdoff_countdowns));
 
     // --- Parse config ---
     priv->port = hw_port2periph(priv->port_name, &suc);
@@ -250,8 +278,8 @@ static error_t DI_init(Unit *unit)
         }
     }
 
-    // request ticks if we have triggers
-    if (priv->trig_rise|priv->trig_fall) {
+    // request ticks if we have triggers and any hold-offs configured
+    if ((priv->trig_rise|priv->trig_fall) && priv->trig_holdoff > 0) {
         unit->tick_interval = 1;
     }
 
@@ -297,22 +325,97 @@ error_t UU_DI_Read(Unit *unit, uint16_t *packed)
     return E_SUCCESS;
 }
 
+/** Arm pins */
+error_t UU_DI_Arm(Unit *unit, uint16_t arm_single_packed, uint16_t arm_auto_packed)
+{
+    CHECK_TYPE(unit, &UNIT_DIN);
+    struct priv *priv = unit->data;
+
+    uint16_t arm_single = pinmask_spread(arm_single_packed, priv->pins);
+    uint16_t arm_auto = pinmask_spread(arm_auto_packed, priv->pins);
+
+    // abort if user tries to arm pin that doesn't have a trigger configured
+    if (0 != ((arm_single|arm_auto) & ~(priv->trig_fall|priv->trig_rise))) {
+        return E_BAD_VALUE;
+    }
+
+    // arm and reset hold-offs
+    // we use critical section to avoid irq between the two steps
+    vPortEnterCritical();
+    {
+        priv->arm_auto |= arm_single;
+        priv->arm_single |= arm_auto;
+        const uint16_t combined = arm_single | arm_auto;
+        for (int i = 0; i < 16; i++) {
+            if (combined & (1 << i)) {
+                priv->holdoff_countdowns[i] = 0;
+            }
+        }
+    }
+    vPortExitCritical();
+
+    return E_SUCCESS;
+}
+
+/** DisArm pins */
+error_t UU_DI_DisArm(Unit *unit, uint16_t disarm_packed)
+{
+    CHECK_TYPE(unit, &UNIT_DIN);
+    struct priv *priv = unit->data;
+
+    uint16_t disarm = pinmask_spread(disarm_packed, priv->pins);
+
+    // abort if user tries to disarm pin that doesn't have a trigger configured
+    if (0 != ((disarm) & ~(priv->trig_fall|priv->trig_rise))) {
+        return E_BAD_VALUE;
+    }
+
+    priv->arm_auto &= ~disarm;
+    priv->arm_single &= ~disarm;
+
+    return E_SUCCESS;
+}
+
 enum PinCmd_ {
     CMD_READ = 0,
+    CMD_ARM_SINGLE = 1,
+    CMD_ARM_AUTO = 2,
+    CMD_DISARM = 3,
 };
 
 /** Handle a request message */
 static error_t DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
-    uint16_t packed = 0;
+    uint16_t pins = 0;
 
     switch (command) {
         case CMD_READ:;
-            TRY(UU_DI_Read(unit, &packed));
+            TRY(UU_DI_Read(unit, &pins));
 
             PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, UNIT_TMP_LEN, NULL);
-            pb_u16(&pb, packed);
+            pb_u16(&pb, pins); // packed input pins
             com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, pb_length(&pb));
+            return E_SUCCESS;
+
+        case CMD_ARM_SINGLE:;
+            pins = pp_u16(pp);
+            if (!pp->ok) return E_MALFORMED_COMMAND;
+
+            TRY(UU_DI_Arm(unit, pins, 0));
+            return E_SUCCESS;
+
+        case CMD_ARM_AUTO:;
+            pins = pp_u16(pp);
+            if (!pp->ok) return E_MALFORMED_COMMAND;
+
+            TRY(UU_DI_Arm(unit, 0, pins));
+            return E_SUCCESS;
+
+        case CMD_DISARM:;
+            pins = pp_u16(pp);
+            if (!pp->ok) return E_MALFORMED_COMMAND;
+
+            TRY(UU_DI_DisArm(unit, pins));
             return E_SUCCESS;
 
         default:
@@ -341,7 +444,7 @@ static void DI_updateTick(Unit *unit)
 /** Unit template */
 const UnitDriver UNIT_DIN = {
     .name = "DI",
-    .description = "Digital input",
+    .description = "Digital input with triggers",
     // Settings
     .preInit = DI_preInit,
     .cfgLoadBinary = DI_loadBinary,

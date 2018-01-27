@@ -2,7 +2,6 @@
 // Created by MightyPork on 2017/12/22.
 //
 
-#include <utils/hexdump.h>
 #include "platform.h"
 #include "comm/messages.h"
 #include "task_msg.h"
@@ -16,7 +15,11 @@ static void que_safe_post(struct rx_sched_combined_que_item *slot)
 
     if (inIRQ()) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        assert_param(pdPASS == xQueueSendFromISR(queMsgJobHandle, slot, &xHigherPriorityTaskWoken));
+        BaseType_t status = xQueueSendFromISR(queMsgJobHandle, slot, &xHigherPriorityTaskWoken);
+        if (pdPASS != status) {
+            dbg("! Que post from ISR failed");
+            return;
+        }
 
         #if USE_STACK_MONITOR
             count = (uint32_t) uxQueueMessagesWaitingFromISR(queMsgJobHandle);
@@ -24,7 +27,11 @@ static void que_safe_post(struct rx_sched_combined_que_item *slot)
 
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     } else {
-        assert_param(pdPASS == xQueueSend(queMsgJobHandle, slot, MSG_QUE_POST_TIMEOUT));
+        BaseType_t status = xQueueSend(queMsgJobHandle, slot, MSG_QUE_POST_TIMEOUT);
+        if (pdPASS != status) {
+            dbg("! Que post failed");
+            return;
+        }
 
         #if USE_STACK_MONITOR
             count = (uint32_t) uxQueueMessagesWaiting(queMsgJobHandle);
