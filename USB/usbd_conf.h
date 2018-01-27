@@ -109,10 +109,10 @@
 /* Memory management macros */  
 #define USBD_malloc               (uint32_t *)USBD_static_malloc
 #define USBD_free                 USBD_static_free
-#define USBD_memset               /* Not used */
-#define USBD_memcpy               /* Not used */
-
-#define USBD_Delay   HAL_Delay
+//#define USBD_memset               /* Not used */
+//#define USBD_memcpy               /* Not used */
+//
+//#define USBD_Delay   HAL_Delay
 
 /* For footprint reasons and since only one allocation is handled in the HID class
    driver, the malloc/free is changed into a static allocation method */

@@ -3,28 +3,20 @@
 // (moved from the top level project for easier maintenance)
 //
 
-/* Includes ------------------------------------------------------------------*/
-
 #include "platform.h"
 #include <TinyFrame.h>
 #include "platform/debug_uart.h"
 #include "platform/status_led.h"
 #include "utils/stacksmon.h"
+#include "gex_hooks.h"
 
-/* External variables --------------------------------------------------------*/
 
-/******************************************************************************/
-/*            Cortex-M3 Processor Interruption and Exception Handlers         */ 
-/******************************************************************************/
+void SysTick_Handler(void)
+{
+    GEX_MsTick();
+    osSystickHandler();
+}
 
-/******************************************************************************/
-/* STM32F1xx Peripheral Interrupt Handlers                                    */
-/* Add here the Interrupt Handlers for the used peripherals.                  */
-/* For the available peripheral interrupt handler names,                      */
-/* please refer to the startup file (startup_stm32f1xx.s).                    */
-/******************************************************************************/
-
-/* USER CODE BEGIN 1 */
 
 #define tFAULT "\r\n\033[31mSYSTEM FAULT:\033[m"
 
@@ -236,6 +228,3 @@ caddr_t _sbrk(int incr) {
     return (caddr_t) prev_heap_end;
 }
 #endif
-
-/* USER CODE END 1 */
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

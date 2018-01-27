@@ -629,10 +629,10 @@ void HAL_PCDEx_LPM_Callback(PCD_HandleTypeDef *hpcd, PCD_LPM_MsgTypeDef msg)
   * @param  Delay: Delay in ms
   * @retval None
   */
-void  USBD_LL_Delay (uint32_t Delay)
-{
-  HAL_Delay(Delay);  
-}
+//void  USBD_LL_Delay (uint32_t Delay)
+//{
+//  HAL_Delay(Delay);
+//}
 
 /**
   * @brief  static single allocation.

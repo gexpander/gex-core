@@ -163,6 +163,9 @@ static error_t DI_preInit(Unit *unit)
     return E_SUCCESS;
 }
 
+/**
+ * Send a trigger event to master (called on the message queue thread)
+ */
 static void ID_SendTriggerReportToMaster(Job *job)
 {
     Unit *unit = job->data1;
@@ -179,6 +182,11 @@ static void ID_SendTriggerReportToMaster(Job *job)
     com_send_pb(MSG_UNIT_REPORT, &pb);
 }
 
+/**
+ * EXTI callback for pin change interrupts
+ *
+ * @param arg - the unit is passed here
+ */
 static void DI_handleExti(void *arg)
 {
     Unit *unit = arg;
@@ -295,15 +303,14 @@ static void DI_deInit(Unit *unit)
 
     // pins are de-inited during teardown
 
-    if (unit->status == E_SUCCESS) {
-        // Detach EXTI handlers and disable interrupts
-        if (priv->trig_rise | priv->trig_fall) {
-            uint16_t mask = 1;
-            for (int i = 0; i < 16; i++, mask <<= 1) {
-                if ((priv->trig_rise | priv->trig_fall) & mask) {
-                    LL_EXTI_DisableIT_0_31(LL_EXTI_LINES[i]);
-                    irqd_detach(EXTIS[i], DI_handleExti);
-                }
+    // Detach EXTI handlers and disable interrupts
+    const uint16_t triggs = priv->trig_rise | priv->trig_fall;
+    if (unit->status == E_SUCCESS && triggs) {
+        uint16_t mask = 1;
+        for (int i = 0; i < 16; i++, mask <<= 1) {
+            if (triggs & mask) {
+                LL_EXTI_DisableIT_0_31(LL_EXTI_LINES[i]);
+                irqd_detach(EXTIS[i], DI_handleExti);
             }
         }
     }

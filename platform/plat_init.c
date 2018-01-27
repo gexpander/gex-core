@@ -14,6 +14,7 @@
 #include "status_led.h"
 #include "debug_uart.h"
 #include "irq_dispatcher.h"
+#include "timebase.h"
 
 void plat_init(void)
 {
@@ -26,7 +27,7 @@ void plat_init(void)
 
     LockJumper_Init();
     Indicator_Init();
-    DebugUart_Init(); // <- only the resource claim
+    DebugUart_Init(); // resource claim
 
     irqd_init();
 

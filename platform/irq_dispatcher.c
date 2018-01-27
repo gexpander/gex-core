@@ -84,11 +84,12 @@ void irqd_init(void)
     HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 3, 0);
     HAL_NVIC_SetPriority(DMA1_Channel4_5_6_7_IRQn, 3, 0);
 //    NVIC_EnableIRQ(ADC1_COMP_IRQn);             /*!< ADC1 and COMP interrupts (ADC interrupt combined with EXTI Lines 21 and 22 */
+//    NVIC_EnableIRQ(TIM1_IRQn);                  /*!< TIM1 global Interrupt                                          */
 //    NVIC_EnableIRQ(TIM2_IRQn);                  /*!< TIM2 global Interrupt                                           */
 //    NVIC_EnableIRQ(TIM3_IRQn);                  /*!< TIM3 global Interrupt                                           */
 //    NVIC_EnableIRQ(TIM6_DAC_IRQn);              /*!< TIM6 global and DAC channel underrun error Interrupt            */
 //    NVIC_EnableIRQ(TIM7_IRQn);                  /*!< TIM7 global Interrupt                                           */
-//    NVIC_EnableIRQ(TIM14_IRQn);                 /*!< TIM14 global Interrupt                                          */
+//  --used internally--  NVIC_EnableIRQ(TIM14_IRQn);                 /*!< TIM14 global Interrupt                                          */
 //    NVIC_EnableIRQ(TIM15_IRQn);                 /*!< TIM15 global Interrupt                                          */
 //    NVIC_EnableIRQ(TIM16_IRQn);                 /*!< TIM16 global Interrupt                                          */
 //    NVIC_EnableIRQ(TIM17_IRQn);                 /*!< TIM17 global Interrupt                                          */
