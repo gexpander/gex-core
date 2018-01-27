@@ -11,6 +11,8 @@
 #ifndef GEX_F072_TIMEBASE_H
 #define GEX_F072_TIMEBASE_H
 
+#include "platform.h"
+
 /**
  * Precision timer: get microtime as uint64_t
  * This timestamp should be monotonously increasing with a precision of ±0.5µs

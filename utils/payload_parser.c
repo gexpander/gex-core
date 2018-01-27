@@ -56,6 +56,37 @@ uint32_t pp_u32(PayloadParser *pp)
     return x;
 }
 
+uint64_t pp_u64(PayloadParser *pp)
+{
+    pp_check_capacity(pp, 4);
+    if (!pp->ok) return 0;
+
+    uint64_t x = 0;
+
+    if (pp->bigendian) {
+        x |= (uint64_t) ((uint64_t) *pp->current++ << 56);
+        x |= (uint64_t) ((uint64_t) *pp->current++ << 48);
+        x |= (uint64_t) ((uint64_t) *pp->current++ << 40);
+        x |= (uint64_t) ((uint64_t) *pp->current++ << 32);
+
+        x |= (uint64_t) (*pp->current++ << 24);
+        x |= (uint64_t) (*pp->current++ << 16);
+        x |= (uint64_t) (*pp->current++ << 8);
+        x |= *pp->current++;
+    } else {
+        x |= *pp->current++;
+        x |= (uint64_t) (*pp->current++ << 8);
+        x |= (uint64_t) (*pp->current++ << 16);
+        x |= (uint64_t) (*pp->current++ << 24);
+
+        x |= (uint64_t) ((uint64_t) *pp->current++ << 32);
+        x |= (uint64_t) ((uint64_t) *pp->current++ << 40);
+        x |= (uint64_t) ((uint64_t) *pp->current++ << 48);
+        x |= (uint64_t) ((uint64_t) *pp->current++ << 56);
+    }
+    return x;
+}
+
 const uint8_t *pp_tail(PayloadParser *pp, uint32_t *length)
 {
     int32_t len = (int) (pp->end - pp->current);
@@ -89,10 +120,22 @@ int32_t pp_i32(PayloadParser *pp)
     return ((union conv32) {.u32 = pp_u32(pp)}).i32;
 }
 
+/** Read int364_t from the payload. */
+int64_t pp_i64(PayloadParser *pp)
+{
+    return ((union conv64) {.u64 = pp_u64(pp)}).i64;
+}
+
 /** Read 4-byte float from the payload. */
 float pp_float(PayloadParser *pp)
 {
     return ((union conv32) {.u32 = pp_u32(pp)}).f32;
+}
+
+/** Read 8-byte float from the payload. */
+double pp_double(PayloadParser *pp)
+{
+    return ((union conv64) {.u64 = pp_u64(pp)}).f64;
 }
 
 /** Read a zstring */

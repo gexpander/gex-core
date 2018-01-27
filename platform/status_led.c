@@ -16,7 +16,7 @@ static uint32_t effect_time = 0;
 // counter of idle ticks since last indicator
 // used to allow or disallow heartbeat blink (to avoid interference)
 static uint32_t indicator_idle_ms = 0;
-#define IDLE_FOR_HEARTBEAT_MS 3000
+#define IDLE_FOR_HEARTBEAT_MS (3000-60)
 #define HB_MAX_SAFE_IVAL 500
 
 static uint32_t hb_elapsed = 0;
@@ -86,8 +86,7 @@ void Indicator_Tick(void)
     if (active_effect == STATUS_NONE) {
         indicator_idle_ms++;
 
-        if (hb_elapsed < HB_MAX_SAFE_IVAL && indicator_idle_ms > IDLE_FOR_HEARTBEAT_MS &&
-            (indicator_idle_ms % 10 == 0)) {
+        if (hb_elapsed < HB_MAX_SAFE_IVAL && indicator_idle_ms > IDLE_FOR_HEARTBEAT_MS && (indicator_idle_ms % 10 == 0)) {
             Indicator_Effect(STATUS_HEARTBEAT);
         }
     }

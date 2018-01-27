@@ -3,11 +3,7 @@
 //
 
 #include "unit_base.h"
-#include "platform/irq_dispatcher.h"
-#include "comm/messages.h"
 #include "unit_din.h"
-#include "tasks/task_msg.h"
-#include "utils/avrlibc.h"
 
 /** Private data structure */
 struct priv {
@@ -168,18 +164,19 @@ static error_t DI_preInit(Unit *unit)
  */
 static void ID_SendTriggerReportToMaster(Job *job)
 {
-    Unit *unit = job->data1;
-
     PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
-    pb_u8(&pb, unit->callsign);
-    pb_u8(&pb, 0x00); // report type "Trigger"
-    {
-        pb_u16(&pb, (uint16_t) job->d32_2); // packed, 1 on the triggering pin
-        pb_u16(&pb, (uint16_t) job->d32_3); // packed, snapshot
-        // the snapshot can be used to capture the other input pins
-    }
+    pb_u16(&pb, (uint16_t) job->data1); // packed, 1 on the triggering pin
+    pb_u16(&pb, (uint16_t) job->data2); // packed, snapshot
     assert_param(pb.ok);
-    com_send_pb(MSG_UNIT_REPORT, &pb);
+
+    EventReport event = {
+        .unit = job->unit,
+        .timestamp = job->timestamp,
+        .data = pb.start,
+        .length = (uint16_t) pb_length(&pb),
+    };
+
+    EventReport_Send(&event);
 }
 
 /**
@@ -189,6 +186,8 @@ static void ID_SendTriggerReportToMaster(Job *job)
  */
 static void DI_handleExti(void *arg)
 {
+    const uint64_t ts = PTIM_GetMicrotime();
+
     Unit *unit = arg;
     struct priv *priv = unit->data;
     const uint16_t snapshot = (uint16_t) priv->port->IDR;
@@ -215,9 +214,10 @@ static void DI_handleExti(void *arg)
 
     if (trigger_map != 0) {
         Job j = {
-            .data1 = unit,
-            .d32_2 = pinmask_pack(trigger_map, priv->pins),
-            .d32_3 = pinmask_pack(snapshot, priv->pins),
+            .unit = unit,
+            .timestamp = ts,
+            .data1 = pinmask_pack(trigger_map, priv->pins),
+            .data2 = pinmask_pack(snapshot, priv->pins),
             .cb = ID_SendTriggerReportToMaster
         };
         scheduleJob(&j);

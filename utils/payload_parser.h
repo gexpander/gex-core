@@ -101,6 +101,9 @@ uint16_t pp_u16(PayloadParser *pp);
 /** Read uint32_t from the payload. */
 uint32_t pp_u32(PayloadParser *pp);
 
+/** Read uint64_t from the payload. */
+uint64_t pp_u64(PayloadParser *pp);
+
 /** Read int8_t from the payload. */
 int8_t pp_i8(PayloadParser *pp);
 
@@ -116,8 +119,14 @@ int16_t pp_i16(PayloadParser *pp);
 /** Read int32_t from the payload. */
 int32_t pp_i32(PayloadParser *pp);
 
+/** Read int64_t from the payload. */
+int64_t pp_i64(PayloadParser *pp);
+
 /** Read 4-byte float from the payload. */
 float pp_float(PayloadParser *pp);
+
+/** Read 8-byte float from the payload. */
+double pp_double(PayloadParser *pp);
 
 /**
  * Parse a zero-terminated string

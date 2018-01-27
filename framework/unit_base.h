@@ -13,3 +13,8 @@
 #include "utils/malloc_safe.h"
 #include "payload_builder.h"
 #include "payload_parser.h"
+#include "utils/avrlibc.h"
+#include "tasks/task_msg.h"
+#include "platform/timebase.h"
+#include "platform/irq_dispatcher.h"
+#include "comm/messages.h"

@@ -2,31 +2,28 @@
 // Created by MightyPork on 2018/01/02.
 //
 
-#include "platform.h"
-#include "comm/messages.h"
 #include "unit_base.h"
 #include "unit_usart.h"
-#include "tasks/task_msg.h"
 
 #define UUSART_INTERNAL
 #include "_internal.h"
 
 static void UUSART_SendReceivedDataToMaster(Job *job)
 {
-    Unit *unit = job->data1;
+    Unit *unit = job->unit;
     struct priv *priv = unit->data;
 
-    uint32_t readpos = job->d32;
-    uint32_t count = job->len;
+    uint16_t readpos = (uint16_t) job->data1;
+    uint16_t count = (uint16_t) job->data2;
 
-    // TODO use TF's Multipart sending
-    // TODO add API for building reports
-    PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
-    pb_u8(&pb, unit->callsign);
-    pb_u8(&pb, 0x00); // report type "Data received"
-    pb_buf(&pb, (uint8_t *) (priv->rx_buffer + readpos), count);
-    assert_param(pb.ok);
-    com_send_pb(MSG_UNIT_REPORT, &pb);
+    EventReport event = {
+        .unit = job->unit,
+        .timestamp = job->timestamp,
+        .data = (uint8_t *) (priv->rx_buffer + readpos),
+        .length = count,
+    };
+
+    EventReport_Send(&event);
 }
 
 /**
@@ -37,6 +34,8 @@ static void UUSART_SendReceivedDataToMaster(Job *job)
  */
 void UUSART_DMA_HandleRxFromIRQ(Unit *unit, uint16_t endpos)
 {
+    const uint64_t ts = PTIM_GetMicrotime();
+
     assert_param(unit);
     struct priv *priv = unit->data;
     assert_param(priv);
@@ -47,11 +46,11 @@ void UUSART_DMA_HandleRxFromIRQ(Unit *unit, uint16_t endpos)
     uint16_t count = (endpos - readpos);
 
     // We defer it to the job queue
-    // FIXME this can starve the shared queue if full duplex is used, we need a second higher priority queue for those report jobs
     Job j = {
-        .data1 = unit,
-        .d32 = priv->rx_buf_readpos,
-        .len = count,
+        .unit = unit,
+        .timestamp = ts,
+        .data1 = priv->rx_buf_readpos,
+        .data2 = count,
         .cb = UUSART_SendReceivedDataToMaster
     };
     scheduleJob(&j);

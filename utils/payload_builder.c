@@ -86,6 +86,36 @@ bool pb_u32(PayloadBuilder *pb, uint32_t word)
     return true;
 }
 
+/** Write uint64_t to the buffer. */
+bool pb_u64(PayloadBuilder *pb, uint64_t word)
+{
+    pb_check_capacity(pb, 4);
+    if (!pb->ok) return false;
+
+    if (pb->bigendian) {
+        *pb->current++ = (uint8_t) ((word >> 56) & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 48) & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 40) & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 32) & 0xFF);
+
+        *pb->current++ = (uint8_t) ((word >> 24) & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 16) & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 8) & 0xFF);
+        *pb->current++ = (uint8_t) (word & 0xFF);
+    } else {
+        *pb->current++ = (uint8_t) (word & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 8) & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 16) & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 24) & 0xFF);
+
+        *pb->current++ = (uint8_t) ((word >> 32) & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 40) & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 48) & 0xFF);
+        *pb->current++ = (uint8_t) ((word >> 56) & 0xFF);
+    }
+    return true;
+}
+
 /** Write int8_t to the buffer. */
 bool pb_i8(PayloadBuilder *pb, int8_t byte)
 {
@@ -104,8 +134,20 @@ bool pb_i32(PayloadBuilder *pb, int32_t word)
     return pb_u32(pb, ((union conv32){.i32 = word}).u32);
 }
 
+/** Write int64_t to the buffer. */
+bool pb_i64(PayloadBuilder *pb, int64_t word)
+{
+    return pb_u64(pb, ((union conv64){.i64 = word}).u64);
+}
+
 /** Write 4-byte float to the buffer. */
 bool pb_float(PayloadBuilder *pb, float f)
 {
     return pb_u32(pb, ((union conv32){.f32 = f}).u32);
+}
+
+/** Write 8-byte float to the buffer. */
+bool pb_double(PayloadBuilder *pb, double f)
+{
+    return pb_u64(pb, ((union conv64){.f64 = f}).u64);
 }

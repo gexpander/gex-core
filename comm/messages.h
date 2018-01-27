@@ -49,6 +49,7 @@ extern TinyFrame *comm;
 #include "msg_responses.h"
 #include "msg_bulkread.h"
 #include "msg_bulkwrite.h"
+#include "event_reports.h"
 
 /**
  * Initialize TinyFrame and set up listeners

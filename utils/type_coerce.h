@@ -29,4 +29,10 @@ union conv32 {
     float f32;
 };
 
+union conv64 {
+    uint64_t u64;
+    int64_t i64;
+    double f64;
+};
+
 #endif // TYPE_COERCE_H

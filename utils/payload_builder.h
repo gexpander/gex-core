@@ -98,6 +98,9 @@ bool pb_u16(PayloadBuilder *pb, uint16_t word);
 /** Write uint32_t to the buffer. */
 bool pb_u32(PayloadBuilder *pb, uint32_t word);
 
+/** Write uint64_t to the buffer */
+bool pb_u64(PayloadBuilder *pb, uint64_t word);
+
 /** Write int8_t to the buffer. */
 bool pb_i8(PayloadBuilder *pb, int8_t byte);
 
@@ -113,7 +116,13 @@ bool pb_i16(PayloadBuilder *pb, int16_t word);
 /** Write int32_t to the buffer. */
 bool pb_i32(PayloadBuilder *pb, int32_t word);
 
+/** Write int64_t to the buffer. */
+bool pb_i64(PayloadBuilder *pb, int64_t word);
+
 /** Write 4-byte float to the buffer. */
 bool pb_float(PayloadBuilder *pb, float f);
+
+/** Write 8-byte float to the buffer. */
+bool pb_double(PayloadBuilder *pb, double f);
 
 #endif // PAYLOAD_BUILDER_H
