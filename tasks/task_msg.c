@@ -83,14 +83,19 @@ void TaskMsgJob(const void *argument)
         }
         else {
             assert_param(slot.msg.len > 0 && slot.msg.len <= MSG_QUE_SLOT_SIZE); // check the len is within bounds
-            TF_Accept(comm, slot.msg.data, slot.msg.len);
+
+            #if CDC_LOOPBACK_TEST
+                TF_WriteImpl(comm, slot.msg.data, slot.msg.len);
+            #else
+                TF_Accept(comm, slot.msg.data, slot.msg.len);
+            #endif
         }
 
-#if USE_STACK_MONITOR
-        uint32_t count;
-        count = (uint32_t) uxQueueMessagesWaiting(queMsgJobHandle)+1;
-        msgQueHighWaterMark = MAX(msgQueHighWaterMark, count);
-#endif
+        #if USE_STACK_MONITOR
+            uint32_t count;
+            count = (uint32_t) uxQueueMessagesWaiting(queMsgJobHandle)+1;
+            msgQueHighWaterMark = MAX(msgQueHighWaterMark, count);
+        #endif
     }
 }
 
