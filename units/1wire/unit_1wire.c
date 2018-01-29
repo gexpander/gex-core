@@ -70,7 +70,7 @@ static void U1WIRE_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Data pin");
     iw_entry(iw, "pin", "%c%d", priv->port_name,  priv->pin_number);
 
-    iw_comment(iw, "Parasitic (power over DQ) mode");
+    iw_comment(iw, "Parasitic (bus-powered) mode");
     iw_entry(iw, "parasitic", str_yn(priv->parasitic));
 }
 
