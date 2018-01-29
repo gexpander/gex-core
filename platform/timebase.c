@@ -95,17 +95,24 @@ uint64_t PTIM_GetMicrotime(void)
     }
     vPortExitCritical();
 
-    return (uint64_t)uwMillis*1000 + uwMicros;
+    return (uint64_t) uwMillis * 1000 + uwMicros;
 }
 
 /** microsecond delay */
 void PTIM_MicroDelay(uint16_t usec)
 {
-    usec++; // rounding up
     assert_param(usec < 1000);
 
-    uint16_t end = (uint16_t) (TIMEBASE_TIMER->CNT + usec);
-    if (end > 999) end -= 1000;
+    const uint16_t start = (uint16_t) TIMEBASE_TIMER->CNT;
+    const uint16_t remain = (uint16_t) (999 - start);
 
-    while (TIMEBASE_TIMER->CNT != end);
+    if (remain > usec) {
+        // timer still has enough space going forward to pass the required wait time
+        for (; TIMEBASE_TIMER->CNT < start + usec;);
+    }
+    else {
+        // timer is too close to the end
+        usec -= remain;
+        for (; TIMEBASE_TIMER->CNT >= start || TIMEBASE_TIMER->CNT < usec;);
+    }
 }
