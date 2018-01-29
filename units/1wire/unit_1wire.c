@@ -23,6 +23,9 @@ static void U1WIRE_loadBinary(Unit *unit, PayloadParser *pp)
 
     priv->port_name = pp_char(pp);
     priv->pin_number = pp_u8(pp);
+    if (version >= 1) {
+        priv->parasitic = pp_bool(pp);
+    }
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -30,10 +33,11 @@ static void U1WIRE_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_u8(pb, 0); // version
+    pb_u8(pb, 1); // version
 
     pb_char(pb, priv->port_name);
     pb_u8(pb, priv->pin_number);
+    pb_bool(pb, priv->parasitic);
 }
 
 // ------------------------------------------------------------------------
@@ -46,6 +50,9 @@ static error_t U1WIRE_loadIni(Unit *unit, const char *key, const char *value)
 
     if (streq(key, "pin")) {
         suc = parse_pin(value, &priv->port_name, &priv->pin_number);
+    }
+    else if (streq(key, "parasitic")) {
+        priv->parasitic = str_parse_yn(value, &suc);
     }
     else {
         return E_BAD_KEY;
@@ -62,6 +69,9 @@ static void U1WIRE_writeIni(Unit *unit, IniWriter *iw)
 
     iw_comment(iw, "Data pin");
     iw_entry(iw, "pin", "%c%d", priv->port_name,  priv->pin_number);
+
+    iw_comment(iw, "Parasitic (power over DQ) mode");
+    iw_entry(iw, "parasitic", str_yn(priv->parasitic));
 }
 
 // ------------------------------------------------------------------------
@@ -75,6 +85,7 @@ static error_t U1WIRE_preInit(Unit *unit)
     // some defaults
     priv->pin_number = 0;
     priv->port_name = 'A';
+    priv->parasitic = false;
 
     return E_SUCCESS;
 }
@@ -134,6 +145,8 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
 
             ow_write_u8(unit, OW_DS1820_CONVERT_T);
             while (!ow_read_bit(unit));
+
+            // TODO use knowledge of the use/non-use of parasitic mode to pick the optimal strategy (non-parasitic allows polling)
 
             //            osDelay(750);
             // TODO this will be done with an async timer

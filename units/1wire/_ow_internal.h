@@ -15,6 +15,7 @@
 struct priv {
     char port_name;
     uint8_t pin_number;
+    bool parasitic;
 
     GPIO_TypeDef *port;
     uint32_t ll_pin;
