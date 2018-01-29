@@ -171,7 +171,7 @@ static bool ow_reset(Unit *unit)
         ow_release_line(unit);
         PTIM_MicroDelay(118);
 
-        presence = ow_sample_line(unit);
+        presence = !ow_sample_line(unit);
     }
     vPortExitCritical();
 
