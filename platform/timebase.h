@@ -21,4 +21,11 @@
  */
 uint64_t PTIM_GetMicrotime(void);
 
+/**
+ * Microseconds busy delay
+ *
+ * @param usec - max 998
+ */
+void PTIM_MicroDelay(uint16_t usec);
+
 #endif //GEX_F072_TIMEBASE_H

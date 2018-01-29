@@ -5,6 +5,8 @@
 #include "platform.h"
 #include "timebase.h"
 
+// ---------------------------- HAL TIMEBASE -----------------------------
+
 #define TIMEBASE_TIMER TIM14
 
 HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
@@ -67,9 +69,8 @@ void HAL_ResumeTick(void)
     LL_TIM_EnableIT_UPDATE(TIMEBASE_TIMER);
 }
 
-// -------------------------------------------------------------------------------------
 
-// Timestamping functions ...
+// -------------------------- DELAY FUNCTIONS AND TS -----------------------------
 
 /*
  * I wanted to freeze time. I wanted to savor that moment, to live in that moment
@@ -95,4 +96,16 @@ uint64_t PTIM_GetMicrotime(void)
     vPortExitCritical();
 
     return (uint64_t)uwMillis*1000 + uwMicros;
+}
+
+/** microsecond delay */
+void PTIM_MicroDelay(uint16_t usec)
+{
+    usec++; // rounding up
+    assert_param(usec < 1000);
+
+    uint16_t end = (uint16_t) (TIMEBASE_TIMER->CNT + usec);
+    if (end > 999) end -= 1000;
+
+    while (TIMEBASE_TIMER->CNT != end);
 }

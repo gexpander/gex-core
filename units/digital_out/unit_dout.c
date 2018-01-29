@@ -221,7 +221,7 @@ error_t UU_DO_GetPinCount(Unit *unit, uint8_t *count)
 }
 
 enum PinCmd_ {
-    CMD_QUERY = 0,
+    CMD_TEST = 0,
     CMD_SET = 1,
     CMD_CLEAR = 2,
     CMD_TOGGLE = 3,
@@ -233,7 +233,7 @@ static error_t DO_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
     uint16_t packed = pp_u16(pp);
 
     switch (command) {
-        case CMD_QUERY:
+        case CMD_TEST:
             return UU_DO_Write(unit, packed);
 
         case CMD_SET:
