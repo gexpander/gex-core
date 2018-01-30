@@ -35,6 +35,15 @@ com_respond_snprintf(TF_ID frame_id, TF_TYPE type, const char *format, ...);
 void com_respond_buf(TF_ID frame_id, TF_TYPE type, const uint8_t *buf, uint32_t len);
 
 /**
+ * Respond using a payload builder's content
+ *
+ * @param type - response type byte
+ * @param frame_id - ID of the original msg
+ * @param pb - builder
+ */
+void com_respond_pb(TF_ID frame_id, TF_TYPE type, PayloadBuilder *pb);
+
+/**
  * Respond to a TF message with empty body and MSG_SUCCESS type.
  *
  * @param frame_id  - ID of the original msg

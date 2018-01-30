@@ -78,7 +78,37 @@ static void U1WIRE_writeIni(Unit *unit, IniWriter *iw)
 
 static void U1WIRE_TimerCb(TimerHandle_t xTimer)
 {
+    Unit *unit = pvTimerGetTimerID(xTimer);
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv->busy);
 
+    if (priv->parasitic) {
+        // this is the end of the 750ms measurement time
+        goto halt_ok;
+    } else {
+        bool ready = ow_read_bit(unit);
+        if (ready) {
+            goto halt_ok;
+        }
+
+        uint32_t time = PTIM_GetTime();
+        if (time - priv->busyStart > 1000) {
+            dbg("Timeout 1s not ready. Stopping polling timer.");
+            xTimerStop(xTimer, 100);
+            com_respond_error(priv->busyRequestId, E_HW_TIMEOUT);
+            priv->busy = false;
+            dbg("Done, timer stopped.");
+        }
+    }
+
+    return;
+halt_ok:
+    dbg("End of measurement, stopping timer");
+    xTimerStop(xTimer, 100);
+    com_respond_ok(priv->busyRequestId);
+    priv->busy = false;
+    dbg("Done, timer stopped.");
 }
 
 /** Allocate data structure and set defaults */
@@ -88,7 +118,12 @@ static error_t U1WIRE_preInit(Unit *unit)
     if (priv == NULL) return E_OUT_OF_MEM;
 
     // the timer is not started until needed
-    priv->busyWaitTimer = xTimerCreate("1w_tim", 750, false, unit, U1WIRE_TimerCb);
+    priv->busyWaitTimer = xTimerCreate("1w_tim", // name
+                                       750,      // interval (will be changed when starting it)
+                                       true,     // periodic (we use this only for the polling variant, the one-shot will stop the timer in the CB)
+                                       unit,     // user data
+                                       U1WIRE_TimerCb); // callback
+
     if (priv->busyWaitTimer == NULL) return E_OUT_OF_MEM;
 
     // some defaults
@@ -141,51 +176,199 @@ static void U1WIRE_deInit(Unit *unit)
 // ------------------------------------------------------------------------
 
 enum PinCmd_ {
-    CMD_TEST = 0,
+    CMD_CHECK_PRESENCE = 0, // simply tests that any devices are attached
+    CMD_SEARCH_ADDR = 1,    // perform a scan of the bus, retrieving all found device ROMs
+    CMD_SEARCH_ALARM = 2,   // like normal scan, but retrieve only devices with alarm
+    CMD_READ_ADDR = 3,      // read the ROM code from a single device (for single-device bus)
+
+    CMD_SKIP_WRITE = 10,    // write multiple bytes using the SKIP_ROM command
+    CMD_SKIP_READ = 11,     // write and read multiple bytes using the SKIP_ROM command
+    CMD_MATCH_WRITE = 12,   // write multiple bytes using a ROM address
+    CMD_MATCH_READ = 13,    // write and read multiple bytes using a ROM address
+
+    CMD_POLL_FOR_1 = 20,
+
+    CMD_TEST = 100,
 };
+
+/** send the match-rom with address from a payload parser, or skip-rom */
+static void cmd_match_skip(Unit *unit, uint8_t command, PayloadParser *pp)
+{
+    uint64_t addr;
+    if (command == CMD_MATCH_WRITE || command == CMD_MATCH_READ) {
+        addr = pp_u64(pp);
+        ow_write_u8(unit, OW_ROM_MATCH);
+        ow_write_u64(unit, addr);
+    }
+    else {
+        ow_write_u8(unit, OW_ROM_SKIP);
+    }
+}
 
 /** Handle a request message */
 static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
+    struct priv *priv = unit->data;
+
+    bool presence;
+    uint64_t addr;
+    int remain;
+
+    if (priv->busy) return E_BUSY;
+
     switch (command) {
-        /** Write byte(s) - addr:u16, byte(s)  */
-        case CMD_TEST:;
-            bool presence = ow_reset(unit);
-            if (!presence) return E_HW_TIMEOUT;
+        /** Simply check presence of any devices on the bus. Responds with SUCCESS or HW_TIMEOUT */
+        case CMD_CHECK_PRESENCE:
+            dbg("Test presence");
 
-            ow_write_u8(unit, OW_ROM_SKIP);
-
-            ow_write_u8(unit, OW_DS1820_CONVERT_T);
-            while (!ow_read_bit(unit));
-
-            // TODO use knowledge of the use/non-use of parasitic mode to pick the optimal strategy (non-parasitic allows polling)
-
-            //            osDelay(750);
-            // TODO this will be done with an async timer
-            // If parasitive power is not used, we could poll and check the status bit
-
+            // reset
             presence = ow_reset(unit);
             if (!presence) return E_HW_TIMEOUT;
-            ow_write_u8(unit, OW_ROM_SKIP);
 
-            ow_write_u8(unit, OW_DS1820_READ_SCRATCH);
-
-            uint16_t temp = ow_read_u16(unit);
-            uint16_t threg = ow_read_u16(unit);
-            uint16_t reserved = ow_read_u16(unit);
-            uint8_t cnt_remain = ow_read_u8(unit);
-            uint8_t cnt_per_c = ow_read_u8(unit);
-            uint8_t crc = ow_read_u8(unit);
-            // TODO check CRC
-
-            PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
-            pb_u16(&pb, temp);
-            pb_u8(&pb, cnt_remain);
-            pb_u8(&pb, cnt_per_c);
-
-            dbg("respond ...");
-            com_respond_buf(frame_id, MSG_SUCCESS, pb.start, pb_length(&pb));
+            // build response
+            com_respond_ok(frame_id);
             return E_SUCCESS;
+
+        /** Read address of the single device on the bus - returns u64 */
+        case CMD_READ_ADDR:
+            dbg("Write ADDR");
+            // reset
+            presence = ow_reset(unit);
+            if (!presence) return E_HW_TIMEOUT;
+
+            // command
+            ow_write_u8(unit, OW_ROM_READ);
+
+            // read the ROM code
+            addr = ow_read_u64(unit);
+
+            // build response
+            PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
+            pb_u64(&pb, addr);
+            com_respond_pb(frame_id, MSG_SUCCESS, &pb);
+            return E_SUCCESS;
+
+        /**
+         * Write payload to the bus, no confirmation (unless requested).
+         *
+         * Payload:
+         * - Match variant: addr:u64, rest:write_data
+         * - Skip variant:  all:write_data
+         */
+        case CMD_MATCH_WRITE:
+        case CMD_SKIP_WRITE:
+            dbg("Write cmd");
+
+            // reset
+            presence = ow_reset(unit);
+            if (!presence) return E_HW_TIMEOUT;
+
+            // MATCH_ROM+addr, or SKIP_ROM
+            cmd_match_skip(unit, command, pp);
+
+            // write the rest of the payload
+            remain = pp_length(pp);
+            for (int i = 0; i < remain; i++) {
+                ow_write_u8(unit, pp_u8(pp));
+            }
+            return E_SUCCESS;
+
+        /**
+         * Write and read.
+         *
+         * Payload:
+         * - Match variant: addr:u64, read_len:u16, rest:write_data
+         * - Skip variant:  read_len:u16, rest:write_data
+         */
+        case CMD_MATCH_READ:
+        case CMD_SKIP_READ:;
+            dbg("Read cmd");
+
+            // reset
+            presence = ow_reset(unit);
+            if (!presence) return E_HW_TIMEOUT;
+
+            // MATCH_ROM+addr, or SKIP_ROM
+            cmd_match_skip(unit, command, pp);
+
+            // paylod prefix - number of bytes to read
+            uint16_t rcount = pp_u16(pp);
+
+            // write the rest of the payload
+            remain = pp_length(pp);
+            for (int i = 0; i < remain; i++) {
+                ow_write_u8(unit, pp_u8(pp));
+            }
+
+            // read the requested number of bytes
+            for (int i = 0; i < rcount; i++) {
+                unit_tmp512[i] = ow_read_u8(unit);
+            }
+
+            // build response
+            com_respond_buf(frame_id, MSG_SUCCESS, (const uint8_t *) unit_tmp512, rcount);
+            return E_SUCCESS;
+
+        /**
+         * This is the delay function for DS1820 measurements.
+         *
+         * Parasitic: Returns success after the required 750ms
+         * Non-parasitic: Returns SUCCESS after device responds '1', HW_TIMEOUT after 1s
+         */
+        case CMD_POLL_FOR_1:
+            dbg("Poll for 1 - start");
+            if (priv->parasitic) {
+                assert_param(pdPASS == xTimerChangePeriod(priv->busyWaitTimer, 750, 100));
+            }
+            else {
+                // every 10 ticks
+                assert_param(pdPASS == xTimerChangePeriod(priv->busyWaitTimer, 10, 100));
+            }
+            assert_param(pdPASS == xTimerReset(priv->busyWaitTimer, 100));
+            priv->busy = true;
+            priv->busyStart = PTIM_GetTime();
+            priv->busyRequestId = frame_id;
+            dbg("Timer dispatched");
+            return E_SUCCESS; // We will respond when the timer expires
+
+//
+//        case CMD_TEST:;
+//            bool presence = ow_reset(unit);
+//            if (!presence) return E_HW_TIMEOUT;
+//
+//            ow_write_u8(unit, OW_ROM_SKIP);
+//
+//            ow_write_u8(unit, OW_DS1820_CONVERT_T);
+//            while (!ow_read_bit(unit));
+//
+//            // TODO use knowledge of the use/non-use of parasitic mode to pick the optimal strategy (non-parasitic allows polling)
+//
+//            //            osDelay(750);
+//            // TODO this will be done with an async timer
+//            // If parasitive power is not used, we could poll and check the status bit
+//
+//            presence = ow_reset(unit);
+//            if (!presence) return E_HW_TIMEOUT;
+//            ow_write_u8(unit, OW_ROM_SKIP);
+//
+//            ow_write_u8(unit, OW_DS1820_READ_SCRATCH);
+//
+//            uint16_t temp = ow_read_u16(unit);
+//            uint16_t threg = ow_read_u16(unit);
+//            uint16_t reserved = ow_read_u16(unit);
+//            uint8_t cnt_remain = ow_read_u8(unit);
+//            uint8_t cnt_per_c = ow_read_u8(unit);
+//            uint8_t crc = ow_read_u8(unit);
+//            // TODO check CRC
+//
+//            pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
+//            pb_u16(&pb, temp);
+//            pb_u8(&pb, cnt_remain);
+//            pb_u8(&pb, cnt_per_c);
+//
+//            dbg("respond ...");
+//            com_respond_buf(frame_id, MSG_SUCCESS, pb.start, pb_length(&pb));
+//            return E_SUCCESS;
 
         default:
             return E_UNKNOWN_COMMAND;

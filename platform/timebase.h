@@ -22,6 +22,16 @@
 uint64_t PTIM_GetMicrotime(void);
 
 /**
+ * Get time in milliseconds since start
+ *
+ * @return time in ms
+ */
+static inline uint32_t PTIM_GetTime(void)
+{
+    return HAL_GetTick();
+}
+
+/**
  * Microseconds busy delay
  *
  * @param usec - max 998
