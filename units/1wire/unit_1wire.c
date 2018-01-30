@@ -76,11 +76,20 @@ static void U1WIRE_writeIni(Unit *unit, IniWriter *iw)
 
 // ------------------------------------------------------------------------
 
+static void U1WIRE_TimerCb(TimerHandle_t xTimer)
+{
+
+}
+
 /** Allocate data structure and set defaults */
 static error_t U1WIRE_preInit(Unit *unit)
 {
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
     if (priv == NULL) return E_OUT_OF_MEM;
+
+    // the timer is not started until needed
+    priv->busyWaitTimer = xTimerCreate("1w_tim", 750, false, unit, U1WIRE_TimerCb);
+    if (priv->busyWaitTimer == NULL) return E_OUT_OF_MEM;
 
     // some defaults
     priv->pin_number = 0;
@@ -121,6 +130,9 @@ static void U1WIRE_deInit(Unit *unit)
 
     // Release all resources
     rsc_teardown(unit);
+
+    // Delete the software timer
+    assert_param(pdPASS == xTimerDelete(priv->busyWaitTimer, 1000));
 
     // Free memory
     free_ck(unit->data);

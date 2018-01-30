@@ -19,6 +19,7 @@ struct priv {
 
     GPIO_TypeDef *port;
     uint32_t ll_pin;
+    TimerHandle_t busyWaitTimer; // timer used to wait for ds1820 measurement completion
 };
 
 // Prototypes

@@ -109,6 +109,11 @@
 #define configCHECK_FOR_STACK_OVERFLOW           2
 #define configENABLE_BACKWARD_COMPATIBILITY      0
 
+#define configUSE_TIMERS                         1
+#define configTIMER_TASK_PRIORITY                4 // above normal
+#define configTIMER_TASK_STACK_DEPTH             128
+#define configTIMER_QUEUE_LENGTH                 4
+
 #define configTOTAL_HEAP_SIZE 4096
 
 /* Co-routine definitions. */

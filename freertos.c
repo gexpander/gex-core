@@ -125,6 +125,21 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackTy
 }                   
 /* USER CODE END GET_IDLE_TASK_MEMORY */
 
+
+/* USER CODE BEGIN GET_IDLE_TASK_MEMORY */
+static StaticTask_t xTimersTaskTCBBuffer;
+static StackType_t xTimersStack[configTIMER_TASK_STACK_DEPTH];
+
+void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimersTaskTCBBuffer, StackType_t **ppxTimersTaskStackBuffer, uint32_t *pulTimersTaskStackSize )
+{
+  *ppxTimersTaskTCBBuffer = &xTimersTaskTCBBuffer;
+  *ppxTimersTaskStackBuffer = &xTimersStack[0];
+  *pulTimersTaskStackSize = configTIMER_TASK_STACK_DEPTH;
+  /* place for user code */
+}
+/* USER CODE END GET_IDLE_TASK_MEMORY */
+
+
 /* Init FreeRTOS */
 
 void MX_FREERTOS_Init(void) {
