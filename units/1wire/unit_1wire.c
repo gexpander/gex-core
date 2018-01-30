@@ -94,21 +94,18 @@ static void U1WIRE_TimerCb(TimerHandle_t xTimer)
 
         uint32_t time = PTIM_GetTime();
         if (time - priv->busyStart > 1000) {
-            dbg("Timeout 1s not ready. Stopping polling timer.");
+//            dbg("Wait timed out. Stopping polling timer.");
             xTimerStop(xTimer, 100);
             com_respond_error(priv->busyRequestId, E_HW_TIMEOUT);
             priv->busy = false;
-            dbg("Done, timer stopped.");
         }
     }
 
     return;
 halt_ok:
-    dbg("End of measurement, stopping timer");
     xTimerStop(xTimer, 100);
     com_respond_ok(priv->busyRequestId);
     priv->busy = false;
-    dbg("Done, timer stopped.");
 }
 
 /** Allocate data structure and set defaults */
@@ -217,21 +214,24 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
     if (priv->busy) return E_BUSY;
 
     switch (command) {
+        case CMD_SEARCH_ADDR:
+            // TODO
+            return E_NOT_IMPLEMENTED;
+
+        case CMD_SEARCH_ALARM:
+            // TODO
+            return E_NOT_IMPLEMENTED;
+
         /** Simply check presence of any devices on the bus. Responds with SUCCESS or HW_TIMEOUT */
         case CMD_CHECK_PRESENCE:
-            dbg("Test presence");
-
             // reset
             presence = ow_reset(unit);
-            if (!presence) return E_HW_TIMEOUT;
-
             // build response
-            com_respond_ok(frame_id);
+            com_respond_u8(frame_id, (uint8_t) presence);
             return E_SUCCESS;
 
         /** Read address of the single device on the bus - returns u64 */
         case CMD_READ_ADDR:
-            dbg("Write ADDR");
             // reset
             presence = ow_reset(unit);
             if (!presence) return E_HW_TIMEOUT;
@@ -257,8 +257,6 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
          */
         case CMD_MATCH_WRITE:
         case CMD_SKIP_WRITE:
-            dbg("Write cmd");
-
             // reset
             presence = ow_reset(unit);
             if (!presence) return E_HW_TIMEOUT;
@@ -282,8 +280,6 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
          */
         case CMD_MATCH_READ:
         case CMD_SKIP_READ:;
-            dbg("Read cmd");
-
             // reset
             presence = ow_reset(unit);
             if (!presence) return E_HW_TIMEOUT;
@@ -316,19 +312,16 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
          * Non-parasitic: Returns SUCCESS after device responds '1', HW_TIMEOUT after 1s
          */
         case CMD_POLL_FOR_1:
-            dbg("Poll for 1 - start");
             if (priv->parasitic) {
                 assert_param(pdPASS == xTimerChangePeriod(priv->busyWaitTimer, 750, 100));
-            }
-            else {
+            } else {
                 // every 10 ticks
                 assert_param(pdPASS == xTimerChangePeriod(priv->busyWaitTimer, 10, 100));
             }
-            assert_param(pdPASS == xTimerReset(priv->busyWaitTimer, 100));
+            assert_param(pdPASS == xTimerStart(priv->busyWaitTimer, 100));
             priv->busy = true;
             priv->busyStart = PTIM_GetTime();
             priv->busyRequestId = frame_id;
-            dbg("Timer dispatched");
             return E_SUCCESS; // We will respond when the timer expires
 
 //
