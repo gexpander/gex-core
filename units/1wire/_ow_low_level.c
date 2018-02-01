@@ -5,10 +5,10 @@
 //
 
 #include "platform.h"
-#include "unit_base.h"
 
 #define OW_INTERNAL
 #include "_ow_internal.h"
+#include "_ow_low_level.h"
 
 static inline void ow_pull_high(Unit *unit)
 {

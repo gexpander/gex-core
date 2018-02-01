@@ -10,6 +10,10 @@
 // 1WIRE master
 #define OW_INTERNAL
 #include "_ow_internal.h"
+#include "_ow_commands.h"
+#include "_ow_search.h"
+#include "_ow_checksum.h"
+#include "_ow_low_level.h"
 
 // ------------------------------------------------------------------------
 
@@ -176,7 +180,8 @@ enum PinCmd_ {
     CMD_CHECK_PRESENCE = 0, // simply tests that any devices are attached
     CMD_SEARCH_ADDR = 1,    // perform a scan of the bus, retrieving all found device ROMs
     CMD_SEARCH_ALARM = 2,   // like normal scan, but retrieve only devices with alarm
-    CMD_READ_ADDR = 3,      // read the ROM code from a single device (for single-device bus)
+    CMD_SEARCH_CONTINUE = 3, // continue the previously started scan, retrieving more devices
+    CMD_READ_ADDR = 4,      // read the ROM code from a single device (for single-device bus)
 
     CMD_SKIP_WRITE = 10,    // write multiple bytes using the SKIP_ROM command
     CMD_SKIP_READ = 11,     // write and read multiple bytes using the SKIP_ROM command
@@ -213,14 +218,38 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
 
     if (priv->busy) return E_BUSY;
 
+    uint8_t search_cmd = OW_ROM_SEARCH;
     switch (command) {
-        case CMD_SEARCH_ADDR:
-            // TODO
-            return E_NOT_IMPLEMENTED;
-
         case CMD_SEARCH_ALARM:
-            // TODO
-            return E_NOT_IMPLEMENTED;
+            search_cmd = OW_ROM_ALM_SEARCH;
+            // pass-through
+        case CMD_SEARCH_ADDR:
+            ow_search_init(unit, search_cmd, true);
+            // pass through
+        case CMD_SEARCH_CONTINUE:;
+            ow_romcode_t *codes = (void *) unit_tmp512;
+            uint16_t count = ow_search_run(unit, codes, UNIT_TMP_LEN/8);
+
+            if (priv->searchState.status == OW_SEARCH_FAILED) {
+                return E_HW_FAULT;
+            }
+
+            // First byte of the response is a flag whether there are more devices
+            // to be found using CMD_SEARCH_CONTINUE
+            uint8_t status_code = (uint8_t) (priv->searchState.status == OW_SEARCH_MORE);
+
+            TF_Msg msg = {
+                .frame_id = frame_id,
+                .type = MSG_SUCCESS,
+                .len = (TF_LEN) (count * 8 + 1),
+            };
+            TF_Respond_Multipart(comm, &msg);
+            TF_Multipart_Payload(comm, &status_code, 1);
+            // the codes are back-to-back stored inside the buffer, we send it directly
+            // (it's already little-endian, as if built by PayloadBuilder)
+            TF_Multipart_Payload(comm, (uint8_t *) unit_tmp512, (uint32_t) (count * 8));
+            TF_Multipart_Close(comm);
+            return E_SUCCESS;
 
         /** Simply check presence of any devices on the bus. Responds with SUCCESS or HW_TIMEOUT */
         case CMD_CHECK_PRESENCE:
@@ -234,7 +263,7 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
         case CMD_READ_ADDR:
             // reset
             presence = ow_reset(unit);
-            if (!presence) return E_HW_TIMEOUT;
+            if (!presence) return E_HW_FAULT;
 
             // command
             ow_write_u8(unit, OW_ROM_READ);
@@ -259,7 +288,7 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
         case CMD_SKIP_WRITE:
             // reset
             presence = ow_reset(unit);
-            if (!presence) return E_HW_TIMEOUT;
+            if (!presence) return E_HW_FAULT;
 
             // MATCH_ROM+addr, or SKIP_ROM
             cmd_match_skip(unit, command, pp);
@@ -282,7 +311,7 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
         case CMD_SKIP_READ:;
             // reset
             presence = ow_reset(unit);
-            if (!presence) return E_HW_TIMEOUT;
+            if (!presence) return E_HW_FAULT;
 
             // MATCH_ROM+addr, or SKIP_ROM
             cmd_match_skip(unit, command, pp);

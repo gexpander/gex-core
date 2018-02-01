@@ -21,6 +21,7 @@
     X(MALFORMED_COMMAND, NULL) \
     X(NOT_APPLICABLE, NULL) \
     X(HW_TIMEOUT, NULL) \
+    X(HW_FAULT, NULL) \
     X(NO_SUCH_UNIT, NULL) \
     X(PROTOCOL_BREACH, NULL) /* eating with the wrong spoon */  \
     X(BAD_UNIT_TYPE, NULL) \
