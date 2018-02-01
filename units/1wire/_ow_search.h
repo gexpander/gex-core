@@ -51,6 +51,7 @@ struct ow_search_state {
     enum ow_search_result status;
     bool first;
     bool test_checksums;
+    error_t error;
 };
 
 /**
@@ -76,6 +77,6 @@ void ow_search_init(Unit *unit, uint8_t command, bool test_checksums);
  * @param[in] capacity - buffer capacity
  * @return number of romcodes found. Search status is stored in state->status
  */
-uint16_t ow_search_run(Unit *unit, ow_romcode_t *codes, uint16_t capacity);
+uint32_t ow_search_run(Unit *unit, ow_romcode_t *codes, uint32_t capacity);
 
 #endif //GEX_F072_OW_SEARCH_H

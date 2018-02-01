@@ -727,7 +727,7 @@ static void transfer_update_file_info(vfs_file_t file, uint32_t start_sector, ui
     // Check - stream must be the same
     if (stream != file_transfer_state.stream) {
         vfs_printf("    error: changed types during transfer from %i to %i\r\n", stream, file_transfer_state.stream);
-        transfer_update_state(E_ERROR_DURING_TRANSFER);
+        transfer_update_state(E_VFS_ERROR_DURING_TRANSFER);
         return;
     }
 
@@ -743,7 +743,7 @@ static void transfer_reset_file_info(void)
 {
     vfs_printf("vfs_manager transfer_reset_file_info()\r\n");
     if (file_transfer_state.stream_open) {
-        transfer_update_state(E_ERROR_DURING_TRANSFER);
+        transfer_update_state(E_VFS_ERROR_DURING_TRANSFER);
     } else {
         file_transfer_state = default_transfer_state;
         abort_remount();
@@ -824,15 +824,15 @@ static void transfer_stream_data(uint32_t sector, const uint8_t *data, uint32_t 
     status = stream_write((uint8_t *) data, size);
     vfs_printf("    stream_write ret=%i\r\n", (int)status);
 
-    if (E_SUCCESS_DONE == status) {
-        // Override status so E_SUCCESS_DONE
+    if (E_VFS_SUCCESS_DONE == status) {
+        // Override status so E_VFS_SUCCESS_DONE
         // does not get passed into transfer_update_state
         status = stream_close();
         vfs_printf("    stream_close ret=%i\r\n", (int)status);
         file_transfer_state.stream_open = false;
         file_transfer_state.stream_finished = true;
         file_transfer_state.stream_optional_finish = true;
-    } else if (E_SUCCESS_DONE_OR_CONTINUE == status) {
+    } else if (E_VFS_SUCCESS_DONE_OR_MORE == status) {
         status = E_SUCCESS;
         file_transfer_state.stream_optional_finish = true;
     } else {
@@ -852,8 +852,8 @@ static void transfer_update_state(error_t status)
     bool transfer_must_be_finished;
     bool out_of_order_sector;
     error_t local_status = status;
-    assert_param((status != E_SUCCESS_DONE) &&
-                 (status != E_SUCCESS_DONE_OR_CONTINUE));
+    assert_param((status != E_VFS_SUCCESS_DONE) &&
+                 (status != E_VFS_SUCCESS_DONE_OR_MORE));
 
     if (TRASNFER_FINISHED == file_transfer_state.transfer_state) {
         trap("Xfer already closed");
@@ -900,13 +900,13 @@ static void transfer_update_state(error_t status)
         file_transfer_state.transfer_state = TRASNFER_FINISHED;
     } else if (transfer_timeout) {
         if (out_of_order_sector) {
-            local_status = E_OOO_SECTOR;
+            local_status = E_VFS_OOO_SECTOR;
         } else if (!transfer_started) {
             local_status = E_SUCCESS;
         } else if (transfer_can_be_finished) {
             local_status = E_SUCCESS;
         } else {
-            local_status = E_TRANSFER_TIMEOUT;
+            local_status = E_VFS_TRANSFER_TIMEOUT;
         }
 
         file_transfer_state.transfer_state = TRASNFER_FINISHED;

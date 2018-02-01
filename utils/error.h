@@ -17,25 +17,26 @@
     X(INTERNAL_ERROR, NULL) /* a bug */    \
     X(LOADING, NULL) /* unit is loading */ \
     X(UNKNOWN_COMMAND, NULL) \
+    X(NOT_IMPLEMENTED, NULL) \
+    X(NO_SUCH_UNIT, NULL) \
+    X(BAD_UNIT_TYPE, NULL) \
     X(BAD_COUNT, NULL) \
     X(MALFORMED_COMMAND, NULL) \
     X(NOT_APPLICABLE, NULL) \
-    X(HW_TIMEOUT, NULL) \
-    X(HW_FAULT, NULL) \
-    X(NO_SUCH_UNIT, NULL) \
-    X(PROTOCOL_BREACH, NULL) /* eating with the wrong spoon */  \
-    X(BAD_UNIT_TYPE, NULL) \
-    X(NOT_IMPLEMENTED, NULL) \
-    X(BUSY, NULL) \
+    X(HW_TIMEOUT, NULL)        /* timed out waiting for response, or received no ACK from hw device */ \
+    X(BUS_FAULT, NULL)         /* further unspecified hardware bus fault */ \
+    X(CHECKSUM_MISMATCH, NULL) /* bus checksum failed */ \
+    X(PROTOCOL_BREACH, NULL)   /* eating with the wrong spoon */  \
+    X(BUSY, NULL)              /* Unit is busy */ \
     \
     /* VFS user errors (those are meant to be shown to user) */ \
-    X(ERROR_DURING_TRANSFER, "Error during transfer") \
-    X(TRANSFER_TIMEOUT, "Transfer timed out") \
-    X(OOO_SECTOR, "File sent out of order by PC") \
+    X(VFS_ERROR_DURING_TRANSFER, "Error during transfer") \
+    X(VFS_TRANSFER_TIMEOUT, "Transfer timed out") \
+    X(VFS_OOO_SECTOR, "File sent out of order by PC") \
     \
     /* File stream errors/status */ \
-    X(SUCCESS_DONE, NULL) \
-    X(SUCCESS_DONE_OR_CONTINUE, NULL) \
+    X(VFS_SUCCESS_DONE, NULL) \
+    X(VFS_SUCCESS_DONE_OR_MORE, NULL) \
     \
     /* Unit loading */ \
     X(BAD_CONFIG, "Configuration error") \

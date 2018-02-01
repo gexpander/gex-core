@@ -25,12 +25,13 @@ void ow_search_init(Unit *unit, uint8_t command, bool test_checksums)
     state->prev_last_fork = 64;
     memset(state->prev_code, 0, 8);
     state->status = OW_SEARCH_MORE;
+    state->error = E_SUCCESS;
     state->command = command;
     state->first = true;
     state->test_checksums = test_checksums;
 }
 
-uint16_t ow_search_run(Unit *unit, ow_romcode_t *codes, uint16_t capacity)
+uint32_t ow_search_run(Unit *unit, ow_romcode_t *codes, uint32_t capacity)
 {
     if (unit->driver != &UNIT_1WIRE)
         trap("Wrong unit type - %s", unit->driver->name);
@@ -42,7 +43,7 @@ uint16_t ow_search_run(Unit *unit, ow_romcode_t *codes, uint16_t capacity)
 
     if (state->status != OW_SEARCH_MORE) return 0;
 
-    uint16_t found_devices = 0;
+    uint32_t found_devices = 0;
 
     while (found_devices < capacity) {
         uint8_t index = 0;
@@ -52,6 +53,7 @@ uint16_t ow_search_run(Unit *unit, ow_romcode_t *codes, uint16_t capacity)
         // Start a new transaction. Devices respond to reset
         if (!ow_reset(unit)) {
             state->status = OW_SEARCH_FAILED;
+            state->error = E_HW_TIMEOUT;
             goto done;
         }
         // Send the search command (SEARCH_ROM, SEARCH_ALARM)
@@ -83,6 +85,7 @@ uint16_t ow_search_run(Unit *unit, ow_romcode_t *codes, uint16_t capacity)
             else if (p && n) {
                 // No devices left connected - this doesn't normally happen
                 state->status = OW_SEARCH_FAILED;
+                state->error = E_BUS_FAULT;
                 goto done;
             }
 
@@ -98,11 +101,17 @@ uint16_t ow_search_run(Unit *unit, ow_romcode_t *codes, uint16_t capacity)
 
         memcpy(state->prev_code, code, 8);
 
-        if (!state->test_checksums || 0 == ow_checksum(code, 8)) {
-            // Record a found address
-            memcpy(codes[found_devices], code, 8);
-            found_devices++;
+        if (state->test_checksums) {
+            if (0 != ow_checksum(code, 8)) {
+                state->status = OW_SEARCH_FAILED;
+                state->error = E_CHECKSUM_MISMATCH;
+                goto done;
+            }
         }
+
+        // Record a found address
+        memcpy(codes[found_devices], code, 8);
+        found_devices++;
 
         // Stop condition
         if (last_fork == -1) {

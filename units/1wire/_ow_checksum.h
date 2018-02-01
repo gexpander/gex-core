@@ -18,6 +18,6 @@
  * @param[in] len - buffer length
  * @return checksum
  */
-uint8_t ow_checksum(const uint8_t *buf, uint16_t len);
+uint8_t ow_checksum(const uint8_t *buf, uint32_t len);
 
 #endif //GEX_F072_OW_CHECKSUM_H

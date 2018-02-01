@@ -148,10 +148,10 @@ error_t stream_write(const uint8_t *data, uint32_t size)
     // Write to stream
     status = current_stream->write(&shared_state, data, size);
 
-    if (E_SUCCESS_DONE == status) {
+    if (E_VFS_SUCCESS_DONE == status) {
         vfs_printf("Stream DONE");
         stream_state = STREAM_STATE_END;
-    } else if ((E_SUCCESS_DONE_OR_CONTINUE == status) || (E_SUCCESS == status)) {
+    } else if ((E_VFS_SUCCESS_DONE_OR_MORE == status) || (E_SUCCESS == status)) {
         // Stream should remain in the open state
         assert_param(STREAM_STATE_OPEN == stream_state);
         vfs_printf("Stream may close or get more data.,,");
@@ -226,7 +226,7 @@ static error_t write_conf(void *state, const uint8_t *data, uint32_t size)
 
     ini_parse((const char *) data, size);
 
-    return E_SUCCESS_DONE_OR_CONTINUE; // indicate we don't really know if it's over or not
+    return E_VFS_SUCCESS_DONE_OR_MORE; // indicate we don't really know if it's over or not
     // TODO use some marker for EOF in the actual config files
 }
 

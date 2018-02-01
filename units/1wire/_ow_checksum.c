@@ -24,10 +24,10 @@ static uint8_t crc8_add(uint8_t cksum, uint8_t byte)
     return crc8_bits(byte ^ cksum);
 }
 
-uint8_t ow_checksum(const uint8_t *buff, uint16_t len)
+uint8_t ow_checksum(const uint8_t *buff, uint32_t len)
 {
     uint8_t cksum = 0;
-    for(uint16_t i = 0; i < len; i++) {
+    for(uint32_t i = 0; i < len; i++) {
         cksum = crc8_add(cksum, buff[i]);
     }
     return cksum;
