@@ -9,7 +9,6 @@
 #define I2C_INTERNAL
 #include "_i2c_internal.h"
 
-
 static void i2c_reset(struct priv *priv)
 {
     LL_I2C_Disable(priv->periph);
