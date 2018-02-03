@@ -10,8 +10,6 @@
 // I2C master
 #define I2C_INTERNAL
 #include "_i2c_internal.h"
-#include "_i2c_settings.h"
-#include "_i2c_init.h"
 
 enum PinCmd_ {
     CMD_TEST = 0,

@@ -20,7 +20,7 @@ enum PinCmd_ {
 };
 
 /** Handle a request message */
-static error_t SPI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
+static error_t USPI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
     uint8_t slave;
     uint16_t slaves;
@@ -80,5 +80,5 @@ const UnitDriver UNIT_SPI = {
     .init = USPI_init,
     .deInit = USPI_deInit,
     // Function
-    .handleRequest = SPI_handleRequest,
+    .handleRequest = USPI_handleRequest,
 };

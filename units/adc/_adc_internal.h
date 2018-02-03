@@ -2,10 +2,10 @@
 // Created by MightyPork on 2018/02/03.
 //
 
-#ifndef GEX_F072_TPL_INTERNAL_H
-#define GEX_F072_TPL_INTERNAL_H
+#ifndef GEX_F072_ADC_INTERNAL_H
+#define GEX_F072_ADC_INTERNAL_H
 
-#ifndef TPL_INTERNAL
+#ifndef ADC_INTERNAL
 #error bad include!
 #endif
 
@@ -19,28 +19,28 @@ struct priv {
 };
 
 /** Allocate data structure and set defaults */
-error_t UTPL_preInit(Unit *unit);
+error_t UADC_preInit(Unit *unit);
 
 /** Load from a binary buffer stored in Flash */
-void UTPL_loadBinary(Unit *unit, PayloadParser *pp);
+void UADC_loadBinary(Unit *unit, PayloadParser *pp);
 
 /** Write to a binary buffer for storing in Flash */
-void UTPL_writeBinary(Unit *unit, PayloadBuilder *pb);
+void UADC_writeBinary(Unit *unit, PayloadBuilder *pb);
 
 // ------------------------------------------------------------------------
 
 /** Parse a key-value pair from the INI file */
-error_t UTPL_loadIni(Unit *unit, const char *key, const char *value);
+error_t UADC_loadIni(Unit *unit, const char *key, const char *value);
 
 /** Generate INI file section for the unit */
-void UTPL_writeIni(Unit *unit, IniWriter *iw);
+void UADC_writeIni(Unit *unit, IniWriter *iw);
 
 // ------------------------------------------------------------------------
 
 /** Finalize unit set-up */
-error_t UTPL_init(Unit *unit);
+error_t UADC_init(Unit *unit);
 
 /** Tear down the unit */
-void UTPL_deInit(Unit *unit);
+void UADC_deInit(Unit *unit);
 
-#endif //GEX_F072_TPL_INTERNAL_H
+#endif //GEX_F072_ADC_INTERNAL_H

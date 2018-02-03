@@ -9,7 +9,7 @@
 
 #include "unit.h"
 
-extern const UnitDriver UNIT_TPL;
+extern const UnitDriver UNIT_ADC;
 
 // UU_ prototypes
 
