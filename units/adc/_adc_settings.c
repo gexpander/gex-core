@@ -21,6 +21,10 @@ void UADC_loadBinary(Unit *unit, PayloadParser *pp)
     priv->enable_vref = pp_bool(pp);
     priv->sample_time = pp_u8(pp);
     priv->frequency = pp_u32(pp);
+
+    if (version >= 1) {
+        priv->buffer_size = pp_u16(pp);
+    }
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -28,13 +32,14 @@ void UADC_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_u8(pb, 0); // version
+    pb_u8(pb, 1); // version
 
     pb_u16(pb, priv->channels);
     pb_bool(pb, priv->enable_tsense);
     pb_bool(pb, priv->enable_vref);
     pb_u8(pb, priv->sample_time);
     pb_u32(pb, priv->frequency);
+    pb_u16(pb, priv->buffer_size);
 }
 
 // ------------------------------------------------------------------------
@@ -60,6 +65,9 @@ error_t UADC_loadIni(Unit *unit, const char *key, const char *value)
     }
     else if (streq(key, "frequency")) {
         priv->frequency = (uint32_t) avr_atoi(value);
+    }
+    else if (streq(key, "buffer_size")) {
+        priv->buffer_size = (uint16_t) avr_atoi(value);
     }
     else {
         return E_BAD_KEY;
@@ -89,5 +97,11 @@ void UADC_writeIni(Unit *unit, IniWriter *iw)
 
     iw_comment(iw, "Sampling frequency (Hz)");
     iw_entry(iw, "frequency", "%d", (int)priv->frequency);
+
+    iw_comment(iw, "Sample buffer size (bytes, 2 per channels per sample)");
+    iw_comment(iw, "- a report is sent when 1/2 of the circular buffer is filled");
+    iw_comment(iw, "- the buffer is shared by all channels");
+    iw_comment(iw, "- insufficient buffer size can lead to data loss");
+    iw_entry(iw, "buffer_size", "%d", (int)priv->buffer_size);
 }
 

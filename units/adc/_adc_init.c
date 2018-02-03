@@ -30,7 +30,8 @@ error_t UADC_preInit(Unit *unit)
     priv->enable_tsense = false;
     priv->enable_vref = false;
     priv->sample_time = 0b010; // 13.5c
-    priv->frequency = 4; //1000
+    priv->frequency = 1000;
+    priv->buffer_size = 512;
 
     return E_SUCCESS;
 }
@@ -160,6 +161,7 @@ error_t UADC_init(Unit *unit)
         LL_TIM_SetAutoReload(priv->TIMx, count - 1);
         LL_TIM_EnableARRPreload(priv->TIMx);
         LL_TIM_EnableUpdateEvent(priv->TIMx);
+        LL_TIM_SetTriggerOutput(priv->TIMx, LL_TIM_TRGO_UPDATE);
         LL_TIM_GenerateEvent_UPDATE(priv->TIMx); // load the prescaller value
     }
 
@@ -195,9 +197,9 @@ error_t UADC_init(Unit *unit)
     // --------------------- CONFIGURE DMA -------------------------------
     dbg("Setting up DMA");
     {
-        // The length must be a 2*multiple of the number of channels
-        // this is a horrible way to do it but will work
-        uint16_t itemcount = (uint16_t) (priv->nb_channels * (uint16_t) (UADC_DMA_MAX_BUF_LEN / (2 * priv->nb_channels)));
+        // The length must be a 2*multiple of the number of channels, in bytes
+        uint16_t itemcount = (uint16_t) ((priv->nb_channels) * (uint16_t) (priv->buffer_size / (2 * priv->nb_channels)));
+        if (itemcount % 2 == 1) itemcount -= priv->nb_channels;
         priv->dma_buffer_size = (uint16_t) (itemcount * 2);
         dbg("DMA item count is %d (%d bytes)", itemcount, priv->dma_buffer_size);
 
@@ -236,6 +238,7 @@ error_t UADC_init(Unit *unit)
     dbg("ADC inited, starting the timer ...");
 
     // FIXME - temporary demo - counter start...
+    LL_ADC_REG_StartConversion(priv->ADCx); // the first conversion must be started manually
     LL_TIM_EnableCounter(priv->TIMx);
 
     return E_SUCCESS;
@@ -254,7 +257,7 @@ void UADC_deInit(Unit *unit)
         LL_ADC_CommonDeInit(priv->ADCx_Common);
         LL_TIM_DeInit(priv->TIMx);
 
-        irqd_detach(priv->DMAx, UADC_DMA_Handler);
+        irqd_detach(priv->DMA_CHx, UADC_DMA_Handler);
         LL_DMA_DeInit(priv->DMAx, priv->dma_chnum);
 
         free_ck(priv->dma_buffer);

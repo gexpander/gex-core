@@ -19,6 +19,7 @@ struct priv {
     bool enable_vref;  //!< append a signal from the internal voltage reference
     uint8_t sample_time;  //!< 0-7 (corresponds to 1.5-239.5 cycles) - time for the sampling capacitor to charge
     uint32_t frequency;   //!< Timer frequency in Hz. Note: not all frequencies can be achieved accurately
+    uint16_t buffer_size; //!< Buffer size in bytes (count 2 bytes per channel per measurement) - faster sampling freq needs bigger buffer
 
     // TODO averaging (maybe a separate component?)
     // TODO threshold watchdog with hysteresis (maybe a separate component?)
