@@ -4,15 +4,11 @@
 
 #include "comm/messages.h"
 #include "unit_base.h"
-#include "utils/avrlibc.h"
 #include "unit_1wire.h"
 
 // 1WIRE master
 #define OW_INTERNAL
 #include "_ow_internal.h"
-#include "_ow_commands.h"
-#include "_ow_search.h"
-#include "_ow_checksum.h"
 #include "_ow_low_level.h"
 
 // ------------------------------------------------------------------------
@@ -80,12 +76,27 @@ static void U1WIRE_writeIni(Unit *unit, IniWriter *iw)
 
 // ------------------------------------------------------------------------
 
+/**
+ * 1-Wire timer callback, used for the 'wait_ready' function.
+ *
+ * - In parasitic mode, this is a simple 750ms wait, after which a SUCCESS response is sent.
+ * - In 3-wire mode, the callback is fired periodically and performs a Read operation on the bus.
+ *   The unit responds with 0 while the operation is ongoing. On receiving 1 a SUCCESS response is sent.
+ *   The polling is abandoned after a timeout, sending a TIMEOUT response.
+ *
+ * @param xTimer
+ */
 static void U1WIRE_TimerCb(TimerHandle_t xTimer)
 {
     Unit *unit = pvTimerGetTimerID(xTimer);
     assert_param(unit);
     struct priv *priv = unit->data;
     assert_param(priv->busy);
+
+    // XXX Possible bug
+    // This is run on the timers thread. The TF write functions block on a semaphore.
+    // The FreeRTOS documentation warns against blocking in the timers thread,
+    // but does not say why. This can be solved by scheduling the response using the job queue.
 
     if (priv->parasitic) {
         // this is the end of the 750ms measurement time
@@ -174,169 +185,6 @@ static void U1WIRE_deInit(Unit *unit)
 }
 
 // ------------------------------------------------------------------------
-
-/**
- * Check if there are any units present on the bus
- *
- * @param[in,out] unit
- * @param[out] presence - any devices present
- * @return success
- */
-error_t UU_1WIRE_CheckPresence(Unit *unit, bool *presence)
-{
-    CHECK_TYPE(unit, &UNIT_1WIRE);
-    // reset
-    *presence = ow_reset(unit);
-    return E_SUCCESS;
-}
-
-/**
- * Read a device's address (use only with a single device attached)
- *
- * @param[in,out] unit
- * @param[out] address - the device's address, 0 on error or CRC mismatch
- * @return success
- */
-error_t UU_1WIRE_ReadAddress(Unit *unit, uint64_t *address)
-{
-    CHECK_TYPE(unit, &UNIT_1WIRE);
-    *address = 0;
-    if (!ow_reset(unit)) return E_HW_TIMEOUT;
-
-    // command
-    ow_write_u8(unit, OW_ROM_READ);
-
-    // read the ROM code
-    *address = ow_read_u64(unit);
-
-    const uint8_t *addr_as_bytes = (void*)address;
-    if (0 != ow_checksum(addr_as_bytes, 8)) {
-        *address = 0;
-        return E_CHECKSUM_MISMATCH; // checksum mismatch
-    }
-    return E_SUCCESS;
-}
-
-/**
- * Write bytes to a device / devices
- *
- * @param[in,out] unit
- * @param[in] address - device address, 0 to skip match (single device or broadcast)
- * @param[in] buff - bytes to write
- * @param[in] len - buffer length
- * @return success
- */
-error_t UU_1WIRE_Write(Unit *unit, uint64_t address, const uint8_t *buff, uint32_t len)
-{
-    CHECK_TYPE(unit, &UNIT_1WIRE);
-    if (!ow_reset(unit)) return E_HW_TIMEOUT;
-
-    // MATCH_ROM+addr, or SKIP_ROM
-    if (address != 0) {
-        ow_write_u8(unit, OW_ROM_MATCH);
-        ow_write_u64(unit, address);
-    } else {
-        ow_write_u8(unit, OW_ROM_SKIP);
-    }
-
-    // write the payload;
-    for (uint32_t i = 0; i < len; i++) {
-        ow_write_u8(unit, *buff++);
-    }
-    return E_SUCCESS;
-}
-
-/**
- * Read bytes from a device / devices, first writing a query
- *
- * @param[in,out] unit
- * @param[in] address - device address, 0 to skip match (single device ONLY!)
- * @param[in] request_buff - bytes to write before reading a response
- * @param[in] request_len - number of bytes to write
- * @param[out] response_buff - buffer for storing the read response
- * @param[in] response_len - number of bytes to read
- * @param[in] check_crc - verify CRC
- * @return success
- */
-error_t UU_1WIRE_Read(Unit *unit, uint64_t address,
-                      const uint8_t *request_buff, uint32_t request_len,
-                      uint8_t *response_buff, uint32_t response_len, bool check_crc)
-{
-    CHECK_TYPE(unit, &UNIT_1WIRE);
-    if (!ow_reset(unit)) return E_HW_TIMEOUT;
-
-    uint8_t *rb = response_buff;
-
-    // MATCH_ROM+addr, or SKIP_ROM
-    if (address != 0) {
-        ow_write_u8(unit, OW_ROM_MATCH);
-        ow_write_u64(unit, address);
-    } else {
-        ow_write_u8(unit, OW_ROM_SKIP);
-    }
-
-    // write the payload;
-    for (uint32_t i = 0; i < request_len; i++) {
-        ow_write_u8(unit, *request_buff++);
-    }
-
-    // read the requested number of bytes
-    for (uint32_t i = 0; i < response_len; i++) {
-        *rb++ = ow_read_u8(unit);
-    }
-
-    if (check_crc) {
-        if (0 != ow_checksum(response_buff, response_len)) {
-            return E_CHECKSUM_MISMATCH;
-        }
-    }
-    return E_SUCCESS;
-}
-
-/**
- * Perform a ROM search operation.
- * The algorithm is on a depth-first search without backtracking,
- * taking advantage of the open-drain topology.
- *
- * This function either starts the search, or continues it.
- *
- * @param[in,out] unit
- * @param[in] with_alarm - true to match only devices in alarm state
- * @param[in] restart - true to restart the search (search from the lowest address)
- * @param[out] buffer - buffer for storing found addresses
- * @param[in] capacity - buffer capacity in address entries (8 bytes)
- * @param[out] real_count - real number of found addresses (for which the CRC matched)
- * @param[out] have_more - flag indicating there are more devices to be found
- * @return success
- */
-error_t UU_1WIRE_Search(Unit *unit, bool with_alarm, bool restart,
-                        uint64_t *buffer, uint32_t capacity, uint32_t *real_count,
-                        bool *have_more)
-{
-    CHECK_TYPE(unit, &UNIT_1WIRE);
-    struct priv *priv = unit->data;
-    
-    if (restart) {
-        uint8_t search_cmd = (uint8_t) (with_alarm ? OW_ROM_ALM_SEARCH : OW_ROM_SEARCH);
-        ow_search_init(unit, search_cmd, true);
-    }
-
-    *real_count = ow_search_run(unit, (ow_romcode_t *) buffer, capacity);
-
-    // resolve the code
-    switch (priv->searchState.status) {
-        case OW_SEARCH_MORE:
-            *have_more = priv->searchState.status == OW_SEARCH_MORE;
-
-        case OW_SEARCH_DONE:
-            return E_SUCCESS;
-
-        case OW_SEARCH_FAILED:
-            return priv->searchState.error;
-    }
-
-    return E_FAILURE;
-}
 
 
 enum PinCmd_ {

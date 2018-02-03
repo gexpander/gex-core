@@ -5,6 +5,10 @@
 #ifndef GEX_F072_OW_LOW_LEVEL_H
 #define GEX_F072_OW_LOW_LEVEL_H
 
+#ifndef OW_INTERNAL
+#error bad include!
+#endif
+
 #include "platform.h"
 #include "unit_base.h"
 #include "_ow_low_level.h"

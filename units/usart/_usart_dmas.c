@@ -7,7 +7,7 @@
 #include "unit_base.h"
 
 #define UUSART_INTERNAL
-#include "_internal.h"
+#include "_usart_internal.h"
 
 static void UUSART_DMA_RxHandler(void *arg);
 static void UUSART_DMA_TxHandler(void *arg);

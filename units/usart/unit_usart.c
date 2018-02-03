@@ -6,8 +6,18 @@
 #include "unit_usart.h"
 
 #define UUSART_INTERNAL
-#include "_internal.h"
+#include "_usart_internal.h"
 
+/**
+ * Data RX handler, run on the jobs thread.
+ *
+ * unit - unit
+ * timestamp - timestamp
+ * data1 - read start position
+ * data2 - nr of bytes to read
+ *
+ * @param job
+ */
 static void UUSART_SendReceivedDataToMaster(Job *job)
 {
     Unit *unit = job->unit;
@@ -27,7 +37,9 @@ static void UUSART_SendReceivedDataToMaster(Job *job)
 }
 
 /**
- * Handle received data (we're inside the IRQ)
+ * Handle received data (we're inside the IRQ).
+ * This is called either from a DMA complete / half interrupot,
+ * or form the timeout interrupt.
  *
  * @param unit - handled unit
  * @param endpos - end position in the buffer
@@ -79,51 +91,6 @@ void UUSART_Tick(Unit *unit)
     }
 }
 
-
-error_t UU_USART_Write(Unit *unit, const uint8_t *buffer, uint32_t len)
-{
-    CHECK_TYPE(unit, &UNIT_USART);
-    struct priv *priv = unit->data;
-
-    uint32_t t_start = HAL_GetTick();
-    while (len > 0) {
-        // this should be long enough even for the slowest bitrates and 512 bytes
-        if (HAL_GetTick() - t_start > 5000) {
-            return E_HW_TIMEOUT;
-        }
-
-        uint16_t chunk = UUSART_DMA_TxQueue(priv, buffer, (uint16_t) len);
-
-        buffer += chunk;
-        len -= chunk;
-
-        // We give up control if there's another thread waiting and this isn't the last cycle
-        if (len > 0) {
-            osThreadYield();
-        }
-    }
-
-    return E_SUCCESS;
-}
-
-error_t UU_USART_WriteSync(Unit *unit, const uint8_t *buffer, uint32_t len)
-{
-    CHECK_TYPE(unit, &UNIT_USART);
-    struct priv *priv = unit->data;
-
-    TRY(UU_USART_Write(unit, buffer, len));
-
-    // Now wait for the last DMA to complete
-    uint32_t t_start = HAL_GetTick();
-    while (priv->tx_dma_busy) {
-        if (HAL_GetTick() - t_start > 1000) {
-            return E_HW_TIMEOUT;
-        }
-    }
-
-    return E_SUCCESS;
-}
-
 enum PinCmd_ {
     CMD_WRITE = 0,
     CMD_WRITE_SYNC = 1,
@@ -135,11 +102,13 @@ static error_t UUSART_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
     uint32_t len;
     const uint8_t *pld;
     switch (command) {
+        /** Write bytes to the USART. Payload consists of the data to send. Waits for completion. */
         case CMD_WRITE:
             pld = pp_tail(pp, &len);
             TRY(UU_USART_Write(unit, pld, len));
             return E_SUCCESS;
 
+        /** Write bytes to the USART, without waiting for completion. */
         case CMD_WRITE_SYNC:
             pld = pp_tail(pp, &len);
             TRY(UU_USART_WriteSync(unit, pld, len));

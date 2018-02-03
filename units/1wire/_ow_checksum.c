@@ -3,6 +3,8 @@
 //
 
 #include "platform.h"
+
+#define OW_INTERNAL
 #include "_ow_checksum.h"
 
 static inline uint8_t crc8_bits(uint8_t data)

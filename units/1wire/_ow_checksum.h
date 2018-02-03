@@ -5,6 +5,10 @@
 #ifndef GEX_F072_OW_CHECKSUM_H
 #define GEX_F072_OW_CHECKSUM_H
 
+#ifndef OW_INTERNAL
+#error bad include!
+#endif
+
 #include <stdint.h>
 
 /**

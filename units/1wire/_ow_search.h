@@ -75,7 +75,8 @@ void ow_search_init(Unit *unit, uint8_t command, bool test_checksums);
  * @param[in,out] state - search state, used for multiple calls with limited buffer size
  * @param[out] codes - buffer for found romcodes
  * @param[in] capacity - buffer capacity
- * @return number of romcodes found. Search status is stored in state->status
+ * @return number of romcodes found. Search status is stored in `state->status`,
+ *         possible error code in `status->error`
  */
 uint32_t ow_search_run(Unit *unit, ow_romcode_t *codes, uint32_t capacity);
 

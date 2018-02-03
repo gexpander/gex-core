@@ -5,6 +5,10 @@
 #ifndef GEX_F072_OW_COMMANDS_H
 #define GEX_F072_OW_COMMANDS_H
 
+#ifndef OW_INTERNAL
+#error bad include!
+#endif
+
 #define OW_ROM_SEARCH     0xF0
 #define OW_ROM_READ       0x33
 #define OW_ROM_MATCH      0x55

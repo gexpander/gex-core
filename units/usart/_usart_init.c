@@ -6,7 +6,7 @@
 #include "unit_base.h"
 
 #define UUSART_INTERNAL
-#include "_internal.h"
+#include "_usart_internal.h"
 
 extern error_t UUSART_ClaimDMAs(Unit *unit);
 extern error_t UUSART_SetupDMAs(Unit *unit);
