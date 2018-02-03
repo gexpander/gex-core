@@ -134,7 +134,7 @@ error_t UADC_init(Unit *unit)
             return E_BAD_CONFIG;
         }
 
-        if (priv->dma_buffer_size < priv->nb_channels*2*2) {
+        if (priv->buffer_size < priv->nb_channels*2*2) {
             dbg("Insufficient buf size");
             return E_BAD_CONFIG;
         }
