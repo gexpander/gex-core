@@ -29,4 +29,31 @@ struct priv {
     GPIO_TypeDef *ssn_port;
 };
 
+// ------------------------------------------------------------------------
+
+/** Load from a binary buffer stored in Flash */
+void USPI_loadBinary(Unit *unit, PayloadParser *pp);
+
+/** Write to a binary buffer for storing in Flash */
+void USPI_writeBinary(Unit *unit, PayloadBuilder *pb);
+
+// ------------------------------------------------------------------------
+
+/** Parse a key-value pair from the INI file */
+error_t USPI_loadIni(Unit *unit, const char *key, const char *value);
+
+/** Generate INI file section for the unit */
+void USPI_writeIni(Unit *unit, IniWriter *iw);
+
+// ------------------------------------------------------------------------
+
+/** Allocate data structure and set defaults */
+error_t USPI_preInit(Unit *unit);
+
+/** Finalize unit set-up */
+error_t USPI_init(Unit *unit);
+
+/** Tear down the unit */
+void USPI_deInit(Unit *unit);
+
 #endif //GEX_F072_SPI_INTERNAL_H

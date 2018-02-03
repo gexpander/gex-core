@@ -7,7 +7,6 @@
 
 #define NPX_INTERNAL
 #include "_npx_internal.h"
-#include "_npx_init.h"
 #include "ws2812.h"
 
 /** Allocate data structure and set defaults */

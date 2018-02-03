@@ -7,10 +7,9 @@
 
 #define SPI_INTERNAL
 #include "_spi_internal.h"
-#include "_spi_init.h"
 
 /** Allocate data structure and set defaults */
-error_t SPI_preInit(Unit *unit)
+error_t USPI_preInit(Unit *unit)
 {
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
     if (priv == NULL) return E_OUT_OF_MEM;
@@ -32,7 +31,7 @@ error_t SPI_preInit(Unit *unit)
 }
 
 /** Finalize unit set-up */
-error_t SPI_init(Unit *unit)
+error_t USPI_init(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data;
@@ -176,7 +175,7 @@ error_t SPI_init(Unit *unit)
 }
 
 /** Tear down the unit */
-void SPI_deInit(Unit *unit)
+void USPI_deInit(Unit *unit)
 {
     struct priv *priv = unit->data;
 

@@ -9,7 +9,6 @@
 #define OW_INTERNAL
 #include "_ow_internal.h"
 #include "_ow_commands.h"
-#include "_ow_checksum.h"
 #include "_ow_low_level.h"
 
 /* Check presence of any devices on the bus */

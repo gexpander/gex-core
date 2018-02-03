@@ -7,7 +7,6 @@
 
 #define TPL_INTERNAL
 #include "_tpl_internal.h"
-#include "_tpl_init.h"
 
 /** Allocate data structure and set defaults */
 error_t TPL_preInit(Unit *unit)

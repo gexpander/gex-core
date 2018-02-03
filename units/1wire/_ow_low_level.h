@@ -14,6 +14,19 @@
 #include "_ow_low_level.h"
 
 /**
+ * Compute a 1-wire type checksum.
+ * If the buffer includes the checksum, the result should be 0.
+ *
+ * (this function may be used externally, or you can delete the implementation
+ * from the c file if another implementation is already available)
+ *
+ * @param[in] buf - buffer of bytes to verify
+ * @param[in] len - buffer length
+ * @return checksum
+ */
+uint8_t ow_checksum(const uint8_t *buf, uint32_t len);
+
+/**
  * Reset the 1-wire bus
  */
 bool ow_reset(Unit *unit);

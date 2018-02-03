@@ -7,10 +7,9 @@
 
 #define SPI_INTERNAL
 #include "_spi_internal.h"
-#include "_spi_settings.h"
 
 /** Load from a binary buffer stored in Flash */
-void SPI_loadBinary(Unit *unit, PayloadParser *pp)
+void USPI_loadBinary(Unit *unit, PayloadParser *pp)
 {
     struct priv *priv = unit->data;
 
@@ -31,7 +30,7 @@ void SPI_loadBinary(Unit *unit, PayloadParser *pp)
 }
 
 /** Write to a binary buffer for storing in Flash */
-void SPI_writeBinary(Unit *unit, PayloadBuilder *pb)
+void USPI_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
@@ -53,7 +52,7 @@ void SPI_writeBinary(Unit *unit, PayloadBuilder *pb)
 // ------------------------------------------------------------------------
 
 /** Parse a key-value pair from the INI file */
-error_t SPI_loadIni(Unit *unit, const char *key, const char *value)
+error_t USPI_loadIni(Unit *unit, const char *key, const char *value)
 {
     bool suc = true;
     struct priv *priv = unit->data;
@@ -94,7 +93,7 @@ error_t SPI_loadIni(Unit *unit, const char *key, const char *value)
 }
 
 /** Generate INI file section for the unit */
-void SPI_writeIni(Unit *unit, IniWriter *iw)
+void USPI_writeIni(Unit *unit, IniWriter *iw)
 {
     struct priv *priv = unit->data;
 

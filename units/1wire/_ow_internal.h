@@ -27,6 +27,37 @@ struct priv {
     struct ow_search_state searchState;
 };
 
-// Prototypes
+/** Allocate data structure and set defaults */
+error_t OW_preInit(Unit *unit);
+
+/** Load from a binary buffer stored in Flash */
+void OW_loadBinary(Unit *unit, PayloadParser *pp);
+
+/** Write to a binary buffer for storing in Flash */
+void OW_writeBinary(Unit *unit, PayloadBuilder *pb);
+
+// ------------------------------------------------------------------------
+
+/** Parse a key-value pair from the INI file */
+error_t OW_loadIni(Unit *unit, const char *key, const char *value);
+
+/** Generate INI file section for the unit */
+void OW_writeIni(Unit *unit, IniWriter *iw);
+
+// ------------------------------------------------------------------------
+
+/** Allocate data structure and set defaults */
+error_t OW_preInit(Unit *unit);
+
+/** Finalize unit set-up */
+error_t OW_init(Unit *unit);
+
+/** Tear down the unit */
+void OW_deInit(Unit *unit);
+
+/** Callback for the FreeRTOS timer used to wait for device ready */
+void OW_TimerCb(TimerHandle_t xTimer);
+
+// ------------------------------------------------------------------------
 
 #endif //GEX_F072_OW_INTERNAL_H

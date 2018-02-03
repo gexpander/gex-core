@@ -7,7 +7,6 @@
 
 #define I2C_INTERNAL
 #include "_i2c_internal.h"
-#include "_i2c_init.h"
 
 
 /** Allocate data structure and set defaults */

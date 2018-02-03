@@ -11,8 +11,6 @@
 
 #define SPI_INTERNAL
 #include "_spi_internal.h"
-#include "_spi_settings.h"
-#include "_spi_init.h"
 
 // SPI master
 
@@ -73,14 +71,14 @@ const UnitDriver UNIT_SPI = {
     .name = "SPI",
     .description = "SPI master",
     // Settings
-    .preInit = SPI_preInit,
-    .cfgLoadBinary = SPI_loadBinary,
-    .cfgWriteBinary = SPI_writeBinary,
-    .cfgLoadIni = SPI_loadIni,
-    .cfgWriteIni = SPI_writeIni,
+    .preInit = USPI_preInit,
+    .cfgLoadBinary = USPI_loadBinary,
+    .cfgWriteBinary = USPI_writeBinary,
+    .cfgLoadIni = USPI_loadIni,
+    .cfgWriteIni = USPI_writeIni,
     // Init
-    .init = SPI_init,
-    .deInit = SPI_deInit,
+    .init = USPI_init,
+    .deInit = USPI_deInit,
     // Function
     .handleRequest = SPI_handleRequest,
 };

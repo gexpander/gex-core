@@ -6,8 +6,7 @@
 #include "unit_dout.h"
 
 #define DOUT_INTERNAL
-#include "_dout_settings.h"
-#include "_dout_init.h"
+#include "_dout_internal.h"
 
 enum PinCmd_ {
     CMD_TEST = 0,
@@ -17,8 +16,7 @@ enum PinCmd_ {
 };
 
 /** Handle a request message */
-static error_t DOut_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
-                                  PayloadParser *pp)
+static error_t DOut_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
     uint16_t packed = pp_u16(pp);
 

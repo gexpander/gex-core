@@ -7,7 +7,6 @@
 
 #define NPX_INTERNAL
 #include "_npx_internal.h"
-#include "_npx_settings.h"
 
 /** Load from a binary buffer stored in Flash */
 void Npx_loadBinary(Unit *unit, PayloadParser *pp)

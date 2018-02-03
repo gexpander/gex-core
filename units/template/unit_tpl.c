@@ -7,8 +7,6 @@
 
 #define TPL_INTERNAL
 #include "_tpl_internal.h"
-#include "_tpl_settings.h"
-#include "_tpl_init.h"
 
 // ------------------------------------------------------------------------
 

@@ -63,9 +63,6 @@ struct priv {
     volatile bool tx_dma_busy;      //!< Flag that the Tx DMA request is ongoing
 };
 
-/** Allocate data structure and set defaults */
-error_t UUSART_preInit(Unit *unit);
-
 // ------------------------------------------------------------------------
 
 /** Load from a binary buffer stored in Flash */
@@ -83,6 +80,9 @@ error_t UUSART_loadIni(Unit *unit, const char *key, const char *value);
 void UUSART_writeIni(Unit *unit, IniWriter *iw);
 
 // ------------------------------------------------------------------------
+
+/** Allocate data structure and set defaults */
+error_t UUSART_preInit(Unit *unit);
 
 /** Tear down the unit */
 void UUSART_deInit(Unit *unit);

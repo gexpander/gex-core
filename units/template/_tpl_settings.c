@@ -7,7 +7,6 @@
 
 #define TPL_INTERNAL
 #include "_tpl_internal.h"
-#include "_tpl_settings.h"
 
 /** Load from a binary buffer stored in Flash */
 void TPL_loadBinary(Unit *unit, PayloadParser *pp)

@@ -6,8 +6,7 @@
 #include "unit_neopixel.h"
 
 #define NPX_INTERNAL
-#include "_npx_settings.h"
-#include "_npx_init.h"
+#include "_npx_internal.h"
 
 enum PinCmd_ {
     CMD_CLEAR = 0,

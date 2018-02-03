@@ -21,4 +21,29 @@ struct priv {
     GPIO_TypeDef *port;
 };
 
+/** Allocate data structure and set defaults */
+error_t DOut_preInit(Unit *unit);
+
+/** Load from a binary buffer stored in Flash */
+void DOut_loadBinary(Unit *unit, PayloadParser *pp);
+
+/** Write to a binary buffer for storing in Flash */
+void DOut_writeBinary(Unit *unit, PayloadBuilder *pb);
+
+// ------------------------------------------------------------------------
+
+/** Parse a key-value pair from the INI file */
+error_t DOut_loadIni(Unit *unit, const char *key, const char *value);
+
+/** Generate INI file section for the unit */
+void DOut_writeIni(Unit *unit, IniWriter *iw);
+
+// ------------------------------------------------------------------------
+
+/** Finalize unit set-up */
+error_t DOut_init(Unit *unit);
+
+/** Tear down the unit */
+void DOut_deInit(Unit *unit);
+
 #endif //GEX_F072_DOUT_INTERNAL_H

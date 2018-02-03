@@ -28,4 +28,38 @@ struct priv {
     GPIO_TypeDef *port;
 };
 
+/** Allocate data structure and set defaults */
+error_t DIn_preInit(Unit *unit);
+
+/** Load from a binary buffer stored in Flash */
+void DIn_loadBinary(Unit *unit, PayloadParser *pp);
+
+/** Write to a binary buffer for storing in Flash */
+void DIn_writeBinary(Unit *unit, PayloadBuilder *pb);
+
+// ------------------------------------------------------------------------
+
+/** Parse a key-value pair from the INI file */
+error_t DIn_loadIni(Unit *unit, const char *key, const char *value);
+
+/** Generate INI file section for the unit */
+void DIn_writeIni(Unit *unit, IniWriter *iw);
+
+// ------------------------------------------------------------------------
+
+/** Finalize unit set-up */
+error_t DIn_init(Unit *unit);
+
+/** Tear down the unit */
+void DIn_deInit(Unit *unit);
+
+// ------------------------------------------------------------------------
+
+/**
+ * EXTI callback for pin change interrupts
+ *
+ * @param arg - the unit is passed here
+ */
+void DIn_handleExti(void *arg);
+
 #endif //GEX_F072_DIN_INTERNAL_H
