@@ -9,72 +9,9 @@
 // 1WIRE master
 #define OW_INTERNAL
 #include "_ow_internal.h"
+#include "_ow_init.h"
+#include "_ow_settings.h"
 #include "_ow_low_level.h"
-
-// ------------------------------------------------------------------------
-
-/** Load from a binary buffer stored in Flash */
-static void U1WIRE_loadBinary(Unit *unit, PayloadParser *pp)
-{
-    struct priv *priv = unit->data;
-
-    uint8_t version = pp_u8(pp);
-    (void)version;
-
-    priv->port_name = pp_char(pp);
-    priv->pin_number = pp_u8(pp);
-    if (version >= 1) {
-        priv->parasitic = pp_bool(pp);
-    }
-}
-
-/** Write to a binary buffer for storing in Flash */
-static void U1WIRE_writeBinary(Unit *unit, PayloadBuilder *pb)
-{
-    struct priv *priv = unit->data;
-
-    pb_u8(pb, 1); // version
-
-    pb_char(pb, priv->port_name);
-    pb_u8(pb, priv->pin_number);
-    pb_bool(pb, priv->parasitic);
-}
-
-// ------------------------------------------------------------------------
-
-/** Parse a key-value pair from the INI file */
-static error_t U1WIRE_loadIni(Unit *unit, const char *key, const char *value)
-{
-    bool suc = true;
-    struct priv *priv = unit->data;
-
-    if (streq(key, "pin")) {
-        suc = parse_pin(value, &priv->port_name, &priv->pin_number);
-    }
-    else if (streq(key, "parasitic")) {
-        priv->parasitic = str_parse_yn(value, &suc);
-    }
-    else {
-        return E_BAD_KEY;
-    }
-
-    if (!suc) return E_BAD_VALUE;
-    return E_SUCCESS;
-}
-
-/** Generate INI file section for the unit */
-static void U1WIRE_writeIni(Unit *unit, IniWriter *iw)
-{
-    struct priv *priv = unit->data;
-
-    iw_comment(iw, "Data pin");
-    iw_entry(iw, "pin", "%c%d", priv->port_name,  priv->pin_number);
-
-    iw_comment(iw, "Parasitic (bus-powered) mode");
-    iw_entry(iw, "parasitic", str_yn(priv->parasitic));
-}
-
-// ------------------------------------------------------------------------
 
 /**
  * 1-Wire timer callback, used for the 'wait_ready' function.
@@ -86,7 +23,7 @@ static void U1WIRE_writeIni(Unit *unit, IniWriter *iw)
  *
  * @param xTimer
  */
-static void U1WIRE_TimerCb(TimerHandle_t xTimer)
+void OW_TimerCb(TimerHandle_t xTimer)
 {
     Unit *unit = pvTimerGetTimerID(xTimer);
     assert_param(unit);
@@ -122,70 +59,6 @@ halt_ok:
     priv->busy = false;
 }
 
-/** Allocate data structure and set defaults */
-static error_t U1WIRE_preInit(Unit *unit)
-{
-    struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
-    if (priv == NULL) return E_OUT_OF_MEM;
-
-    // the timer is not started until needed
-    priv->busyWaitTimer = xTimerCreate("1w_tim", // name
-                                       750,      // interval (will be changed when starting it)
-                                       true,     // periodic (we use this only for the polling variant, the one-shot will stop the timer in the CB)
-                                       unit,     // user data
-                                       U1WIRE_TimerCb); // callback
-
-    if (priv->busyWaitTimer == NULL) return E_OUT_OF_MEM;
-
-    // some defaults
-    priv->pin_number = 0;
-    priv->port_name = 'A';
-    priv->parasitic = false;
-
-    return E_SUCCESS;
-}
-
-/** Finalize unit set-up */
-static error_t U1WIRE_init(Unit *unit)
-{
-    bool suc = true;
-    struct priv *priv = unit->data;
-
-    // --- Parse config ---
-    priv->ll_pin = hw_pin2ll(priv->pin_number, &suc);
-    priv->port = hw_port2periph(priv->port_name, &suc);
-    Resource rsc = hw_pin2resource(priv->port_name, priv->pin_number, &suc);
-    if (!suc) return E_BAD_CONFIG;
-
-    // --- Claim resources ---
-    TRY(rsc_claim(unit, rsc));
-
-    // --- Init hardware ---
-    LL_GPIO_SetPinMode(priv->port, priv->ll_pin, LL_GPIO_MODE_OUTPUT);
-    LL_GPIO_SetPinOutputType(priv->port, priv->ll_pin, LL_GPIO_OUTPUT_PUSHPULL);
-    LL_GPIO_SetPinSpeed(priv->port, priv->ll_pin, LL_GPIO_SPEED_FREQ_HIGH);
-    LL_GPIO_SetPinPull(priv->port, priv->ll_pin, LL_GPIO_PULL_UP); // pull-up for OD state
-
-    return E_SUCCESS;
-}
-
-/** Tear down the unit */
-static void U1WIRE_deInit(Unit *unit)
-{
-    struct priv *priv = unit->data;
-
-    // Release all resources
-    rsc_teardown(unit);
-
-    // Delete the software timer
-    assert_param(pdPASS == xTimerDelete(priv->busyWaitTimer, 1000));
-
-    // Free memory
-    free_ck(unit->data);
-}
-
-// ------------------------------------------------------------------------
-
 
 enum PinCmd_ {
     CMD_CHECK_PRESENCE = 0, // simply tests that any devices are attached
@@ -204,7 +77,7 @@ enum PinCmd_ {
 
 
 /** Handle a request message */
-static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
+static error_t OW_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
     struct priv *priv = unit->data;
 
@@ -219,6 +92,26 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
     bool search_reset = false;
 
     switch (command) {
+        /**
+         * This is the delay function for DS1820 measurements.
+         *
+         * Parasitic: Returns success after the required 750ms
+         * Non-parasitic: Returns SUCCESS after device responds '1', HW_TIMEOUT after 1s
+         */
+        case CMD_POLL_FOR_1:
+            // This can't be exposed via the UU API, due to being async
+            if (priv->parasitic) {
+                assert_param(pdPASS == xTimerChangePeriod(priv->busyWaitTimer, 750, 100));
+            } else {
+                // every 10 ticks
+                assert_param(pdPASS == xTimerChangePeriod(priv->busyWaitTimer, 10, 100));
+            }
+            assert_param(pdPASS == xTimerStart(priv->busyWaitTimer, 100));
+            priv->busy = true;
+            priv->busyStart = PTIM_GetTime();
+            priv->busyRequestId = frame_id;
+            return E_SUCCESS; // We will respond when the timer expires
+
         case CMD_SEARCH_ALARM:
             with_alarm = true;
             // fall-through
@@ -300,26 +193,6 @@ static error_t U1WIRE_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
             com_respond_buf(frame_id, MSG_SUCCESS, (uint8_t *) unit_tmp512, rcount);
             return E_SUCCESS;
 
-        /**
-         * This is the delay function for DS1820 measurements.
-         *
-         * Parasitic: Returns success after the required 750ms
-         * Non-parasitic: Returns SUCCESS after device responds '1', HW_TIMEOUT after 1s
-         */
-        case CMD_POLL_FOR_1:
-            // This can't be exposed via the UU API, due to being async
-            if (priv->parasitic) {
-                assert_param(pdPASS == xTimerChangePeriod(priv->busyWaitTimer, 750, 100));
-            } else {
-                // every 10 ticks
-                assert_param(pdPASS == xTimerChangePeriod(priv->busyWaitTimer, 10, 100));
-            }
-            assert_param(pdPASS == xTimerStart(priv->busyWaitTimer, 100));
-            priv->busy = true;
-            priv->busyStart = PTIM_GetTime();
-            priv->busyRequestId = frame_id;
-            return E_SUCCESS; // We will respond when the timer expires
-
         default:
             return E_UNKNOWN_COMMAND;
     }
@@ -332,14 +205,14 @@ const UnitDriver UNIT_1WIRE = {
     .name = "1WIRE",
     .description = "1-Wire master",
     // Settings
-    .preInit = U1WIRE_preInit,
-    .cfgLoadBinary = U1WIRE_loadBinary,
-    .cfgWriteBinary = U1WIRE_writeBinary,
-    .cfgLoadIni = U1WIRE_loadIni,
-    .cfgWriteIni = U1WIRE_writeIni,
+    .preInit = OW_preInit,
+    .cfgLoadBinary = OW_loadBinary,
+    .cfgWriteBinary = OW_writeBinary,
+    .cfgLoadIni = OW_loadIni,
+    .cfgWriteIni = OW_writeIni,
     // Init
-    .init = U1WIRE_init,
-    .deInit = U1WIRE_deInit,
+    .init = OW_init,
+    .deInit = OW_deInit,
     // Function
-    .handleRequest = U1WIRE_handleRequest,
+    .handleRequest = OW_handleRequest,
 };
