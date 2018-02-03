@@ -26,27 +26,27 @@ static error_t Npx_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pa
     switch (command) {
         /** Clear the entire strip */
         case CMD_CLEAR:
-            return UU_NEOPIXEL_Clear(unit);
+            return UU_Npx_Clear(unit);
 
         /** Load packed RGB colors (length must match the strip size) */
         case CMD_LOAD:;
             bytes = pp_tail(pp, &len);
-            return UU_NEOPIXEL_Load(unit, bytes, len);
+            return UU_Npx_Load(unit, bytes, len);
 
         /** Load sparse (uint32_t) colors, 0x00RRGGBB, little endian. */
         case CMD_LOAD_U32_LE:
             bytes = pp_tail(pp, &len);
-            return UU_NEOPIXEL_LoadU32LE(unit, bytes, len);
+            return UU_Npx_LoadU32LE(unit, bytes, len);
 
         /** Load sparse (uint32_t) colors, 0x00RRGGBB, big endian. */
         case CMD_LOAD_U32_BE:
             bytes = pp_tail(pp, &len);
-            return UU_NEOPIXEL_LoadU32BE(unit, bytes, len);
+            return UU_Npx_LoadU32BE(unit, bytes, len);
 
         /** Get the Neopixel strip length */
         case CMD_GET_LEN:;
             uint16_t count;
-            TRY(UU_NEOPIXEL_GetCount(unit, &count));
+            TRY(UU_Npx_GetCount(unit, &count));
             com_respond_u16(frame_id, count);
             return E_SUCCESS;
 
@@ -59,7 +59,7 @@ static error_t Npx_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pa
 
 /** Unit template */
 const UnitDriver UNIT_NEOPIXEL = {
-    .name = "NEOPIXEL",
+    .name = "NPX",
     .description = "Neopixel RGB LED strip",
     // Settings
     .preInit = Npx_preInit,

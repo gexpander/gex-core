@@ -11,7 +11,7 @@
 #include "_din_internal.h"
 
 /** Read request */
-error_t UU_DI_Read(Unit *unit, uint16_t *packed)
+error_t UU_DIn_Read(Unit *unit, uint16_t *packed)
 {
     CHECK_TYPE(unit, &UNIT_DIN);
     struct priv *priv = unit->data;
@@ -20,7 +20,7 @@ error_t UU_DI_Read(Unit *unit, uint16_t *packed)
 }
 
 /** Arm pins */
-error_t UU_DI_Arm(Unit *unit, uint16_t arm_single_packed, uint16_t arm_auto_packed)
+error_t UU_DIn_Arm(Unit *unit, uint16_t arm_single_packed, uint16_t arm_auto_packed)
 {
     CHECK_TYPE(unit, &UNIT_DIN);
     struct priv *priv = unit->data;
@@ -52,7 +52,7 @@ error_t UU_DI_Arm(Unit *unit, uint16_t arm_single_packed, uint16_t arm_auto_pack
 }
 
 /** DisArm pins */
-error_t UU_DI_DisArm(Unit *unit, uint16_t disarm_packed)
+error_t UU_DIn_DisArm(Unit *unit, uint16_t disarm_packed)
 {
     CHECK_TYPE(unit, &UNIT_DIN);
     struct priv *priv = unit->data;

@@ -20,13 +20,13 @@ enum PinCmd_ {
 };
 
 /** Handle a request message */
-static error_t DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
+static error_t DIn_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
     uint16_t pins = 0;
 
     switch (command) {
         case CMD_READ:;
-            TRY(UU_DI_Read(unit, &pins));
+            TRY(UU_DIn_Read(unit, &pins));
 
             PayloadBuilder pb = pb_start((uint8_t*)unit_tmp512, UNIT_TMP_LEN, NULL);
             pb_u16(&pb, pins); // packed input pins
@@ -37,21 +37,21 @@ static error_t DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
             pins = pp_u16(pp);
             if (!pp->ok) return E_MALFORMED_COMMAND;
 
-            TRY(UU_DI_Arm(unit, pins, 0));
+            TRY(UU_DIn_Arm(unit, pins, 0));
             return E_SUCCESS;
 
         case CMD_ARM_AUTO:;
             pins = pp_u16(pp);
             if (!pp->ok) return E_MALFORMED_COMMAND;
 
-            TRY(UU_DI_Arm(unit, 0, pins));
+            TRY(UU_DIn_Arm(unit, 0, pins));
             return E_SUCCESS;
 
         case CMD_DISARM:;
             pins = pp_u16(pp);
             if (!pp->ok) return E_MALFORMED_COMMAND;
 
-            TRY(UU_DI_DisArm(unit, pins));
+            TRY(UU_DIn_DisArm(unit, pins));
             return E_SUCCESS;
 
         default:
@@ -64,7 +64,7 @@ static error_t DI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
  *
  * @param unit
  */
-static void DI_updateTick(Unit *unit)
+static void DIn_updateTick(Unit *unit)
 {
     struct priv *priv = unit->data;
 
@@ -82,15 +82,15 @@ const UnitDriver UNIT_DIN = {
     .name = "DI",
     .description = "Digital input with triggers",
     // Settings
-    .preInit = DI_preInit,
-    .cfgLoadBinary = DI_loadBinary,
-    .cfgWriteBinary = DI_writeBinary,
-    .cfgLoadIni = DI_loadIni,
-    .cfgWriteIni = DI_writeIni,
+    .preInit = DIn_preInit,
+    .cfgLoadBinary = DIn_loadBinary,
+    .cfgWriteBinary = DIn_writeBinary,
+    .cfgLoadIni = DIn_loadIni,
+    .cfgWriteIni = DIn_writeIni,
     // Init
-    .init = DI_init,
-    .deInit = DI_deInit,
+    .init = DIn_init,
+    .deInit = DIn_deInit,
     // Function
-    .handleRequest = DI_handleRequest,
-    .updateTick = DI_updateTick,
+    .handleRequest = DIn_handleRequest,
+    .updateTick = DIn_updateTick,
 };

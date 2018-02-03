@@ -11,7 +11,7 @@
 #include "_din_exti.h"
 
 /** Allocate data structure and set defaults */
-error_t DI_preInit(Unit *unit)
+error_t DIn_preInit(Unit *unit)
 {
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
     if (priv == NULL) return E_OUT_OF_MEM;
@@ -31,7 +31,7 @@ error_t DI_preInit(Unit *unit)
 }
 
 /** Finalize unit set-up */
-error_t DI_init(Unit *unit)
+error_t DIn_init(Unit *unit)
 {
     bool suc = true;
     struct priv *priv = unit->data;
@@ -88,7 +88,7 @@ error_t DI_init(Unit *unit)
 
                 LL_SYSCFG_SetEXTISource(LL_SYSCFG_EXTI_PORTS[priv->port_name-'A'], LL_SYSCFG_EXTI_LINES[i]);
 
-                irqd_attach(EXTIS[i], DI_handleExti, unit);
+                irqd_attach(EXTIS[i], DIn_handleExti, unit);
             }
         }
     }
@@ -103,7 +103,7 @@ error_t DI_init(Unit *unit)
 
 
 /** Tear down the unit */
-void DI_deInit(Unit *unit)
+void DIn_deInit(Unit *unit)
 {
     struct priv *priv = unit->data;
 
@@ -116,7 +116,7 @@ void DI_deInit(Unit *unit)
         for (int i = 0; i < 16; i++, mask <<= 1) {
             if (triggs & mask) {
                 LL_EXTI_DisableIT_0_31(LL_EXTI_LINES[i]);
-                irqd_detach(EXTIS[i], DI_handleExti);
+                irqd_detach(EXTIS[i], DIn_handleExti);
             }
         }
     }

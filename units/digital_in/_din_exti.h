@@ -16,6 +16,6 @@
  *
  * @param arg - the unit is passed here
  */
-void DI_handleExti(void *arg);
+void DIn_handleExti(void *arg);
 
 #endif //GEX_F072_DIN_EXTI_H

@@ -18,7 +18,7 @@ extern const UnitDriver UNIT_DOUT;
  * @param packed - packed pin states (aligned to right)
  * @return success
  */
-error_t UU_DO_Write(Unit *unit, uint16_t packed);
+error_t UU_DOut_Write(Unit *unit, uint16_t packed);
 
 /**
  * Set pins (clear none)
@@ -27,7 +27,7 @@ error_t UU_DO_Write(Unit *unit, uint16_t packed);
  * @param packed - packed pins, 1 if pin should be set
  * @return success
  */
-error_t UU_DO_Set(Unit *unit, uint16_t packed);
+error_t UU_DOut_Set(Unit *unit, uint16_t packed);
 
 /**
  * Clear multiple pins
@@ -36,7 +36,7 @@ error_t UU_DO_Set(Unit *unit, uint16_t packed);
  * @param packed - packed pins, 1 if pin should be cleared
  * @return
  */
-error_t UU_DO_Clear(Unit *unit, uint16_t packed);
+error_t UU_DOut_Clear(Unit *unit, uint16_t packed);
 
 /**
  * Toggle pins
@@ -45,7 +45,7 @@ error_t UU_DO_Clear(Unit *unit, uint16_t packed);
  * @param packed - packed pins, 1 if pin should be toggled
  * @return
  */
-error_t UU_DO_Toggle(Unit *unit, uint16_t packed);
+error_t UU_DOut_Toggle(Unit *unit, uint16_t packed);
 
 /**
  * Get number of configured pins
@@ -54,6 +54,6 @@ error_t UU_DO_Toggle(Unit *unit, uint16_t packed);
  * @param count output, written with 0-16
  * @return success
  */
-error_t UU_DO_GetPinCount(Unit *unit, uint8_t *count);
+error_t UU_DOut_GetPinCount(Unit *unit, uint8_t *count);
 
 #endif //U_DOUT_H

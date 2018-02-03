@@ -10,7 +10,7 @@
 #include "_din_settings.h"
 
 /** Load from a binary buffer stored in Flash */
-void DI_loadBinary(Unit *unit, PayloadParser *pp)
+void DIn_loadBinary(Unit *unit, PayloadParser *pp)
 {
     struct priv *priv = unit->data;
 
@@ -33,7 +33,7 @@ void DI_loadBinary(Unit *unit, PayloadParser *pp)
 }
 
 /** Write to a binary buffer for storing in Flash */
-void DI_writeBinary(Unit *unit, PayloadBuilder *pb)
+void DIn_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
@@ -52,7 +52,7 @@ void DI_writeBinary(Unit *unit, PayloadBuilder *pb)
 // ------------------------------------------------------------------------
 
 /** Parse a key-value pair from the INI file */
-error_t DI_loadIni(Unit *unit, const char *key, const char *value)
+error_t DIn_loadIni(Unit *unit, const char *key, const char *value)
 {
     bool suc = true;
     struct priv *priv = unit->data;
@@ -90,7 +90,7 @@ error_t DI_loadIni(Unit *unit, const char *key, const char *value)
 }
 
 /** Generate INI file section for the unit */
-void DI_writeIni(Unit *unit, IniWriter *iw)
+void DIn_writeIni(Unit *unit, IniWriter *iw)
 {
     struct priv *priv = unit->data;
 

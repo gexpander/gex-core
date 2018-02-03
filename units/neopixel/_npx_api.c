@@ -11,7 +11,7 @@
 #include "ws2812.h"
 
 /* Clear the strip */
-error_t UU_NEOPIXEL_Clear(Unit *unit)
+error_t UU_Npx_Clear(Unit *unit)
 {
     CHECK_TYPE(unit, &UNIT_NEOPIXEL);
 
@@ -21,7 +21,7 @@ error_t UU_NEOPIXEL_Clear(Unit *unit)
 }
 
 /* Load packed */
-error_t UU_NEOPIXEL_Load(Unit *unit, const uint8_t *packed_rgb, uint32_t nbytes)
+error_t UU_Npx_Load(Unit *unit, const uint8_t *packed_rgb, uint32_t nbytes)
 {
     CHECK_TYPE(unit, &UNIT_NEOPIXEL);
 
@@ -43,19 +43,19 @@ static error_t load_u32(Unit *unit, const uint8_t *bytes, uint32_t nbytes, bool 
 }
 
 /* Load U32, LE */
-inline error_t UU_NEOPIXEL_LoadU32LE(Unit *unit, const uint8_t *bytes, uint32_t nbytes)
+inline error_t UU_Npx_LoadU32LE(Unit *unit, const uint8_t *bytes, uint32_t nbytes)
 {
     return load_u32(unit, bytes, nbytes, false);
 }
 
 /* Load U32, BE */
-inline error_t UU_NEOPIXEL_LoadU32BE(Unit *unit, const uint8_t *bytes, uint32_t nbytes)
+inline error_t UU_Npx_LoadU32BE(Unit *unit, const uint8_t *bytes, uint32_t nbytes)
 {
     return load_u32(unit, bytes, nbytes, true);
 }
 
 /* Get the pixel count */
-error_t UU_NEOPIXEL_GetCount(Unit *unit, uint16_t *count)
+error_t UU_Npx_GetCount(Unit *unit, uint16_t *count)
 {
     CHECK_TYPE(unit, &UNIT_NEOPIXEL);
 

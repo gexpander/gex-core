@@ -18,7 +18,7 @@
  * data1 - packed, triggering pin
  * data2 - snapshot
  */
-static void DI_SendTriggerReportToMaster(Job *job)
+static void DIn_SendTriggerReportToMaster(Job *job)
 {
     PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
     pb_u16(&pb, (uint16_t) job->data1); // packed, 1 on the triggering pin
@@ -40,7 +40,7 @@ static void DI_SendTriggerReportToMaster(Job *job)
  *
  * @param arg - the unit is passed here
  */
-void DI_handleExti(void *arg)
+void DIn_handleExti(void *arg)
 {
     const uint64_t ts = PTIM_GetMicrotime();
 
@@ -74,7 +74,7 @@ void DI_handleExti(void *arg)
             .timestamp = ts,
             .data1 = pinmask_pack(trigger_map, priv->pins),
             .data2 = pinmask_pack(snapshot, priv->pins),
-            .cb = DI_SendTriggerReportToMaster
+            .cb = DIn_SendTriggerReportToMaster
         };
         scheduleJob(&j);
     }
