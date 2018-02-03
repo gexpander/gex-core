@@ -12,7 +12,7 @@
 #if USE_STACK_MONITOR
 
 /** Number of tracked stacks, max */
-#define STACK_NUM 3
+#define STACK_NUM 4
 
 /**
  * Check canaries and trap if they're dead

@@ -9,7 +9,6 @@
 #include "_ow_search.h"
 #include "_ow_internal.h"
 #include "_ow_low_level.h"
-#include "_ow_checksum.h"
 #include "_ow_commands.h"
 
 void ow_search_init(Unit *unit, uint8_t command, bool test_checksums)

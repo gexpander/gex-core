@@ -153,7 +153,7 @@ to exclude the API function. */
 #elif defined(GEX_PLAT_F072_DISCOVERY)
     // This is for F072
     #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY   3
-    #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 3
+    #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 1
 
     #define configPRIO_BITS         2
 

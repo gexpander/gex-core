@@ -7,8 +7,6 @@
 
 #define DIN_INTERNAL
 #include "_din_internal.h"
-#include "_din_settings.h"
-#include "_din_init.h"
 
 // ------------------------------------------------------------------------
 

@@ -4,6 +4,7 @@
 
 #include "platform.h"
 #include <utils/avrlibc.h>
+#include <math.h>
 #include "hw_utils.h"
 #include "macro.h"
 
@@ -263,16 +264,64 @@ char * pinmask2str(uint16_t pins, char *buffer)
                 if (!first) {
                     b += SPRINTF(b, ", ");
                 }
+
                 if (start == (uint32_t)(i+1)) {
                     b += SPRINTF(b, "%"PRIu32, start);
                 }
-//                else if (start == (uint32_t)(i+2)) {
-//                    // exception for 2-long ranges - don't show as range
-//                    b += SPRINTF(b, "%"PRIu32",%"PRIu32, start, i + 1);
-//                }
                 else {
                     b += SPRINTF(b, "%"PRIu32"-%"PRIu32, start, i + 1);
                 }
+
+                first = false;
+                on = false;
+            }
+        }
+    }
+
+    return buffer;
+}
+
+char * pinmask2str_up(uint16_t pins, char *buffer)
+{
+    char *b = buffer;
+    uint32_t start = 0;
+    bool on = false;
+    bool first = true;
+
+    // shortcut if none are set
+    if (pins == 0) {
+        buffer[0] = 0;
+        return buffer;
+    }
+
+    for (int32_t i = 0; i <= 16; i++) {
+        bool bit;
+
+        if (i == 16) {
+            bit = false;
+        } else {
+            bit = 0 != (pins & 1);
+            pins >>= 1;
+        }
+
+        if (bit) {
+            if (!on) {
+                start = (uint32_t) i;
+                on = true;
+            }
+        } else {
+            if (on) {
+                if (!first) {
+                    b += SPRINTF(b, ", ");
+                }
+
+                if (start == (uint32_t)(i-1)) {
+                    b += SPRINTF(b, "%"PRIu32, start);
+                }
+                else {
+                    b += SPRINTF(b, "%"PRIu32"-%"PRIu32, start, i - 1);
+                }
+
                 first = false;
                 on = false;
             }
@@ -386,6 +435,36 @@ error_t hw_configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **p
 
     return E_SUCCESS;
 }
+
+/** Solve a timer/counter's count and prescaller value */
+bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
+                 uint16_t *presc, uint32_t *count, float *real_freq)
+{
+    if (required_freq == 0) return false;
+    const float fPresc = base_freq / required_freq;
+    uint32_t wCount = (uint32_t) lrintf(fPresc);
+
+    const uint32_t ceil = is16bit ? UINT16_MAX : UINT32_MAX;
+
+    uint32_t wPresc = 1;
+    while (wCount > ceil) {
+        wPresc <<= 1;
+        wCount >>= 1;
+    }
+
+    if (wPresc > ceil || count == 0) {
+        return false;
+    }
+
+    *count = wCount;
+    *presc = (uint16_t) wPresc;
+
+    if (wPresc * wCount == 0) return false;
+    *real_freq = (base_freq / (wPresc * wCount));
+
+    return true;
+}
+
 
 void hw_periph_clock_enable(void *periph)
 {

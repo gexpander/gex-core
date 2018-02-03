@@ -11,7 +11,7 @@
 // ------------------------------------------------------------------------
 
 enum TplCmd_ {
-    //
+    CMD_DUMMY,
 };
 
 /** Handle a request message */
@@ -28,7 +28,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 /** Unit template */
 const UnitDriver UNIT_ADC = {
     .name = "ADC",
-    .description = "Template unit",
+    .description = "Analog inputs",
     // Settings
     .preInit = UADC_preInit,
     .cfgLoadBinary = UADC_loadBinary,

@@ -27,9 +27,6 @@ struct priv {
     struct ow_search_state searchState;
 };
 
-/** Allocate data structure and set defaults */
-error_t OW_preInit(Unit *unit);
-
 /** Load from a binary buffer stored in Flash */
 void OW_loadBinary(Unit *unit, PayloadParser *pp);
 

@@ -7,7 +7,6 @@
 
 #define DOUT_INTERNAL
 #include "_dout_internal.h"
-#include "_dout_settings.h"
 
 /** Load from a binary buffer stored in Flash */
 void DOut_loadBinary(Unit *unit, PayloadParser *pp)

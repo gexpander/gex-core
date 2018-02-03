@@ -112,7 +112,7 @@ static void bw_dump(struct bulk_write *bulk, const uint8_t *chunk, uint32_t len)
     }
 
     dbg("\r\nBulk write at %d, len %d", (int)bulk->offset, (int)len);
-    PUTSN((const char *) chunk, len);
+    PUTSN((const char *) chunk, (uint16_t) len);
     PUTS("\r\n");
 }
 

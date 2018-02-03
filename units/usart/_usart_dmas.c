@@ -190,7 +190,6 @@ error_t UUSART_SetupDMAs(Unit *unit)
     LL_DMA_EnableChannel(priv->dma, priv->dma_rx_chnum);
     LL_DMA_EnableChannel(priv->dma, priv->dma_tx_chnum);
 
-    // TODO also set up usart timeout interrupt that grabs whatever is in the DMA buffer and sends it
     return E_SUCCESS;
 }
 
@@ -205,7 +204,7 @@ static void UUSART_DMA_RxHandler(void *arg)
     struct priv *priv = unit->data;
     assert_param(priv);
 
-    uint32_t isrsnapshot = priv->dma->ISR;
+    const uint32_t isrsnapshot = priv->dma->ISR;
 
     if (LL_DMA_IsActiveFlag_G(isrsnapshot, priv->dma_rx_chnum)) {
         bool tc = LL_DMA_IsActiveFlag_TC(isrsnapshot, priv->dma_rx_chnum);
@@ -228,6 +227,7 @@ static void UUSART_DMA_RxHandler(void *arg)
 
         if (LL_DMA_IsActiveFlag_TE(isrsnapshot, priv->dma_rx_chnum)) {
             // this shouldn't happen
+            dbg("USART DMA TE!");
             LL_DMA_ClearFlag_TE(priv->dma, priv->dma_rx_chnum);
         }
     }

@@ -146,6 +146,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
   stackmon_register("Main", mainTaskStack, sizeof(mainTaskStack));
   stackmon_register("Job+Msg", msgJobQueTaskStack, sizeof(msgJobQueTaskStack));
+  stackmon_register("Idle", xIdleStack, sizeof(xIdleStack));
+  stackmon_register("Timers", xTimersStack, sizeof(xTimersStack));
   /* USER CODE END Init */
 
   /* Create the mutex(es) */

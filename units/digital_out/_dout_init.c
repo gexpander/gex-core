@@ -7,7 +7,6 @@
 
 #define DOUT_INTERNAL
 #include "_dout_internal.h"
-#include "_dout_init.h"
 
 /** Allocate data structure and set defaults */
 error_t DOut_preInit(Unit *unit)

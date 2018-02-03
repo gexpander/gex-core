@@ -66,7 +66,10 @@ void DebugUart_PreInit(void)
 {
     // configure AF only if platform uses AF numbers
 #if !PLAT_NO_AFNUM
-    hw_configure_gpio_af(DEBUG_USART_PORT, DEBUG_USART_PIN, DEBUG_USART_AF);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
+    (void) hw_configure_gpio_af(DEBUG_USART_PORT, DEBUG_USART_PIN, DEBUG_USART_AF);
+#pragma GCC diagnostic pop
 #endif
 
     hw_periph_clock_enable(DEBUG_USART);

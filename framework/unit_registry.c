@@ -606,7 +606,7 @@ void ureg_tick_units(void)
     UlistEntry *li = ulist_head;
     while (li != NULL) {
         Unit *const pUnit = &li->unit;
-        if (pUnit->status == E_SUCCESS && pUnit->tick_interval > 0) {
+        if (pUnit && pUnit->data && pUnit->status == E_SUCCESS && pUnit->tick_interval > 0) {
             if (pUnit->_tick_cnt == 0) {
                 if (pUnit->driver->updateTick) {
                     pUnit->driver->updateTick(pUnit);

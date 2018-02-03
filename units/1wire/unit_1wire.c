@@ -9,8 +9,6 @@
 // 1WIRE master
 #define OW_INTERNAL
 #include "_ow_internal.h"
-#include "_ow_init.h"
-#include "_ow_settings.h"
 #include "_ow_low_level.h"
 
 /**

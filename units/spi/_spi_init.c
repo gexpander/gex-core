@@ -132,9 +132,9 @@ error_t USPI_init(Unit *unit)
     TRY(rsc_claim_pin(unit, spi_portname, pin_miso));
     TRY(rsc_claim_pin(unit, spi_portname, pin_sck));
 
-    hw_configure_gpio_af(spi_portname, pin_mosi, af_spi);
-    hw_configure_gpio_af(spi_portname, pin_miso, af_spi);
-    hw_configure_gpio_af(spi_portname, pin_sck, af_spi);
+    TRY(hw_configure_gpio_af(spi_portname, pin_mosi, af_spi));
+    TRY(hw_configure_gpio_af(spi_portname, pin_miso, af_spi));
+    TRY(hw_configure_gpio_af(spi_portname, pin_sck, af_spi));
 
     // configure SSN GPIOs
     {

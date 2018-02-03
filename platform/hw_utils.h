@@ -78,12 +78,23 @@ uint16_t parse_pinmask(const char *value, bool *suc);
 
 /**
  * Convert a pin bitmap to the ASCII format understood by str_parse_pinmask()
+ * This is the downto variant (15..0)
  *
  * @param pins - sparse pin map
  * @param buffer - output string buffer
  * @return the output buffer
  */
 char * pinmask2str(uint16_t pins, char *buffer);
+
+/**
+ * Convert a pin bitmap to the ASCII format understood by str_parse_pinmask()
+ * This is the ascending variant (0..15)
+ *
+ * @param pins - sparse pin map
+ * @param buffer - output string buffer
+ * @return the output buffer
+ */
+char * pinmask2str_up(uint16_t pins, char *buffer);
 
 /**
  * Spread packed port pins using a mask
@@ -126,7 +137,7 @@ void hw_deinit_unit_pins(Unit *unit);
  * @param ll_af - LL alternate function constant
  * @return success
  */
-error_t hw_configure_gpio_af(char port_name, uint8_t pin_num, uint32_t ll_af);
+error_t hw_configure_gpio_af(char port_name, uint8_t pin_num, uint32_t ll_af) __attribute__((warn_unused_result));
 
 /**
  * Configure multiple pins using the bitmap pattern
@@ -140,7 +151,7 @@ error_t hw_configure_gpio_af(char port_name, uint8_t pin_num, uint32_t ll_af);
  */
 error_t hw_configure_sparse_pins(char port_name,
                                  uint16_t mask, GPIO_TypeDef **port_dest,
-                                 uint32_t ll_mode, uint32_t ll_otype);
+                                 uint32_t ll_mode, uint32_t ll_otype) __attribute__((warn_unused_result));
 
 /** Helper struct for defining alternate mappings */
 struct PinAF {
@@ -160,6 +171,22 @@ void hw_periph_clock_enable(void *periph);
  * @param periph - any peripheral
  */
 void hw_periph_clock_disable(void *periph);
+
+/**
+ * Solve a timer/counter's count and prescaller value to meet the desired
+ * overflow frequency. The resulting values are the dividing factors;
+ * subtract 1 before writing them into the peripheral registers.
+ *
+ * @param[in] base_freq - the counter's input clock frequency in Hz
+ * @param[in] required_freq - desired overflow frequency
+ * @param[in] is16bit - limit counter to 16 bits (prescaller is always 16-bit)
+ * @param[out] presc - field for storing the computed prescaller value
+ * @param[out] count - field for storing the computed counter value
+ * @param[out] real_freq - field for storing the computed real frequency
+ * @return true on success
+ */
+bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
+                 uint16_t *presc, uint32_t *count, float *real_freq);
 
 // ---------- LL extras ------------
 

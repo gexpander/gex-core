@@ -7,7 +7,6 @@
 
 #define OW_INTERNAL
 #include "_ow_internal.h"
-#include "_ow_settings.h"
 
 /** Load from a binary buffer stored in Flash */
 void OW_loadBinary(Unit *unit, PayloadParser *pp)
