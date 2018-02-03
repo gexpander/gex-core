@@ -133,6 +133,11 @@ error_t UADC_init(Unit *unit)
             dbg("!! Need at least 1 channel");
             return E_BAD_CONFIG;
         }
+
+        if (priv->dma_buffer_size < priv->nb_channels*2*2) {
+            dbg("Insufficient buf size");
+            return E_BAD_CONFIG;
+        }
     }
 
     // ------------------- ENABLE CLOCKS --------------------------
