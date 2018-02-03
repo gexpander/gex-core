@@ -61,7 +61,6 @@ struct priv {
     volatile uint16_t tx_buf_nw;    //!< Next Write index
     volatile uint16_t tx_buf_chunk; //!< Size of the currently being transmitted chunk (for advancing the pointers)
     volatile bool tx_dma_busy;      //!< Flag that the Tx DMA request is ongoing
-
 };
 
 /** Allocate data structure and set defaults */
