@@ -51,27 +51,37 @@ void UADC_DMA_Handler(void *arg)
                     LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
                 }
 
-                assert_param(start < end);
+                dbg("start %d, end %d", (int)start, (int)end);
+                assert_param(start <= end);
 
-                uint32_t sgcount = (end - start) / priv->nb_channels;
+                if (start != end) {
+                    uint32_t sgcount = (end - start) / priv->nb_channels;
 
-                if (m_trig || m_fixcpt) {
-                    sgcount = MIN(priv->trig_stream_remain, sgcount);
-                    priv->trig_stream_remain -= sgcount;
-                }
-
-                dbg("Would send %d groups (u16 offset %d -> %d)", (int)sgcount, (int)start, (int)(start+sgcount*priv->nb_channels));
-                // TODO send the data together with remaining count (used to detect end of transmission)
-
-                if (m_trig || m_fixcpt) {
-                    if (priv->trig_stream_remain == 0) {
-                        dbg("End of capture");
-                        UADC_ReportEndOfStream(unit);
-                        UADC_SwitchMode(unit, (priv->auto_rearm && m_trig) ? ADC_OPMODE_ARMED : ADC_OPMODE_IDLE);
+                    if (m_trig || m_fixcpt) {
+                        sgcount = MIN(priv->trig_stream_remain, sgcount);
+                        priv->trig_stream_remain -= sgcount;
                     }
+
+                    dbg("Would send %d groups (u16 offset %d -> %d)", (int) sgcount,
+                        (int) start, (int) (start + sgcount * priv->nb_channels));
+
+                    // TODO send the data together with remaining count (used to detect end of transmission)
+
+                    if (m_trig || m_fixcpt) {
+                        if (priv->trig_stream_remain == 0) {
+                            dbg("End of capture");
+                            UADC_ReportEndOfStream(unit);
+                            UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+                            if (priv->auto_rearm && m_trig) {
+                                UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
+                            }
+                        }
+                    }
+                } else {
+                    dbg("start==end, skip this irq");
                 }
 
-                if (end == priv->dma_buffer_itemcount) {
+                if (tc) {
                     priv->stream_startpos = 0;
                 }
                 else {
@@ -181,11 +191,13 @@ void UADC_HandleTrigger(Unit *unit, uint8_t edge_type, uint64_t timestamp)
         unit->_tick_cnt = 0;
     }
 
-    dbg("Trigger condition hit, edge=%d", edge_type);
     // TODO Send pre-trigger
 
     priv->stream_startpos = (uint16_t) DMA_POS(priv);
     priv->trig_stream_remain = priv->trig_len;
+
+    dbg("Trigger condition hit, edge=%d, startpos %d", edge_type, (int)priv->stream_startpos);
+
     UADC_SwitchMode(unit, ADC_OPMODE_TRIGD);
 }
 
@@ -288,6 +300,7 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         LL_DMA_DisableIT_TC(priv->DMAx, priv->dma_chnum);
 
         // Use End Of Sequence to recover results for averaging from the DMA buffer and DR
+        LL_ADC_ClearFlag_EOS(priv->ADCx);
         LL_ADC_EnableIT_EOS(priv->ADCx);
 
         if (priv->opmode == ADC_OPMODE_UNINIT) {
@@ -315,6 +328,11 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         LL_ADC_DisableIT_EOS(priv->ADCx);
 
         // Enable the DMA buffer interrupts
+
+        // we must first clear the flags, otherwise it will cause WEIRD bugs in the handler
+        LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
+        LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
+
         LL_DMA_EnableIT_HT(priv->DMAx, priv->dma_chnum);
         LL_DMA_EnableIT_TC(priv->DMAx, priv->dma_chnum);
     }

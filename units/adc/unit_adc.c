@@ -39,7 +39,6 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Response: bytes with indices of enabled channels, ascending order.
          */
         case CMD_GET_ENABLED_CHANNELS:
-            dbg("> Query channels");
             for (uint8_t i = 0; i < 18; i++) {
                 if (priv->extended_channels_mask & (1 << i)) {
                     pb_u8(&pb, i);
@@ -53,10 +52,11 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * pld: u16:factor
          */
         case CMD_SET_SMOOTHING_FACTOR:
-            dbg("> Set smoothing");
-            uint16_t fac = pp_u16(pp);
-            if (fac > 1000) return E_BAD_VALUE;
-            priv->avg_factor_as_float = fac/1000.0f;
+            {
+                uint16_t fac = pp_u16(pp);
+                if (fac > 1000) return E_BAD_VALUE;
+                priv->avg_factor_as_float = fac / 1000.0f;
+            }
             return E_SUCCESS;
 
         /**
@@ -64,7 +64,6 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Response: interleaved (u8:channel, u16:value) for all channels
          */
         case CMD_READ_RAW:
-            dbg("> Read raw");
             if(priv->opmode != ADC_OPMODE_IDLE && priv->opmode != ADC_OPMODE_ARMED) {
                 return E_BUSY;
             }
@@ -75,7 +74,6 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                     pb_u16(&pb, priv->last_samples[i]);
                 }
             }
-            assert_param(pb.ok);
             com_respond_pb(frame_id, MSG_SUCCESS, &pb);
             return E_SUCCESS;
 
@@ -84,7 +82,6 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Response: interleaved (u8:channel, f32:value) for all channels
          */
         case CMD_READ_SMOOTHED:
-            dbg("> Read smoothed");
             if(priv->opmode != ADC_OPMODE_IDLE && priv->opmode != ADC_OPMODE_ARMED) {
                 return E_BUSY;
             }
@@ -95,12 +92,11 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                     pb_float(&pb, priv->averaging_bins[i]);
                 }
             }
-            assert_param(pb.ok);
             com_respond_pb(frame_id, MSG_SUCCESS, &pb);
             return E_SUCCESS;
 
         /**
-         * Configure a trigger. This is legal only if the current state is IDLE.
+         * Configure a trigger. This is legal only if the current state is IDLE or ARMED (will re-arm).
          *
          * Payload:
          *   u8 - source channel
@@ -113,7 +109,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          */
         case CMD_SETUP_TRIGGER:
             dbg("> Setup trigger");
-            if(priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
+            if (priv->opmode != ADC_OPMODE_IDLE && priv->opmode != ADC_OPMODE_ARMED) return E_BUSY;
 
             {
                 uint8_t source = pp_u8(pp);
@@ -174,6 +170,9 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                 com_respond_str(MSG_ERROR, frame_id, "Trigger not configured.");
                 return E_FAILURE;
             }
+
+            // avoid firing immediately by the value jumping across the scale
+            priv->trig_prev_level = priv->last_samples[priv->trigger_source];
 
             UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
             return E_SUCCESS;

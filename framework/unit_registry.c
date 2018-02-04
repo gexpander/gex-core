@@ -490,6 +490,11 @@ void ureg_deliver_unit_request(TF_Msg *msg)
             if (pUnit->callsign == callsign && pUnit->status == E_SUCCESS) {
                 error_t rv = pUnit->driver->handleRequest(pUnit, msg->frame_id, command, &pp);
 
+                if (!pp.ok) {
+                    com_respond_error(msg->frame_id, E_MALFORMED_COMMAND);
+                    goto quit;
+                }
+
                 // send extra SUCCESS confirmation message.
                 // error is expected to have already been reported.
                 if (rv == E_SUCCESS) {
