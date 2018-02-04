@@ -114,10 +114,10 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             {
                 uint8_t source = pp_u8(pp);
                 uint16_t level = pp_u16(pp);
-                uint8_t edge = pp_u8(pp);
-                uint16_t pretrig = pp_u16(pp);
+                uint8_t edge = pp_u8(pp); // TODO test falling edge and dual edge
+                uint16_t pretrig = pp_u16(pp); // TODO test pre-trigger ...
                 uint32_t count = pp_u32(pp);
-                uint16_t holdoff = pp_u16(pp);
+                uint16_t holdoff = pp_u16(pp); // TODO test hold-off ...
                 bool auto_rearm = pp_bool(pp);
 
                 if (source > 17) {
@@ -182,6 +182,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Switches to idle.
          */
         case CMD_DISARM:
+            // TODO test
             dbg("> Disarm");
             if(priv->opmode == ADC_OPMODE_IDLE) {
                 return E_SUCCESS; // already idle, success - no work to do
@@ -196,6 +197,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Abort any ongoing capture and dis-arm.
          */
         case CMD_ABORT:;
+            // TODO test
             dbg("> Abort capture");
             enum uadc_opmode old_opmode = priv->opmode;
             UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
@@ -212,6 +214,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * The reported edge will be 0b11, here meaning "manual trigger"
          */
         case CMD_FORCE_TRIGGER:
+            // TODO test
             dbg("> Force trigger");
             if(priv->opmode == ADC_OPMODE_IDLE) {
                 com_respond_str(MSG_ERROR, frame_id, "Not armed");
@@ -229,6 +232,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          *   u32 - sample count (for each channel)
          */
         case CMD_BLOCK_CAPTURE:
+            // TODO test
             dbg("> Block cpt");
             if(priv->opmode != ADC_OPMODE_ARMED &&
                 priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
@@ -243,6 +247,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * The stream can be terminated by the stop command.
          */
         case CMD_STREAM_START:
+            // TODO test
             dbg("> Stream ON");
             if(priv->opmode != ADC_OPMODE_ARMED &&
                priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
@@ -254,6 +259,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Stop a stream.
          */
         case CMD_STREAM_STOP:
+            // TODO test
             dbg("> Stream OFF");
             if(priv->opmode != ADC_OPMODE_STREAM) {
                 com_respond_str(MSG_ERROR, frame_id, "Not streaming");
