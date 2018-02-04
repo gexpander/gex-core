@@ -8,6 +8,8 @@
 #define ADC_INTERNAL
 #include "_adc_internal.h"
 
+#define DMA_POS(priv) ((priv)->dma_buffer_itemcount - (priv)->DMA_CHx->CNDTR)
+
 void UADC_ReportEndOfStream(Unit *unit)
 {
     dbg("~~End Of Stream msg~~");
@@ -101,27 +103,29 @@ void UADC_ADC_EOS_Handler(void *arg)
     uint64_t timestamp = PTIM_GetMicrotime();
     Unit *unit = arg;
 
-    dbg("ADC EOS ISR hit");
     assert_param(unit);
     struct priv *priv = unit->data;
     assert_param(priv);
 
+    LL_ADC_ClearFlag_EOS(priv->ADCx);
+
     // Wait for the DMA to complete copying the last sample
-    while (priv->DMA_CHx->CNDTR % priv->nb_channels != 0);
+    uint16_t dmapos;
+    while ((dmapos = (uint16_t) DMA_POS(priv)) % priv->nb_channels != 0);
 
     uint32_t sample_pos;
-    if (priv->DMA_CHx->CNDTR == 0) {
-        sample_pos = (uint32_t) (priv->dma_buffer_itemcount - 1);
+    if (dmapos == 0) {
+        sample_pos = (uint32_t) (priv->dma_buffer_itemcount);
     } else {
-        sample_pos = priv->DMA_CHx->CNDTR;
+        sample_pos = dmapos;
     }
     sample_pos -= priv->nb_channels;
-    dbg("Sample pos %d", (int)sample_pos);
 
+    int cnt = 0; // index of the sample within the group
     for (uint32_t i = 0; i < 18; i++) {
         if (priv->extended_channels_mask & (1 << i)) {
-            uint16_t val = priv->dma_buffer[sample_pos];
-            dbg("Trig line level %d", (int)val);
+            uint16_t val = priv->dma_buffer[sample_pos+cnt];
+            cnt++;
 
             priv->averaging_bins[i] =
                 priv->averaging_bins[i] * (1.0f - priv->avg_factor_as_float) +
@@ -131,6 +135,8 @@ void UADC_ADC_EOS_Handler(void *arg)
 
             if (priv->opmode == ADC_OPMODE_ARMED) {
                 if (i == priv->trigger_source) {
+                    dbg("Trig line level %d", (int)val);
+
                     bool trigd = false;
                     uint8_t edge_type = 0;
                     if (priv->trig_prev_level < priv->trig_level && val >= priv->trig_level) {
@@ -155,8 +161,6 @@ void UADC_ADC_EOS_Handler(void *arg)
             }
         }
     }
-
-    dbg("  EOS ISR end.");
 }
 
 void UADC_HandleTrigger(Unit *unit, uint8_t edge_type, uint64_t timestamp)
@@ -180,7 +184,7 @@ void UADC_HandleTrigger(Unit *unit, uint8_t edge_type, uint64_t timestamp)
     dbg("Trigger condition hit, edge=%d", edge_type);
     // TODO Send pre-trigger
 
-    priv->stream_startpos = (uint16_t) priv->DMA_CHx->CNDTR;
+    priv->stream_startpos = (uint16_t) DMA_POS(priv);
     priv->trig_stream_remain = priv->trig_len;
     UADC_SwitchMode(unit, ADC_OPMODE_TRIGD);
 }
@@ -192,7 +196,7 @@ void UADC_StartBlockCapture(Unit *unit, uint32_t len, TF_ID frame_id)
     assert_param(priv);
 
     priv->stream_frame_id = frame_id;
-    priv->stream_startpos = (uint16_t) priv->DMA_CHx->CNDTR;
+    priv->stream_startpos = (uint16_t) DMA_POS(priv);
     priv->trig_stream_remain = len;
     UADC_SwitchMode(unit, ADC_OPMODE_FIXCAPT);
 }
@@ -205,7 +209,7 @@ void UADC_StartStream(Unit *unit, TF_ID frame_id)
     assert_param(priv);
 
     priv->stream_frame_id = frame_id;
-    priv->stream_startpos = (uint16_t) priv->DMA_CHx->CNDTR;
+    priv->stream_startpos = (uint16_t) DMA_POS(priv);
     dbg("Start streaming.");
     UADC_SwitchMode(unit, ADC_OPMODE_STREAM);
 }
@@ -291,6 +295,8 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
             LL_ADC_Enable(priv->ADCx);
             LL_DMA_EnableChannel(priv->DMAx, priv->dma_chnum);
             LL_TIM_EnableCounter(priv->TIMx);
+
+            LL_ADC_REG_StartConversion(priv->ADCx);
         }
     }
     else if (new_mode == ADC_OPMODE_ARMED) {

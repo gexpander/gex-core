@@ -24,6 +24,7 @@ enum TplCmd_ {
     CMD_BLOCK_CAPTURE = 25,
     CMD_STREAM_START = 26,
     CMD_STREAM_STOP = 27,
+    CMD_SET_SMOOTHING_FACTOR = 28,
 };
 
 /** Handle a request message */
@@ -33,6 +34,10 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
     PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
 
     switch (command) {
+        /**
+         * Get enabled channels.
+         * Response: bytes with indices of enabled channels, ascending order.
+         */
         case CMD_GET_ENABLED_CHANNELS:
             dbg("> Query channels");
             for (uint8_t i = 0; i < 18; i++) {
@@ -43,6 +48,21 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             com_respond_pb(frame_id, MSG_SUCCESS, &pb);
             return E_SUCCESS;
 
+        /**
+         * Set smoothing factor 0-1000.
+         * pld: u16:factor
+         */
+        case CMD_SET_SMOOTHING_FACTOR:
+            dbg("> Set smoothing");
+            uint16_t fac = pp_u16(pp);
+            if (fac > 1000) return E_BAD_VALUE;
+            priv->avg_factor_as_float = fac/1000.0f;
+            return E_SUCCESS;
+
+        /**
+         * Read raw values from the last measurement.
+         * Response: interleaved (u8:channel, u16:value) for all channels
+         */
         case CMD_READ_RAW:
             dbg("> Read raw");
             if(priv->opmode != ADC_OPMODE_IDLE && priv->opmode != ADC_OPMODE_ARMED) {
@@ -59,6 +79,10 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             com_respond_pb(frame_id, MSG_SUCCESS, &pb);
             return E_SUCCESS;
 
+        /**
+         * Read smoothed values.
+         * Response: interleaved (u8:channel, f32:value) for all channels
+         */
         case CMD_READ_SMOOTHED:
             dbg("> Read smoothed");
             if(priv->opmode != ADC_OPMODE_IDLE && priv->opmode != ADC_OPMODE_ARMED) {
@@ -75,9 +99,22 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             com_respond_pb(frame_id, MSG_SUCCESS, &pb);
             return E_SUCCESS;
 
+        /**
+         * Configure a trigger. This is legal only if the current state is IDLE.
+         *
+         * Payload:
+         *   u8 - source channel
+         *   u16 - triggering level
+         *   u8 - edge to trigger on: 1-rising, 2-falling, 3-both
+         *   u16 - pre-trigger samples count
+         *   u32 - post-trigger samples count
+         *   u16 - trigger hold-off in ms (dead time after firing, before it cna fire again if armed)
+         *   u8(bool) - auto re-arm after firing and completing the capture
+         */
         case CMD_SETUP_TRIGGER:
             dbg("> Setup trigger");
             if(priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
+
             {
                 uint8_t source = pp_u8(pp);
                 uint16_t level = pp_u16(pp);
@@ -126,6 +163,9 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             }
             return E_SUCCESS;
 
+        /**
+         * Arm (permissible only if idle and the trigger is configured)
+         */
         case CMD_ARM:
             dbg("> Arm");
             if(priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
@@ -138,6 +178,10 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
             return E_SUCCESS;
 
+        /**
+         * Dis-arm. Permissible only when idle or armed.
+         * Switches to idle.
+         */
         case CMD_DISARM:
             dbg("> Disarm");
             if(priv->opmode == ADC_OPMODE_IDLE) {
@@ -149,6 +193,9 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
             return E_SUCCESS;
 
+        /**
+         * Abort any ongoing capture and dis-arm.
+         */
         case CMD_ABORT:;
             dbg("> Abort capture");
             enum uadc_opmode old_opmode = priv->opmode;
@@ -161,6 +208,10 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             }
             return E_SUCCESS;
 
+        /**
+         * Force a trigger (complete with pre-trigger capture and hold-off)
+         * The reported edge will be 0b11, here meaning "manual trigger"
+         */
         case CMD_FORCE_TRIGGER:
             dbg("> Force trigger");
             if(priv->opmode == ADC_OPMODE_IDLE) {
@@ -172,6 +223,12 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             UADC_HandleTrigger(unit, 0b11, PTIM_GetMicrotime());
             return E_SUCCESS;
 
+        /**
+         * Start a block capture (like manual trigger, but without pre-trigger and arming)
+         *
+         * Payload:
+         *   u32 - sample count (for each channel)
+         */
         case CMD_BLOCK_CAPTURE:
             dbg("> Block cpt");
             if(priv->opmode != ADC_OPMODE_ARMED &&
@@ -182,6 +239,10 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             UADC_StartBlockCapture(unit, count, frame_id);
             return E_SUCCESS;
 
+        /**
+         * Start streaming (like block capture, but unlimited)
+         * The stream can be terminated by the stop command.
+         */
         case CMD_STREAM_START:
             dbg("> Stream ON");
             if(priv->opmode != ADC_OPMODE_ARMED &&
@@ -190,6 +251,9 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             UADC_StartStream(unit, frame_id);
             return E_SUCCESS;
 
+        /**
+         * Stop a stream.
+         */
         case CMD_STREAM_STOP:
             dbg("> Stream OFF");
             if(priv->opmode != ADC_OPMODE_STREAM) {
@@ -210,7 +274,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 /** Unit template */
 const UnitDriver UNIT_ADC = {
     .name = "ADC",
-    .description = "Analog/Digital converter",
+    .description = "Analog/digital converter",
     // Settings
     .preInit = UADC_preInit,
     .cfgLoadBinary = UADC_loadBinary,
