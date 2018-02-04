@@ -8,18 +8,6 @@
 #define ADC_INTERNAL
 #include "_adc_internal.h"
 
-const uint32_t LL_ADC_SAMPLETIMES[] = {
-    LL_ADC_SAMPLINGTIME_1CYCLE_5,
-    LL_ADC_SAMPLINGTIME_7CYCLES_5,
-    LL_ADC_SAMPLINGTIME_13CYCLES_5,
-    LL_ADC_SAMPLINGTIME_28CYCLES_5,
-    LL_ADC_SAMPLINGTIME_41CYCLES_5,
-    LL_ADC_SAMPLINGTIME_55CYCLES_5,
-    LL_ADC_SAMPLINGTIME_71CYCLES_5,
-    LL_ADC_SAMPLINGTIME_239CYCLES_5,
-};
-
-
 /** Allocate data structure and set defaults */
 error_t UADC_preInit(Unit *unit)
 {
