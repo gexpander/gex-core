@@ -125,5 +125,5 @@ error_t UU_1WIRE_Search(Unit *unit, bool with_alarm, bool restart,
             return priv->searchState.error;
     }
 
-    return E_FAILURE;
+    return E_INTERNAL_ERROR;
 }

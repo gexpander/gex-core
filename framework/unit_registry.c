@@ -495,7 +495,8 @@ void ureg_deliver_unit_request(TF_Msg *msg)
                 if (rv == E_SUCCESS) {
                     if (confirmed) com_respond_ok(msg->frame_id);
                 }
-                else {
+                else if (rv != E_FAILURE) {
+                    // Failure is returned when the handler already sent an error response.
                     com_respond_error(msg->frame_id, rv);
                 }
                 goto quit;

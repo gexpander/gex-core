@@ -21,7 +21,6 @@ error_t UADC_preInit(Unit *unit)
     priv->sample_time = 0b010; // 13.5c
     priv->frequency = 1000;
     priv->buffer_size = 512;
-    priv->enable_averaging = false;
     priv->averaging_factor = 500;
 
     priv->opmode = ADC_OPMODE_UNINIT;

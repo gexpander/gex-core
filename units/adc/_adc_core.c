@@ -8,6 +8,11 @@
 #define ADC_INTERNAL
 #include "_adc_internal.h"
 
+void UADC_ReportEndOfStream(Unit *unit)
+{
+    dbg("~~End Of Stream msg~~");
+}
+
 void UADC_DMA_Handler(void *arg)
 {
     Unit *unit = arg;
@@ -59,6 +64,7 @@ void UADC_DMA_Handler(void *arg)
                 if (m_trig || m_fixcpt) {
                     if (priv->trig_stream_remain == 0) {
                         dbg("End of capture");
+                        UADC_ReportEndOfStream(unit);
                         UADC_SwitchMode(unit, (priv->auto_rearm && m_trig) ? ADC_OPMODE_ARMED : ADC_OPMODE_IDLE);
                     }
                 }
@@ -117,32 +123,31 @@ void UADC_ADC_EOS_Handler(void *arg)
             uint16_t val = priv->dma_buffer[sample_pos];
             dbg("Trig line level %d", (int)val);
 
-            if (priv->enable_averaging) {
-                priv->averaging_bins[i] =
-                    priv->averaging_bins[i] * (1.0f - priv->avg_factor_as_float) +
-                    ((float) val) * priv->avg_factor_as_float;
-            } else {
-                priv->last_sample[i] = val;
-            }
+            priv->averaging_bins[i] =
+                priv->averaging_bins[i] * (1.0f - priv->avg_factor_as_float) +
+                ((float) val) * priv->avg_factor_as_float;
+
+            priv->last_samples[i] = val;
 
             if (priv->opmode == ADC_OPMODE_ARMED) {
                 if (i == priv->trigger_source) {
                     bool trigd = false;
-                    bool rising = false;
+                    uint8_t edge_type = 0;
                     if (priv->trig_prev_level < priv->trig_level && val >= priv->trig_level) {
                         dbg("******** Rising edge");
                         // Rising edge
                         trigd = (bool) (priv->trig_edge & 0b01);
-                        rising = true;
+                        edge_type = 1;
                     }
                     else if (priv->trig_prev_level > priv->trig_level && val <= priv->trig_level) {
                         dbg("******** Falling edge");
                         // Falling edge
                         trigd = (bool) (priv->trig_edge & 0b10);
+                        edge_type = 2;
                     }
 
                     if (trigd) {
-                        UADC_HandleTrigger(unit, rising, timestamp);
+                        UADC_HandleTrigger(unit, edge_type, timestamp);
                     }
 
                     priv->trig_prev_level = val;
@@ -154,7 +159,7 @@ void UADC_ADC_EOS_Handler(void *arg)
     dbg("  EOS ISR end.");
 }
 
-void UADC_HandleTrigger(Unit *unit, bool rising, uint64_t timestamp)
+void UADC_HandleTrigger(Unit *unit, uint8_t edge_type, uint64_t timestamp)
 {
     assert_param(unit);
     struct priv *priv = unit->data;
@@ -172,7 +177,7 @@ void UADC_HandleTrigger(Unit *unit, bool rising, uint64_t timestamp)
         unit->_tick_cnt = 0;
     }
 
-    dbg("Trigger condition hit, rising=%d", rising);
+    dbg("Trigger condition hit, edge=%d", edge_type);
     // TODO Send pre-trigger
 
     priv->stream_startpos = (uint16_t) priv->DMA_CHx->CNDTR;
@@ -180,6 +185,44 @@ void UADC_HandleTrigger(Unit *unit, bool rising, uint64_t timestamp)
     UADC_SwitchMode(unit, ADC_OPMODE_TRIGD);
 }
 
+void UADC_StartBlockCapture(Unit *unit, uint32_t len, TF_ID frame_id)
+{
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    priv->stream_frame_id = frame_id;
+    priv->stream_startpos = (uint16_t) priv->DMA_CHx->CNDTR;
+    priv->trig_stream_remain = len;
+    UADC_SwitchMode(unit, ADC_OPMODE_FIXCAPT);
+}
+
+/** Start stream */
+void UADC_StartStream(Unit *unit, TF_ID frame_id)
+{
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    priv->stream_frame_id = frame_id;
+    priv->stream_startpos = (uint16_t) priv->DMA_CHx->CNDTR;
+    dbg("Start streaming.");
+    UADC_SwitchMode(unit, ADC_OPMODE_STREAM);
+}
+
+/** End stream */
+void UADC_StopStream(Unit *unit)
+{
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    dbg("Stop stream.");
+    UADC_ReportEndOfStream(unit);
+    UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+}
+
+/** Handle unit update tick - expire the trigger hold-off */
 void UADC_updateTick(Unit *unit)
 {
     assert_param(unit);
@@ -234,6 +277,7 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
     else if (new_mode == ADC_OPMODE_IDLE) {
         dbg("ADC switch -> IDLE");
         // IDLE and ARMED are identical with the exception that the trigger condition is not checked
+        // ARMED can be only entered from IDLE, thus we do the init only here.
 
         // In IDLE, we don't need the DMA interrupts
         LL_DMA_DisableIT_HT(priv->DMAx, priv->dma_chnum);
@@ -254,8 +298,11 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         assert_param(priv->opmode == ADC_OPMODE_IDLE);
         // there's nothing else to do here
     }
-    else if (new_mode == ADC_OPMODE_TRIGD || new_mode == ADC_OPMODE_STREAM) {
-        dbg("ADC switch -> TRIG'D or STREAM");
+    else if (new_mode == ADC_OPMODE_TRIGD ||
+        new_mode == ADC_OPMODE_STREAM ||
+        new_mode == ADC_OPMODE_FIXCAPT) {
+
+        dbg("ADC switch -> TRIG'D / STREAM / BLOCK");
         assert_param(priv->opmode == ADC_OPMODE_ARMED || priv->opmode == ADC_OPMODE_IDLE);
 
         // during the capture, we disallow direct readout and averaging to reduce overhead
