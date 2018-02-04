@@ -40,4 +40,5 @@ const UnitDriver UNIT_ADC = {
     .deInit = UADC_deInit,
     // Function
     .handleRequest = UADC_handleRequest,
+    .updateTick = UADC_updateTick,
 };

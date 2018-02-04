@@ -65,6 +65,8 @@ static struct callbacks_ {
     struct cbslot tim7;
     struct cbslot tim15;
 
+    struct cbslot adc1;
+
     // XXX add more callbacks here when needed
 } callbacks;
 
@@ -96,7 +98,9 @@ void irqd_init(void)
     HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 2, 0);
     HAL_NVIC_SetPriority(DMA1_Channel4_5_6_7_IRQn, 2, 0);
 
-//    NVIC_EnableIRQ(ADC1_COMP_IRQn);             /*!< ADC1 and COMP interrupts (ADC interrupt combined with EXTI Lines 21 and 22 */
+    NVIC_EnableIRQ(ADC1_COMP_IRQn);             /*!< ADC1 and COMP interrupts (ADC interrupt combined with EXTI Lines 21 and 22 */
+    HAL_NVIC_SetPriority(ADC1_COMP_IRQn, 1, 0); // ADC group completion - higher prio than DMA to let it handle the last halfword first
+
 //    NVIC_EnableIRQ(TIM1_IRQn);                  /*!< TIM1 global Interrupt                                          */
 //    NVIC_EnableIRQ(TIM2_IRQn);                  /*!< TIM2 global Interrupt                                           */
 //    NVIC_EnableIRQ(TIM3_IRQn);                  /*!< TIM3 global Interrupt                                           */
@@ -158,6 +162,8 @@ static struct cbslot *get_slot_for_periph(void *periph)
     else if (periph == TIM6) slot = &callbacks.tim6;
     else if (periph == TIM7) slot = &callbacks.tim7;
     else if (periph == TIM15) slot = &callbacks.tim15;
+
+    else if (periph == ADC1) slot = &callbacks.adc1;
 
     else if (periph >= EXTIS[0] && periph <= EXTIS[15]) {
         slot = &callbacks.exti[periph - EXTIS[0]];
@@ -311,6 +317,11 @@ void TIM7_IRQHandler(void)
 void TIM15_IRQHandler(void)
 {
     CALL_IRQ_HANDLER(callbacks.tim15);
+}
+
+void ADC1_COMP_IRQHandler(void)
+{
+    CALL_IRQ_HANDLER(callbacks.adc1);
 }
 
 

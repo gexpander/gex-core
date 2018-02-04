@@ -2,3 +2,270 @@
 // Created by MightyPork on 2018/02/04.
 //
 
+#include "platform.h"
+#include "unit_base.h"
+
+#define ADC_INTERNAL
+#include "_adc_internal.h"
+
+void UADC_DMA_Handler(void *arg)
+{
+    Unit *unit = arg;
+
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    const uint32_t isrsnapshot = priv->DMAx->ISR;
+
+    if (LL_DMA_IsActiveFlag_G(isrsnapshot, priv->dma_chnum)) {
+        const bool tc = LL_DMA_IsActiveFlag_TC(isrsnapshot, priv->dma_chnum);
+        const bool ht = LL_DMA_IsActiveFlag_HT(isrsnapshot, priv->dma_chnum);
+        const bool te = LL_DMA_IsActiveFlag_TE(isrsnapshot, priv->dma_chnum);
+
+        // check what mode we're in
+        const bool m_trig = priv->opmode == ADC_OPMODE_TRIGD;
+        const bool m_stream = priv->opmode == ADC_OPMODE_STREAM;
+        const bool m_fixcpt = priv->opmode == ADC_OPMODE_FIXCAPT;
+
+        if (m_trig || m_stream || m_fixcpt) {
+            if (ht || tc) {
+                const uint16_t start = priv->stream_startpos;
+                uint16_t end;
+
+                if (ht) {
+                    dbg("HT");
+                    end = (uint16_t) (priv->dma_buffer_itemcount / 2);
+                    LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
+                }
+                else {
+                    dbg("TC");
+                    end = (uint16_t) priv->dma_buffer_itemcount;
+                    LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
+                }
+
+                assert_param(start < end);
+
+                uint32_t sgcount = (end - start) / priv->nb_channels;
+
+                if (m_trig || m_fixcpt) {
+                    sgcount = MIN(priv->trig_stream_remain, sgcount);
+                    priv->trig_stream_remain -= sgcount;
+                }
+
+                dbg("Would send %d groups (u16 offset %d -> %d)", (int)sgcount, (int)start, (int)(start+sgcount*priv->nb_channels));
+                // TODO send the data together with remaining count (used to detect end of transmission)
+
+                if (m_trig || m_fixcpt) {
+                    if (priv->trig_stream_remain == 0) {
+                        dbg("End of capture");
+                        UADC_SwitchMode(unit, (priv->auto_rearm && m_trig) ? ADC_OPMODE_ARMED : ADC_OPMODE_IDLE);
+                    }
+                }
+
+                if (end == priv->dma_buffer_itemcount) {
+                    priv->stream_startpos = 0;
+                }
+                else {
+                    priv->stream_startpos = end;
+                }
+            }
+        } else {
+            // This shouldn't happen, the interrupt should be disabled in this opmode
+            dbg("(!) not streaming, DMA IT should be disabled");
+
+            if (ht) {
+                LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
+            }
+            else {
+                LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
+            }
+        }
+
+        if (te) {
+            // this shouldn't happen - error
+            dbg("ADC DMA TE!");
+            LL_DMA_ClearFlag_TE(priv->DMAx, priv->dma_chnum);
+        }
+    }
+}
+
+void UADC_ADC_EOS_Handler(void *arg)
+{
+    uint64_t timestamp = PTIM_GetMicrotime();
+    Unit *unit = arg;
+
+    dbg("ADC EOS ISR hit");
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    // Wait for the DMA to complete copying the last sample
+    while (priv->DMA_CHx->CNDTR % priv->nb_channels != 0);
+
+    uint32_t sample_pos;
+    if (priv->DMA_CHx->CNDTR == 0) {
+        sample_pos = (uint32_t) (priv->dma_buffer_itemcount - 1);
+    } else {
+        sample_pos = priv->DMA_CHx->CNDTR;
+    }
+    sample_pos -= priv->nb_channels;
+    dbg("Sample pos %d", (int)sample_pos);
+
+    for (uint32_t i = 0; i < 18; i++) {
+        if (priv->extended_channels_mask & (1 << i)) {
+            uint16_t val = priv->dma_buffer[sample_pos];
+            dbg("Trig line level %d", (int)val);
+
+            if (priv->enable_averaging) {
+                priv->averaging_bins[i] =
+                    priv->averaging_bins[i] * (1.0f - priv->avg_factor_as_float) +
+                    ((float) val) * priv->avg_factor_as_float;
+            } else {
+                priv->last_sample[i] = val;
+            }
+
+            if (priv->opmode == ADC_OPMODE_ARMED) {
+                if (i == priv->trigger_source) {
+                    bool trigd = false;
+                    bool rising = false;
+                    if (priv->trig_prev_level < priv->trig_level && val >= priv->trig_level) {
+                        dbg("******** Rising edge");
+                        // Rising edge
+                        trigd = (bool) (priv->trig_edge & 0b01);
+                        rising = true;
+                    }
+                    else if (priv->trig_prev_level > priv->trig_level && val <= priv->trig_level) {
+                        dbg("******** Falling edge");
+                        // Falling edge
+                        trigd = (bool) (priv->trig_edge & 0b10);
+                    }
+
+                    if (trigd) {
+                        UADC_HandleTrigger(unit, rising, timestamp);
+                    }
+
+                    priv->trig_prev_level = val;
+                }
+            }
+        }
+    }
+
+    dbg("  EOS ISR end.");
+}
+
+void UADC_HandleTrigger(Unit *unit, bool rising, uint64_t timestamp)
+{
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    if (priv->trig_holdoff != 0 && priv->trig_holdoff_remain > 0) {
+        dbg("Trig discarded due to holdoff.");
+        return;
+    }
+
+    if (priv->trig_holdoff > 0) {
+        priv->trig_holdoff_remain = priv->trig_holdoff;
+        // Start the tick
+        unit->tick_interval = 1;
+        unit->_tick_cnt = 0;
+    }
+
+    dbg("Trigger condition hit, rising=%d", rising);
+    // TODO Send pre-trigger
+
+    priv->stream_startpos = (uint16_t) priv->DMA_CHx->CNDTR;
+    priv->trig_stream_remain = priv->trig_len;
+    UADC_SwitchMode(unit, ADC_OPMODE_TRIGD);
+}
+
+void UADC_updateTick(Unit *unit)
+{
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    if (priv->trig_holdoff_remain > 0) {
+        priv->trig_holdoff_remain--;
+
+        if (priv->trig_holdoff_remain == 0) {
+            unit->tick_interval = 0;
+            unit->_tick_cnt = 0;
+        }
+    }
+}
+
+void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
+{
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    if (new_mode == priv->opmode) return; // nothing to do
+
+    // if un-itied, can go only to IDLE
+    assert_param((priv->opmode != ADC_OPMODE_UNINIT) || (new_mode == ADC_OPMODE_IDLE));
+
+    if (new_mode == ADC_OPMODE_UNINIT) {
+        dbg("ADC switch -> UNINIT");
+        // Stop the DMA, timer and disable ADC - this is called before tearing down the unit
+        LL_TIM_DisableCounter(priv->TIMx);
+
+        // Switch off the ADC
+        if (LL_ADC_IsEnabled(priv->ADCx)) {
+            // Cancel ongoing conversion
+            if (LL_ADC_REG_IsConversionOngoing(priv->ADCx)) {
+                dbg("Stopping ADC conv");
+                LL_ADC_REG_StopConversion(priv->ADCx);
+                hw_wait_while(LL_ADC_REG_IsStopConversionOngoing(priv->ADCx), 100);
+            }
+
+            LL_ADC_Disable(priv->ADCx);
+            dbg("Disabling ADC");
+            hw_wait_while(LL_ADC_IsDisableOngoing(priv->ADCx), 100);
+        }
+
+        dbg("Disabling DMA");
+        LL_DMA_DisableChannel(priv->DMAx, priv->dma_chnum);
+        LL_DMA_DisableIT_HT(priv->DMAx, priv->dma_chnum);
+        LL_DMA_DisableIT_TC(priv->DMAx, priv->dma_chnum);
+    }
+    else if (new_mode == ADC_OPMODE_IDLE) {
+        dbg("ADC switch -> IDLE");
+        // IDLE and ARMED are identical with the exception that the trigger condition is not checked
+
+        // In IDLE, we don't need the DMA interrupts
+        LL_DMA_DisableIT_HT(priv->DMAx, priv->dma_chnum);
+        LL_DMA_DisableIT_TC(priv->DMAx, priv->dma_chnum);
+
+        // Use End Of Sequence to recover results for averaging from the DMA buffer and DR
+        LL_ADC_EnableIT_EOS(priv->ADCx);
+
+        if (priv->opmode == ADC_OPMODE_UNINIT) {
+            // Nothing is started yet - this is the only way to leave UNINIT
+            LL_ADC_Enable(priv->ADCx);
+            LL_DMA_EnableChannel(priv->DMAx, priv->dma_chnum);
+            LL_TIM_EnableCounter(priv->TIMx);
+        }
+    }
+    else if (new_mode == ADC_OPMODE_ARMED) {
+        dbg("ADC switch -> ARMED");
+        assert_param(priv->opmode == ADC_OPMODE_IDLE);
+        // there's nothing else to do here
+    }
+    else if (new_mode == ADC_OPMODE_TRIGD || new_mode == ADC_OPMODE_STREAM) {
+        dbg("ADC switch -> TRIG'D or STREAM");
+        assert_param(priv->opmode == ADC_OPMODE_ARMED || priv->opmode == ADC_OPMODE_IDLE);
+
+        // during the capture, we disallow direct readout and averaging to reduce overhead
+        LL_ADC_DisableIT_EOS(priv->ADCx);
+
+        // Enable the DMA buffer interrupts
+        LL_DMA_EnableIT_HT(priv->DMAx, priv->dma_chnum);
+        LL_DMA_EnableIT_TC(priv->DMAx, priv->dma_chnum);
+    }
+
+    // the actual switch
+    priv->opmode = new_mode;
+}

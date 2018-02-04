@@ -83,15 +83,16 @@ void UADC_writeIni(Unit *unit, IniWriter *iw)
     struct priv *priv = unit->data;
 
     iw_comment(iw, "Enabled channels, comma separated");
-    iw_comment(iw, "0-7 = A0-A7, 8-9 = B0-B1, 10-15 = C0-C5");
+    iw_comment(iw, "0-7 = A0-A7,  8-9 = B0-B1,  10-15 = C0-C5");
     iw_entry(iw, "channels", "%s", pinmask2str_up(priv->channels, unit_tmp512));
 
-    iw_comment(iw, "Enable Tsense channel");
+    iw_comment(iw, "Enable Tsense channel (#16)");
     iw_entry(iw, "enable_tsense", str_yn(priv->enable_tsense));
 
-    iw_comment(iw, "Enable Vref channel");
+    iw_comment(iw, "Enable Vref channel (#17)");
     iw_entry(iw, "enable_vref", str_yn(priv->enable_tsense));
 
+    iw_cmt_newline(iw);
     iw_comment(iw, "Sampling time (0-7)");
     iw_entry(iw, "sample_time", "%d", (int)priv->sample_time);
 
@@ -103,5 +104,12 @@ void UADC_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "- the buffer is shared by all channels");
     iw_comment(iw, "- insufficient buffer size can lead to data loss");
     iw_entry(iw, "buffer_size", "%d", (int)priv->buffer_size);
+
+    iw_cmt_newline(iw);
+    iw_comment(iw, "Enable exponential averaging (only when not streaming)");
+    iw_comment(iw, "Used formula: y[t]=(1-k)*y[t-1]+k*u[t]");
+    iw_entry(iw, "averaging", str_yn(priv->enable_averaging));
+    iw_comment(iw, "Averaging factor k (permil, range 0-1000 ~ 0.000-1.000)");
+    iw_entry(iw, "avg_factor", "%d", priv->averaging_factor);
 }
 

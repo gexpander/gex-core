@@ -349,6 +349,9 @@ bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
                  uint16_t *presc, uint32_t *count, float *real_freq)
 {
     if (required_freq == 0) return false;
+
+    // XXX consider using the LL macros __LL_TIM_CALC_PSC and __LL_TIM_CALC_ARR
+
     const float fPresc = base_freq / required_freq;
     uint32_t wCount = (uint32_t) lrintf(fPresc);
 

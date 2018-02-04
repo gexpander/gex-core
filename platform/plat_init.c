@@ -18,6 +18,8 @@
 
 void plat_init(void)
 {
+    // GPIO clocks are enabled earlier in the GEX start-up hook
+
     // Load system defaults
     systemsettings_init();
 
@@ -27,8 +29,9 @@ void plat_init(void)
 
     LockJumper_Init();
     Indicator_Init();
-    DebugUart_Init(); // resource claim
+    DebugUart_Init(); // resource claim (was inited earlier to allow debug outputs)
 
+    // Enable interrupts and set priorities
     irqd_init();
 
     dbg("Loading settings ...");

@@ -183,4 +183,16 @@ void hw_periph_clock_disable(void *periph);
 bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
                  uint16_t *presc, uint32_t *count, float *real_freq);
 
+#define hw_wait_while(call, timeout) \
+    do { \
+        uint32_t _ts = HAL_GetTick(); \
+        while (1 == (call)) { \
+            if (HAL_GetTick() - _ts > (timeout)) { \
+                trap("Timeout"); \
+            } \
+        } \
+    } while (0)
+
+#define hw_wait_until(call, timeout) hw_wait_while(!(call), (timeout))
+
 #endif //GEX_PIN_UTILS_H

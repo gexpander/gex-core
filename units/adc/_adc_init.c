@@ -2,6 +2,7 @@
 // Created by MightyPork on 2018/02/03.
 //
 
+#include <stm32f072xb.h>
 #include "platform.h"
 #include "unit_base.h"
 
@@ -20,48 +21,12 @@ error_t UADC_preInit(Unit *unit)
     priv->sample_time = 0b010; // 13.5c
     priv->frequency = 1000;
     priv->buffer_size = 512;
+    priv->enable_averaging = false;
+    priv->averaging_factor = 500;
+
+    priv->opmode = ADC_OPMODE_UNINIT;
 
     return E_SUCCESS;
-}
-
-static void UADC_DMA_Handler(void *arg)
-{
-    Unit *unit = arg;
-
-    dbg("ADC DMA ISR hit");
-    assert_param(unit);
-    struct priv *priv = unit->data;
-    assert_param(priv);
-
-    const uint32_t isrsnapshot = priv->DMAx->ISR;
-
-    if (LL_DMA_IsActiveFlag_G(isrsnapshot, priv->dma_chnum)) {
-        bool tc = LL_DMA_IsActiveFlag_TC(isrsnapshot, priv->dma_chnum);
-        bool ht = LL_DMA_IsActiveFlag_HT(isrsnapshot, priv->dma_chnum);
-
-        // Here we have to either copy it somewhere else, or notify another thread (queue?)
-        // that the data is ready for reading
-
-        if (ht) {
-            uint16_t start = 0;
-            uint16_t end = (uint16_t) (priv->dma_buffer_size / 2);
-            // TODO handle first half
-            LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
-        }
-
-        if (tc) {
-            uint16_t start = (uint16_t) (priv->dma_buffer_size / 2);
-            uint16_t end = (uint16_t) priv->dma_buffer_size;
-            // TODO handle second half
-            LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
-        }
-
-        if (LL_DMA_IsActiveFlag_TE(isrsnapshot, priv->dma_chnum)) {
-            // this shouldn't happen - error
-            dbg("ADC DMA TE!");
-            LL_DMA_ClearFlag_TE(priv->DMAx, priv->dma_chnum);
-        }
-    }
 }
 
 /** Finalize unit set-up */
@@ -133,6 +98,7 @@ error_t UADC_init(Unit *unit)
         // enable peripherals clock
         hw_periph_clock_enable(priv->ADCx);
         hw_periph_clock_enable(priv->TIMx);
+        // DMA and GPIO clocks are enabled on startup automatically
     }
 
     // ------------------- CONFIGURE THE TIMER --------------------------
@@ -142,8 +108,7 @@ error_t UADC_init(Unit *unit)
         uint16_t presc;
         uint32_t count;
         float real_freq;
-        if (!solve_timer(PLAT_APB1_HZ, priv->frequency, true, &presc, &count,
-                         &real_freq)) {
+        if (!solve_timer(PLAT_APB1_HZ, priv->frequency, true, &presc, &count, &real_freq)) {
             dbg("Failed to resolve timer params.");
             return E_BAD_VALUE;
         }
@@ -167,24 +132,29 @@ error_t UADC_init(Unit *unit)
         while (LL_ADC_IsCalibrationOnGoing(priv->ADCx)) {}
         dbg("ADC calibrated.");
 
-        uint32_t mask = 0;
-        if (priv->enable_vref) mask |= LL_ADC_PATH_INTERNAL_VREFINT;
-        if (priv->enable_tsense) mask |= LL_ADC_PATH_INTERNAL_TEMPSENSOR;
-        LL_ADC_SetCommonPathInternalCh(priv->ADCx_Common, mask);
+        {
+            uint32_t mask = 0;
+            if (priv->enable_vref) mask |= LL_ADC_PATH_INTERNAL_VREFINT;
+            if (priv->enable_tsense) mask |= LL_ADC_PATH_INTERNAL_TEMPSENSOR;
+            LL_ADC_SetCommonPathInternalCh(priv->ADCx_Common, mask);
+        }
+
         LL_ADC_SetDataAlignment(priv->ADCx, LL_ADC_DATA_ALIGN_RIGHT);
         LL_ADC_SetResolution(priv->ADCx, LL_ADC_RESOLUTION_12B);
         LL_ADC_REG_SetDMATransfer(priv->ADCx, LL_ADC_REG_DMA_TRANSFER_UNLIMITED);
 
         // configure channels
-        LL_ADC_REG_SetSequencerChannels(priv->ADCx, priv->channels);
-        if (priv->enable_tsense) LL_ADC_REG_SetSequencerChAdd(priv->ADCx, LL_ADC_CHANNEL_TEMPSENSOR);
-        if (priv->enable_vref) LL_ADC_REG_SetSequencerChAdd(priv->ADCx, LL_ADC_CHANNEL_VREFINT);
+        priv->extended_channels_mask = priv->channels;
+        if (priv->enable_tsense) priv->extended_channels_mask |= (1<<16);
+        if (priv->enable_vref) priv->extended_channels_mask |= (1<<17);
+
+        priv->ADCx->CHSELR = priv->extended_channels_mask;
 
         LL_ADC_REG_SetTriggerSource(priv->ADCx, LL_ADC_REG_TRIG_EXT_TIM15_TRGO);
 
         LL_ADC_SetSamplingTimeCommonChannels(priv->ADCx, LL_ADC_SAMPLETIMES[priv->sample_time]);
 
-        LL_ADC_Enable(priv->ADCx);
+//        LL_ADC_Enable(priv->ADCx);
     }
 
     // --------------------- CONFIGURE DMA -------------------------------
@@ -193,10 +163,14 @@ error_t UADC_init(Unit *unit)
         // The length must be a 2*multiple of the number of channels, in bytes
         uint16_t itemcount = (uint16_t) ((priv->nb_channels) * (uint16_t) (priv->buffer_size / (2 * priv->nb_channels)));
         if (itemcount % 2 == 1) itemcount -= priv->nb_channels;
-        priv->dma_buffer_size = (uint16_t) (itemcount * 2);
-        dbg("DMA item count is %d (%d bytes)", itemcount, priv->dma_buffer_size);
+        priv->dma_buffer_itemcount = itemcount;
 
-        priv->dma_buffer = malloc_ck(priv->dma_buffer_size);
+        dbg("DMA item count is %d (%d bytes), There are %d 2-byte samples per group.",
+            priv->dma_buffer_itemcount,
+            priv->dma_buffer_itemcount*sizeof(uint16_t),
+            priv->nb_channels);
+
+        priv->dma_buffer = malloc_ck(priv->dma_buffer_itemcount * sizeof(uint16_t));
         if (NULL == priv->dma_buffer) return E_OUT_OF_MEM;
         assert_param(((uint32_t) priv->dma_buffer & 3) == 0); // must be aligned
 
@@ -218,21 +192,25 @@ error_t UADC_init(Unit *unit)
 
             assert_param(SUCCESS == LL_DMA_Init(priv->DMAx, priv->dma_chnum, &init));
 
-            irqd_attach(priv->DMA_CHx, UADC_DMA_Handler, unit);
             // Interrupt on transfer 1/2 and complete
             // We will capture the first and second half and send it while the other half is being filled.
-            LL_DMA_EnableIT_HT(priv->DMAx, priv->dma_chnum);
-            LL_DMA_EnableIT_TC(priv->DMAx, priv->dma_chnum);
+//            LL_DMA_EnableIT_HT(priv->DMAx, priv->dma_chnum);
+//            LL_DMA_EnableIT_TC(priv->DMAx, priv->dma_chnum);
         }
 
         LL_DMA_EnableChannel(priv->DMAx, priv->dma_chnum);
     }
 
-    dbg("ADC inited, starting the timer ...");
+    // prepare the avg factor float for the ISR
+    if (priv->averaging_factor > 1000) priv->averaging_factor = 1000; // normalize
+    priv->avg_factor_as_float = priv->averaging_factor/1000.0f;
 
-    // FIXME - temporary demo - counter start...
-    LL_ADC_REG_StartConversion(priv->ADCx); // the first conversion must be started manually
-    LL_TIM_EnableCounter(priv->TIMx);
+    dbg("ADC peripherals configured.");
+
+    irqd_attach(priv->DMA_CHx, UADC_DMA_Handler, unit);
+    irqd_attach(priv->ADCx, UADC_ADC_EOS_Handler, unit);
+
+    UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
 
     return E_SUCCESS;
 }
@@ -246,11 +224,15 @@ void UADC_deInit(Unit *unit)
 
     // de-init peripherals
     if (unit->status == E_SUCCESS ) {
+        UADC_SwitchMode(unit, ADC_OPMODE_UNINIT);
+
         //LL_ADC_DeInit(priv->ADCx);
         LL_ADC_CommonDeInit(priv->ADCx_Common);
         LL_TIM_DeInit(priv->TIMx);
 
         irqd_detach(priv->DMA_CHx, UADC_DMA_Handler);
+        irqd_detach(priv->ADCx, UADC_ADC_EOS_Handler);
+
         LL_DMA_DeInit(priv->DMAx, priv->dma_chnum);
 
         free_ck(priv->dma_buffer);
