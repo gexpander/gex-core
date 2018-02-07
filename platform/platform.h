@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <malloc.h>
+#include <math.h>
 
 // FreeRTOS includes
 #include <cmsis_os.h>

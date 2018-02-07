@@ -15,7 +15,8 @@ enum TplCmd_ {
 };
 
 /** Handle a request message */
-static error_t TPL_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
+static error_t UTPL_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
+                                  PayloadParser *pp)
 {
     switch (command) {
         default:
@@ -30,7 +31,7 @@ static error_t TPL_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pa
  *
  * @param unit
  */
-static void TPL_updateTick(Unit *unit)
+static void UTPL_updateTick(Unit *unit)
 {
     //
 }
@@ -42,15 +43,15 @@ const UnitDriver UNIT_TPL = {
     .name = "TPL",
     .description = "Template unit",
     // Settings
-    .preInit = TPL_preInit,
-    .cfgLoadBinary = TPL_loadBinary,
-    .cfgWriteBinary = TPL_writeBinary,
-    .cfgLoadIni = TPL_loadIni,
-    .cfgWriteIni = TPL_writeIni,
+    .preInit = UTPL_preInit,
+    .cfgLoadBinary = UTPL_loadBinary,
+    .cfgWriteBinary = UTPL_writeBinary,
+    .cfgLoadIni = UTPL_loadIni,
+    .cfgWriteIni = UTPL_writeIni,
     // Init
-    .init = TPL_init,
-    .deInit = TPL_deInit,
+    .init = UTPL_init,
+    .deInit = UTPL_deInit,
     // Function
-    .handleRequest = TPL_handleRequest,
-    .updateTick = TPL_updateTick,
+    .handleRequest = UTPL_handleRequest,
+    .updateTick = UTPL_updateTick,
 };

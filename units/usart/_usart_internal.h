@@ -17,6 +17,10 @@
 #define UUSART_RXBUF_LEN 128
 #define UUSART_TXBUF_LEN 128
 
+#define UUSART_DIRECTION_RX 1
+#define UUSART_DIRECTION_TX 2
+#define UUSART_DIRECTION_RXTX 3
+
 /** Private data structure */
 struct priv {
     uint8_t periph_num; //!< 1-6

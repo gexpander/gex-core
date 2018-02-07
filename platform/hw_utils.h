@@ -10,12 +10,7 @@
 
 #include "platform.h"
 #include "resources.h"
-
-extern const uint32_t LL_SYSCFG_EXTI_PORTS[PORTS_COUNT];
-extern const uint32_t LL_SYSCFG_EXTI_LINES[16];
-extern GPIO_TypeDef * const GPIO_PERIPHS[PORTS_COUNT];
-extern const uint32_t LL_GPIO_PINS[16];
-extern const uint32_t LL_EXTI_LINES[16];
+#include "ll_extension.h"
 
 /**
  * Convert pin number to LL driver bitfield for working with the pin.
@@ -78,12 +73,23 @@ uint16_t parse_pinmask(const char *value, bool *suc);
 
 /**
  * Convert a pin bitmap to the ASCII format understood by str_parse_pinmask()
+ * This is the downto variant (15..0)
  *
  * @param pins - sparse pin map
  * @param buffer - output string buffer
  * @return the output buffer
  */
 char * pinmask2str(uint16_t pins, char *buffer);
+
+/**
+ * Convert a pin bitmap to the ASCII format understood by str_parse_pinmask()
+ * This is the ascending variant (0..15)
+ *
+ * @param pins - sparse pin map
+ * @param buffer - output string buffer
+ * @return the output buffer
+ */
+char * pinmask2str_up(uint16_t pins, char *buffer);
 
 /**
  * Spread packed port pins using a mask
@@ -126,7 +132,7 @@ void hw_deinit_unit_pins(Unit *unit);
  * @param ll_af - LL alternate function constant
  * @return success
  */
-error_t hw_configure_gpio_af(char port_name, uint8_t pin_num, uint32_t ll_af);
+error_t hw_configure_gpio_af(char port_name, uint8_t pin_num, uint32_t ll_af) __attribute__((warn_unused_result));
 
 /**
  * Configure multiple pins using the bitmap pattern
@@ -140,7 +146,7 @@ error_t hw_configure_gpio_af(char port_name, uint8_t pin_num, uint32_t ll_af);
  */
 error_t hw_configure_sparse_pins(char port_name,
                                  uint16_t mask, GPIO_TypeDef **port_dest,
-                                 uint32_t ll_mode, uint32_t ll_otype);
+                                 uint32_t ll_mode, uint32_t ll_otype) __attribute__((warn_unused_result));
 
 /** Helper struct for defining alternate mappings */
 struct PinAF {
@@ -161,46 +167,32 @@ void hw_periph_clock_enable(void *periph);
  */
 void hw_periph_clock_disable(void *periph);
 
-// ---------- LL extras ------------
+/**
+ * Solve a timer/counter's count and prescaller value to meet the desired
+ * overflow frequency. The resulting values are the dividing factors;
+ * subtract 1 before writing them into the peripheral registers.
+ *
+ * @param[in] base_freq - the counter's input clock frequency in Hz
+ * @param[in] required_freq - desired overflow frequency
+ * @param[in] is16bit - limit counter to 16 bits (prescaller is always 16-bit)
+ * @param[out] presc - field for storing the computed prescaller value
+ * @param[out] count - field for storing the computed counter value
+ * @param[out] real_freq - field for storing the computed real frequency
+ * @return true on success
+ */
+bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
+                 uint16_t *presc, uint32_t *count, float *real_freq);
 
-static inline bool LL_DMA_IsActiveFlag_G(uint32_t isr_snapshot, uint8_t channel)
-{
-    return 0 != (isr_snapshot & (DMA_ISR_GIF1 << (uint32_t)((channel-1) * 4)));
-}
+#define hw_wait_while(call, timeout) \
+    do { \
+        uint32_t _ts = HAL_GetTick(); \
+        while (1 == (call)) { \
+            if (HAL_GetTick() - _ts > (timeout)) { \
+                trap("Timeout"); \
+            } \
+        } \
+    } while (0)
 
-static inline bool LL_DMA_IsActiveFlag_TC(uint32_t isr_snapshot, uint8_t channel)
-{
-    return 0 != (isr_snapshot & (DMA_ISR_TCIF1 << (uint32_t)((channel-1) * 4)));
-}
-
-static inline bool LL_DMA_IsActiveFlag_HT(uint32_t isr_snapshot, uint8_t channel)
-{
-    return 0 != (isr_snapshot & (DMA_ISR_HTIF1 << (uint32_t)((channel-1) * 4)));
-}
-
-static inline bool LL_DMA_IsActiveFlag_TE(uint32_t isr_snapshot, uint8_t channel)
-{
-    return 0 != (isr_snapshot & (DMA_ISR_TEIF1 << (uint32_t)((channel-1) * 4)));
-}
-
-static inline void LL_DMA_ClearFlag_HT(DMA_TypeDef *DMAx, uint8_t channel)
-{
-    DMAx->IFCR = (DMA_IFCR_CHTIF1 << (uint32_t)((channel-1) * 4));
-}
-
-static inline void LL_DMA_ClearFlag_TC(DMA_TypeDef *DMAx, uint8_t channel)
-{
-    DMAx->IFCR = (DMA_IFCR_CTCIF1 << (uint32_t)((channel-1) * 4));
-}
-
-static inline void LL_DMA_ClearFlag_TE(DMA_TypeDef *DMAx, uint8_t channel)
-{
-    DMAx->IFCR = (DMA_IFCR_CTEIF1 << (uint32_t)((channel-1) * 4));
-}
-
-static inline void LL_DMA_ClearFlags(DMA_TypeDef *DMAx, uint8_t channel)
-{
-    DMAx->IFCR = (DMA_IFCR_CGIF1 << (uint32_t)((channel-1) * 4));
-}
+#define hw_wait_until(call, timeout) hw_wait_while(!(call), (timeout))
 
 #endif //GEX_PIN_UTILS_H

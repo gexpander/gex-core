@@ -7,8 +7,6 @@
 
 #define DIN_INTERNAL
 #include "_din_internal.h"
-#include "_din_init.h"
-#include "_din_exti.h"
 
 /** Allocate data structure and set defaults */
 error_t DIn_preInit(Unit *unit)

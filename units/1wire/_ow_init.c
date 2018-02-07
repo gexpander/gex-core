@@ -7,7 +7,6 @@
 
 #define OW_INTERNAL
 #include "_ow_internal.h"
-#include "_ow_init.h"
 
 /** Allocate data structure and set defaults */
 error_t OW_preInit(Unit *unit)

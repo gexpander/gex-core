@@ -5,6 +5,11 @@
 
 void *malloc_ck_do(size_t size,  const char *file, uint32_t line)
 {
+    if (size == 0) {
+        _warn_msg(file, line, "MALLOC OF SIZE 0");
+        return NULL;
+    }
+
     void *mem = pvPortMalloc(size);
     _malloc_trace(size, mem, file, line);
     if (mem == NULL) {
@@ -16,6 +21,7 @@ void *malloc_ck_do(size_t size,  const char *file, uint32_t line)
 void *calloc_ck_do(size_t nmemb, size_t size, const char *file, uint32_t line)
 {
     void *mem = malloc_ck_do(nmemb*size, file, line);
+    if (mem == NULL) return NULL;
     memset(mem, 0, size*nmemb);
     return mem;
 }

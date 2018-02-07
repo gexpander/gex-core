@@ -13,6 +13,7 @@ GEX_SRC_DIR = \
     User/units/1wire \
     User/units/i2c \
     User/units/spi \
+    User/units/adc \
     User/TinyFrame \
     User/CWPack \
     User/tasks

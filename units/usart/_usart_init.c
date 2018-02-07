@@ -1,7 +1,6 @@
 //
 // Created by MightyPork on 2018/01/14.
 //
-#include <platform/irq_dispatcher.h>
 #include "platform.h"
 #include "unit_base.h"
 
@@ -25,7 +24,7 @@ error_t UUSART_preInit(Unit *unit)
     priv->baudrate = 115200;
     priv->parity = 0;         //!< 0-none, 1-odd, 2-even
     priv->stopbits = 1;       //!< 0-half, 1-one, 2-1.5, 3-two
-    priv->direction = 3; // RXTX
+    priv->direction = UUSART_DIRECTION_RXTX; // RXTX
 
     priv->hw_flow_control = false;
     priv->clock_output = false;
@@ -205,7 +204,7 @@ static inline error_t UUSART_configPins(Unit *unit)
         if (pins_wanted[i]) {
             if (mappings[i].port == 0) return E_BAD_CONFIG;
             TRY(rsc_claim_pin(unit, mappings[i].port, mappings[i].pin));
-            hw_configure_gpio_af(mappings[i].port, mappings[i].pin, mappings[i].af);
+            TRY(hw_configure_gpio_af(mappings[i].port, mappings[i].pin, mappings[i].af));
         }
     }
 
@@ -252,9 +251,9 @@ error_t UUSART_init(Unit *unit)
                                                        : LL_USART_STOPBITS_2);
 
         LL_USART_SetTransferDirection(priv->periph,
-                                      priv->direction == 1 ? LL_USART_DIRECTION_RX :
-                                      priv->direction == 2 ? LL_USART_DIRECTION_TX
-                                                           : LL_USART_DIRECTION_TX_RX);
+                                      (priv->direction == UUSART_DIRECTION_RX) ? LL_USART_DIRECTION_RX :
+                                      (priv->direction == UUSART_DIRECTION_TX) ? LL_USART_DIRECTION_TX
+                                                                               : LL_USART_DIRECTION_TX_RX);
 
         LL_USART_SetHWFlowCtrl(priv->periph,
                                priv->hw_flow_control == 0 ? LL_USART_HWCONTROL_NONE :

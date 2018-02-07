@@ -104,9 +104,9 @@ error_t UUSART_loadIni(Unit *unit, const char *key, const char *value)
     }
     else if (streq(key, "direction")) {
         priv->direction = (uint8_t) str_parse_3(value,
-                                                "RX", 1,
-                                                "TX", 2,
-                                                "RXTX", 3, &suc);
+                                                "RX", UUSART_DIRECTION_RX,
+                                                "TX", UUSART_DIRECTION_TX,
+                                                "RXTX", UUSART_DIRECTION_RXTX, &suc);
     }
     else if (streq(key, "hw-flow-control")) {
         priv->hw_flow_control = (uint8_t) str_parse_4(value,

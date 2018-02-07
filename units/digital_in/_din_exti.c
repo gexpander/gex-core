@@ -8,7 +8,6 @@
 #define DIN_INTERNAL
 
 #include "_din_internal.h"
-#include "_din_exti.h"
 
 /**
  * Send a trigger event to master (called on the message queue thread).

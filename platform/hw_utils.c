@@ -3,100 +3,9 @@
 //
 
 #include "platform.h"
-#include <utils/avrlibc.h>
+#include "utils/avrlibc.h"
 #include "hw_utils.h"
-#include "macro.h"
 
-const uint32_t LL_SYSCFG_EXTI_PORTS[PORTS_COUNT] = {
-    LL_SYSCFG_EXTI_PORTA,
-    LL_SYSCFG_EXTI_PORTB,
-    LL_SYSCFG_EXTI_PORTC,
-    LL_SYSCFG_EXTI_PORTD,
-    LL_SYSCFG_EXTI_PORTE,
-#if PORTS_COUNT>5
-    LL_SYSCFG_EXTI_PORTF,
-#endif
-#if PORTS_COUNT>6
-    LL_SYSCFG_EXTI_PORTG,
-#endif
-};
-
-const uint32_t LL_SYSCFG_EXTI_LINES[16] = {
-    LL_SYSCFG_EXTI_LINE0,
-    LL_SYSCFG_EXTI_LINE1,
-    LL_SYSCFG_EXTI_LINE2,
-    LL_SYSCFG_EXTI_LINE3,
-    LL_SYSCFG_EXTI_LINE4,
-    LL_SYSCFG_EXTI_LINE5,
-    LL_SYSCFG_EXTI_LINE6,
-    LL_SYSCFG_EXTI_LINE7,
-    LL_SYSCFG_EXTI_LINE8,
-    LL_SYSCFG_EXTI_LINE9,
-    LL_SYSCFG_EXTI_LINE10,
-    LL_SYSCFG_EXTI_LINE11,
-    LL_SYSCFG_EXTI_LINE12,
-    LL_SYSCFG_EXTI_LINE13,
-    LL_SYSCFG_EXTI_LINE14,
-    LL_SYSCFG_EXTI_LINE15,
-};
-COMPILER_ASSERT(16 == ELEMENTS_IN_ARRAY(LL_SYSCFG_EXTI_LINES));
-
-const uint32_t LL_EXTI_LINES[16] = {
-    LL_EXTI_LINE_0,
-    LL_EXTI_LINE_1,
-    LL_EXTI_LINE_2,
-    LL_EXTI_LINE_3,
-    LL_EXTI_LINE_4,
-    LL_EXTI_LINE_5,
-    LL_EXTI_LINE_6,
-    LL_EXTI_LINE_7,
-    LL_EXTI_LINE_8,
-    LL_EXTI_LINE_9,
-    LL_EXTI_LINE_10,
-    LL_EXTI_LINE_11,
-    LL_EXTI_LINE_12,
-    LL_EXTI_LINE_13,
-    LL_EXTI_LINE_14,
-    LL_EXTI_LINE_15,
-};
-COMPILER_ASSERT(16 == ELEMENTS_IN_ARRAY(LL_EXTI_LINES));
-
-/** Pin number to LL bitfield mapping */
-const uint32_t LL_GPIO_PINS[16] = {
-    LL_GPIO_PIN_0,
-    LL_GPIO_PIN_1,
-    LL_GPIO_PIN_2,
-    LL_GPIO_PIN_3,
-    LL_GPIO_PIN_4,
-    LL_GPIO_PIN_5,
-    LL_GPIO_PIN_6,
-    LL_GPIO_PIN_7,
-    LL_GPIO_PIN_8,
-    LL_GPIO_PIN_9,
-    LL_GPIO_PIN_10,
-    LL_GPIO_PIN_11,
-    LL_GPIO_PIN_12,
-    LL_GPIO_PIN_13,
-    LL_GPIO_PIN_14,
-    LL_GPIO_PIN_15,
-};
-COMPILER_ASSERT(16 == ELEMENTS_IN_ARRAY(LL_GPIO_PINS));
-
-/** Port number (A=0) to config struct pointer mapping */
-GPIO_TypeDef * const GPIO_PERIPHS[PORTS_COUNT] = {
-    GPIOA,
-    GPIOB,
-    GPIOC,
-    GPIOD,
-    GPIOE,
-#if PORTS_COUNT>5
-    GPIOF,
-#endif
-#if PORTS_COUNT>6
-    GPIOG,
-#endif
-};
-COMPILER_ASSERT(PORTS_COUNT == ELEMENTS_IN_ARRAY(GPIO_PERIPHS));
 
 /** Convert pin number to LL bitfield */
 uint32_t hw_pin2ll(uint8_t pin_number, bool *suc)
@@ -263,16 +172,64 @@ char * pinmask2str(uint16_t pins, char *buffer)
                 if (!first) {
                     b += SPRINTF(b, ", ");
                 }
+
                 if (start == (uint32_t)(i+1)) {
                     b += SPRINTF(b, "%"PRIu32, start);
                 }
-//                else if (start == (uint32_t)(i+2)) {
-//                    // exception for 2-long ranges - don't show as range
-//                    b += SPRINTF(b, "%"PRIu32",%"PRIu32, start, i + 1);
-//                }
                 else {
                     b += SPRINTF(b, "%"PRIu32"-%"PRIu32, start, i + 1);
                 }
+
+                first = false;
+                on = false;
+            }
+        }
+    }
+
+    return buffer;
+}
+
+char * pinmask2str_up(uint16_t pins, char *buffer)
+{
+    char *b = buffer;
+    uint32_t start = 0;
+    bool on = false;
+    bool first = true;
+
+    // shortcut if none are set
+    if (pins == 0) {
+        buffer[0] = 0;
+        return buffer;
+    }
+
+    for (int32_t i = 0; i <= 16; i++) {
+        bool bit;
+
+        if (i == 16) {
+            bit = false;
+        } else {
+            bit = 0 != (pins & 1);
+            pins >>= 1;
+        }
+
+        if (bit) {
+            if (!on) {
+                start = (uint32_t) i;
+                on = true;
+            }
+        } else {
+            if (on) {
+                if (!first) {
+                    b += SPRINTF(b, ", ");
+                }
+
+                if (start == (uint32_t)(i-1)) {
+                    b += SPRINTF(b, "%"PRIu32, start);
+                }
+                else {
+                    b += SPRINTF(b, "%"PRIu32"-%"PRIu32, start, i - 1);
+                }
+
                 first = false;
                 on = false;
             }
@@ -386,6 +343,42 @@ error_t hw_configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **p
 
     return E_SUCCESS;
 }
+
+/** Solve a timer/counter's count and prescaller value */
+bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
+                 uint16_t *presc, uint32_t *count, float *real_freq)
+{
+    if (required_freq == 0) return false;
+
+    // XXX consider using the LL macros __LL_TIM_CALC_PSC and __LL_TIM_CALC_ARR
+
+    const float fPresc = base_freq / required_freq;
+    uint32_t wCount = (uint32_t) lrintf(fPresc);
+
+    const uint32_t ceil = is16bit ? UINT16_MAX : UINT32_MAX;
+
+    uint32_t wPresc = 1;
+    while (wCount > ceil) {
+        wPresc <<= 1;
+        wCount >>= 1;
+    }
+
+    if (wPresc > ceil || count == 0) {
+        return false;
+    }
+
+    *count = wCount;
+    *presc = (uint16_t) wPresc;
+
+    if (wPresc * wCount == 0) return false;
+
+    if (real_freq != NULL) {
+        *real_freq = (base_freq / (wPresc * wCount));
+    }
+
+    return true;
+}
+
 
 void hw_periph_clock_enable(void *periph)
 {

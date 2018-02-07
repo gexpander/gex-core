@@ -15,10 +15,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-void *malloc_ck_do(size_t size, const char* file, uint32_t line) __attribute__((malloc));
-void *calloc_ck_do(size_t nmemb, size_t size, const char* file, uint32_t line) __attribute__((malloc));
-char *strdup_ck_do(const char *s, const char* file, uint32_t line) __attribute__((malloc));
-char *strndup_ck_do(const char *s, uint32_t len, const char* file, uint32_t line) __attribute__((malloc));
+void *malloc_ck_do(size_t size, const char* file, uint32_t line) __attribute__((malloc,warn_unused_result));
+void *calloc_ck_do(size_t nmemb, size_t size, const char* file, uint32_t line) __attribute__((malloc,warn_unused_result));
+char *strdup_ck_do(const char *s, const char* file, uint32_t line) __attribute__((malloc,warn_unused_result));
+char *strndup_ck_do(const char *s, uint32_t len, const char* file, uint32_t line) __attribute__((malloc,warn_unused_result));
 
 #if DEBUG_MALLOC
 

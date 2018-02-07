@@ -118,8 +118,8 @@ error_t UI2C_init(Unit *unit)
     TRY(rsc_claim_pin(unit, portname, pin_sda));
     TRY(rsc_claim_pin(unit, portname, pin_scl));
 
-    hw_configure_gpio_af(portname, pin_sda, af_i2c);
-    hw_configure_gpio_af(portname, pin_scl, af_i2c);
+    TRY(hw_configure_gpio_af(portname, pin_sda, af_i2c));
+    TRY(hw_configure_gpio_af(portname, pin_scl, af_i2c));
 
     hw_periph_clock_enable(priv->periph);
 

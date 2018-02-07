@@ -7,7 +7,6 @@
 
 #define I2C_INTERNAL
 #include "_i2c_internal.h"
-#include "_i2c_settings.h"
 
 /** Load from a binary buffer stored in Flash */
 void UI2C_loadBinary(Unit *unit, PayloadParser *pp)

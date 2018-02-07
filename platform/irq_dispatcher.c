@@ -61,6 +61,12 @@ static struct callbacks_ {
     struct cbslot dma2_7;
     struct cbslot dma2_8;
 
+    struct cbslot tim6;
+    struct cbslot tim7;
+    struct cbslot tim15;
+
+    struct cbslot adc1;
+
     // XXX add more callbacks here when needed
 } callbacks;
 
@@ -68,41 +74,64 @@ void irqd_init(void)
 {
     memset(&callbacks, 0, sizeof(callbacks));
 
+    // TODO move the priorities to some define
+
 //    NVIC_EnableIRQ(WWDG_IRQn);                  /*!< Window WatchDog Interrupt                                       */
 //    NVIC_EnableIRQ(PVD_VDDIO2_IRQn);            /*!< PVD & VDDIO2 Interrupt through EXTI Lines 16 and 31             */
 //    NVIC_EnableIRQ(RTC_IRQn);                   /*!< RTC Interrupt through EXTI Lines 17, 19 and 20                  */
 //    NVIC_EnableIRQ(FLASH_IRQn);                 /*!< FLASH global Interrupt                                          */
 //    NVIC_EnableIRQ(RCC_CRS_IRQn);               /*!< RCC & CRS global Interrupt                                      */
+
     NVIC_EnableIRQ(EXTI0_1_IRQn);               /*!< EXTI Line 0 and 1 Interrupt                                     */
     NVIC_EnableIRQ(EXTI2_3_IRQn);               /*!< EXTI Line 2 and 3 Interrupt                                     */
     NVIC_EnableIRQ(EXTI4_15_IRQn);              /*!< EXTI Line 4 to 15 Interrupt                                     */
+    HAL_NVIC_SetPriority(EXTI0_1_IRQn, 2, 0);
+    HAL_NVIC_SetPriority(EXTI2_3_IRQn, 2, 0);
+    HAL_NVIC_SetPriority(EXTI4_15_IRQn, 2, 0);
+
 //    NVIC_EnableIRQ(TSC_IRQn);                   /*!< Touch Sensing Controller Interrupts                             */
+
     NVIC_EnableIRQ(DMA1_Channel1_IRQn);         /*!< DMA1 Channel 1 Interrupt                                        */
     NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);       /*!< DMA1 Channel 2 and Channel 3 Interrupt                          */
     NVIC_EnableIRQ(DMA1_Channel4_5_6_7_IRQn);   /*!< DMA1 Channel 4 to Channel 7 Interrupt                           */
-    HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 3, 0);
-    HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 3, 0);
-    HAL_NVIC_SetPriority(DMA1_Channel4_5_6_7_IRQn, 3, 0);
-//    NVIC_EnableIRQ(ADC1_COMP_IRQn);             /*!< ADC1 and COMP interrupts (ADC interrupt combined with EXTI Lines 21 and 22 */
+    HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 2, 0);
+    HAL_NVIC_SetPriority(DMA1_Channel2_3_IRQn, 2, 0);
+    HAL_NVIC_SetPriority(DMA1_Channel4_5_6_7_IRQn, 2, 0);
+
+    NVIC_EnableIRQ(ADC1_COMP_IRQn);             /*!< ADC1 and COMP interrupts (ADC interrupt combined with EXTI Lines 21 and 22 */
+    HAL_NVIC_SetPriority(ADC1_COMP_IRQn, 1, 0); // ADC group completion - higher prio than DMA to let it handle the last halfword first
+
 //    NVIC_EnableIRQ(TIM1_IRQn);                  /*!< TIM1 global Interrupt                                          */
 //    NVIC_EnableIRQ(TIM2_IRQn);                  /*!< TIM2 global Interrupt                                           */
 //    NVIC_EnableIRQ(TIM3_IRQn);                  /*!< TIM3 global Interrupt                                           */
-//    NVIC_EnableIRQ(TIM6_DAC_IRQn);              /*!< TIM6 global and DAC channel underrun error Interrupt            */
-//    NVIC_EnableIRQ(TIM7_IRQn);                  /*!< TIM7 global Interrupt                                           */
-//  --used internally--  NVIC_EnableIRQ(TIM14_IRQn);                 /*!< TIM14 global Interrupt                                          */
-//    NVIC_EnableIRQ(TIM15_IRQn);                 /*!< TIM15 global Interrupt                                          */
+
+    NVIC_EnableIRQ(TIM6_DAC_IRQn);              /*!< TIM6 global and DAC channel underrun error Interrupt            */
+    HAL_NVIC_SetPriority(TIM7_IRQn, 2, 0); // Used for DAC timing
+
+    NVIC_EnableIRQ(TIM7_IRQn);                  /*!< TIM7 global Interrupt                                           */
+    HAL_NVIC_SetPriority(TIM7_IRQn, 2, 0);
+
+    /* Tim14 is used for HAL timebase, because SysTick is used to time FreeRTOS and has the lowest priority. */
+    /* Tim14's priority is set to 0 in the init routine, which runs early in the startup sequence */
+    //  NVIC_EnableIRQ(TIM14_IRQn); /*!< TIM14 global Interrupt */
+
+    NVIC_EnableIRQ(TIM15_IRQn);                 /*!< TIM15 global Interrupt                                          */
+    HAL_NVIC_SetPriority(TIM15_IRQn, 2, 0);
+
 //    NVIC_EnableIRQ(TIM16_IRQn);                 /*!< TIM16 global Interrupt                                          */
 //    NVIC_EnableIRQ(TIM17_IRQn);                 /*!< TIM17 global Interrupt                                          */
 //    NVIC_EnableIRQ(I2C1_IRQn);                  /*!< I2C1 Event Interrupt & EXTI Line23 Interrupt (I2C1 wakeup)      */
 //    NVIC_EnableIRQ(I2C2_IRQn);                  /*!< I2C2 Event Interrupt                                            */
 //    NVIC_EnableIRQ(SPI1_IRQn);                  /*!< SPI1 global Interrupt                                           */
 //    NVIC_EnableIRQ(SPI2_IRQn);                  /*!< SPI2 global Interrupt                                           */
+
     NVIC_EnableIRQ(USART1_IRQn);                /*!< USART1 global Interrupt & EXTI Line25 Interrupt (USART1 wakeup) */
     NVIC_EnableIRQ(USART2_IRQn);                /*!< USART2 global Interrupt & EXTI Line26 Interrupt (USART2 wakeup) */
     NVIC_EnableIRQ(USART3_4_IRQn);              /*!< USART3 and USART4 global Interrupt                              */
-    HAL_NVIC_SetPriority(USART1_IRQn, 3, 0);
-    HAL_NVIC_SetPriority(USART2_IRQn, 3, 0);
-    HAL_NVIC_SetPriority(USART3_4_IRQn, 3, 0);
+    HAL_NVIC_SetPriority(USART1_IRQn, 2, 0);
+    HAL_NVIC_SetPriority(USART2_IRQn, 2, 0);
+    HAL_NVIC_SetPriority(USART3_4_IRQn, 2, 0);
+
 //    NVIC_EnableIRQ(CEC_CAN_IRQn);               /*!< CEC and CAN global Interrupts & EXTI Line27 Interrupt           */
 
 //    NVIC_EnableIRQ(TIM1_BRK_UP_TRG_COM_IRQn);   /*!< TIM1 Break, Update, Trigger and Commutation Interrupt           */ // - handled by hal msp init
@@ -129,6 +158,12 @@ static struct cbslot *get_slot_for_periph(void *periph)
 #ifdef USART5
         else if (periph == USART5) slot = &callbacks.usart5;
 #endif
+
+    else if (periph == TIM6) slot = &callbacks.tim6;
+    else if (periph == TIM7) slot = &callbacks.tim7;
+    else if (periph == TIM15) slot = &callbacks.tim15;
+
+    else if (periph == ADC1) slot = &callbacks.adc1;
 
     else if (periph >= EXTIS[0] && periph <= EXTIS[15]) {
         slot = &callbacks.exti[periph - EXTIS[0]];
@@ -262,6 +297,31 @@ void EXTI2_3_IRQHandler(void)
 void EXTI4_15_IRQHandler(void)
 {
     fire_exti_cb(4, 15);
+}
+
+
+// ------------ INTERRUPTS -------------
+
+// TIM14 is used to generate HAL timebase and its handler is in the file "timebase.c"
+
+void TIM6_DAC_IRQHandler(void)
+{
+    CALL_IRQ_HANDLER(callbacks.tim6);
+}
+
+void TIM7_IRQHandler(void)
+{
+    CALL_IRQ_HANDLER(callbacks.tim7);
+}
+
+void TIM15_IRQHandler(void)
+{
+    CALL_IRQ_HANDLER(callbacks.tim15);
+}
+
+void ADC1_COMP_IRQHandler(void)
+{
+    CALL_IRQ_HANDLER(callbacks.adc1);
 }
 
 

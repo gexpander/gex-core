@@ -13,7 +13,7 @@
 #define X_ERROR_CODES \
     /* Shared errors */  \
     X(SUCCESS, NULL) /* operation succeeded / unit loaded. Must be 0 */ \
-    X(FAILURE, NULL) /* generic error */   \
+    X(FAILURE, NULL) /* generic error. If returned from a unit handler, does NOT generate a response. */   \
     X(INTERNAL_ERROR, NULL) /* a bug */    \
     X(LOADING, NULL) /* unit is loading */ \
     X(UNKNOWN_COMMAND, NULL) \

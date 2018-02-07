@@ -21,14 +21,13 @@ void com_respond_snprintf(TF_ID frame_id, TF_TYPE type, const char *format, ...)
 
 void com_respond_buf(TF_ID frame_id, TF_TYPE type, const uint8_t *buf, uint32_t len)
 {
-    TF_Msg msg;
-    TF_ClearMsg(&msg);
-    {
-        msg.type = type;
-        msg.frame_id = frame_id;
-        msg.data = buf;
-        msg.len = (TF_LEN) len;
-    }
+    TF_Msg msg = {
+        .type = type,
+        .frame_id = frame_id,
+        .data = buf,
+        .len = (TF_LEN) len,
+    };
+
     TF_Respond(comm, &msg);
 }
 
@@ -57,14 +56,12 @@ void com_send_pb(TF_TYPE type, PayloadBuilder *pb)
 
 void com_send_buf(TF_TYPE type, const uint8_t *buf, uint32_t len)
 {
-    TF_Msg msg;
-    TF_ClearMsg(&msg);
-    {
-        msg.type = MSG_UNIT_REPORT;
-        msg.data = buf;
-        msg.len = (TF_LEN) len;
-        msg.type = type;
-    }
+    TF_Msg msg = {
+        .type = type,
+        .data = buf,
+        .len = (TF_LEN) len,
+    };
+
     TF_Send(comm, &msg); // no listener
 }
 

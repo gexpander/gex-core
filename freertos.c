@@ -114,13 +114,13 @@ __weak void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTas
 
 /* USER CODE BEGIN GET_IDLE_TASK_MEMORY */
 static StaticTask_t xIdleTaskTCBBuffer;
-static StackType_t xIdleStack[configMINIMAL_STACK_SIZE];
+static StackType_t xIdleStack[TSK_STACK_IDLE];
   
 void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackType_t **ppxIdleTaskStackBuffer, uint32_t *pulIdleTaskStackSize )
 {
   *ppxIdleTaskTCBBuffer = &xIdleTaskTCBBuffer;
   *ppxIdleTaskStackBuffer = &xIdleStack[0];
-  *pulIdleTaskStackSize = configMINIMAL_STACK_SIZE;
+  *pulIdleTaskStackSize = TSK_STACK_IDLE;
   /* place for user code */
 }                   
 /* USER CODE END GET_IDLE_TASK_MEMORY */
@@ -128,13 +128,13 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackTy
 
 /* USER CODE BEGIN GET_IDLE_TASK_MEMORY */
 static StaticTask_t xTimersTaskTCBBuffer;
-static StackType_t xTimersStack[configTIMER_TASK_STACK_DEPTH];
+static StackType_t xTimersStack[TSK_STACK_TIMERS];
 
 void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimersTaskTCBBuffer, StackType_t **ppxTimersTaskStackBuffer, uint32_t *pulTimersTaskStackSize )
 {
   *ppxTimersTaskTCBBuffer = &xTimersTaskTCBBuffer;
   *ppxTimersTaskStackBuffer = &xTimersStack[0];
-  *pulTimersTaskStackSize = configTIMER_TASK_STACK_DEPTH;
+  *pulTimersTaskStackSize = TSK_STACK_TIMERS;
   /* place for user code */
 }
 /* USER CODE END GET_IDLE_TASK_MEMORY */
@@ -146,6 +146,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
   stackmon_register("Main", mainTaskStack, sizeof(mainTaskStack));
   stackmon_register("Job+Msg", msgJobQueTaskStack, sizeof(msgJobQueTaskStack));
+  stackmon_register("Idle", xIdleStack, sizeof(xIdleStack));
+  stackmon_register("Timers", xTimersStack, sizeof(xTimersStack));
   /* USER CODE END Init */
 
   /* Create the mutex(es) */

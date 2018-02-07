@@ -15,6 +15,8 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
     // This makes it a good choice for the timebase generation. We set it to generate
     // an interrupt every 1 ms
 
+    assert_param(TickPriority == 0); // any other setting can lead to crashes
+
     // - TIM14 is always up-counting
     // - using APB1 clock
     __HAL_RCC_TIM14_CLK_ENABLE();

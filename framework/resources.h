@@ -38,7 +38,7 @@ void rsc_init_registry(void);
  * @param pin - pin number 0-15
  * @return success
  */
-error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin);
+error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin) __attribute__((warn_unused_result));
 
 /**
  * Claim a resource by the Resource enum
@@ -47,7 +47,7 @@ error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin);
  * @param rsc - resource to claim
  * @return success
  */
-error_t rsc_claim(Unit *unit, Resource rsc);
+error_t rsc_claim(Unit *unit, Resource rsc) __attribute__((warn_unused_result));
 
 /**
  * Claim a range of resources (use for resources of the same type, e.g. USART1-5)
@@ -57,7 +57,7 @@ error_t rsc_claim(Unit *unit, Resource rsc);
  * @param rsc1 - last resource to claim
  * @return success (E_SUCCESS = complete claim)
  */
-error_t rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1);
+error_t rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1) __attribute__((warn_unused_result));
 
 /**
  * Claim GPIOs by bitmask and port name, atomically.
@@ -68,7 +68,7 @@ error_t rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1);
  * @param pins - pins, bitmask
  * @return success (E_SUCCESS = complete claim)
  */
-error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins);
+error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins) __attribute__((warn_unused_result));
 
 /**
  * Release all resources held by a unit, de-init held GPIOs

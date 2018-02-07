@@ -490,12 +490,18 @@ void ureg_deliver_unit_request(TF_Msg *msg)
             if (pUnit->callsign == callsign && pUnit->status == E_SUCCESS) {
                 error_t rv = pUnit->driver->handleRequest(pUnit, msg->frame_id, command, &pp);
 
+                if (!pp.ok) {
+                    com_respond_error(msg->frame_id, E_MALFORMED_COMMAND);
+                    goto quit;
+                }
+
                 // send extra SUCCESS confirmation message.
                 // error is expected to have already been reported.
                 if (rv == E_SUCCESS) {
                     if (confirmed) com_respond_ok(msg->frame_id);
                 }
-                else {
+                else if (rv != E_FAILURE) {
+                    // Failure is returned when the handler already sent an error response.
                     com_respond_error(msg->frame_id, rv);
                 }
                 goto quit;
@@ -606,14 +612,17 @@ void ureg_tick_units(void)
     UlistEntry *li = ulist_head;
     while (li != NULL) {
         Unit *const pUnit = &li->unit;
-        if (pUnit->status == E_SUCCESS && pUnit->tick_interval > 0) {
+        if (pUnit && pUnit->data && pUnit->status == E_SUCCESS && (pUnit->tick_interval > 0 || pUnit->_tick_cnt > 0)) {
+            if (pUnit->_tick_cnt > 0) {
+                pUnit->_tick_cnt--; // check for 0 allows one-off timers
+            }
+
             if (pUnit->_tick_cnt == 0) {
                 if (pUnit->driver->updateTick) {
                     pUnit->driver->updateTick(pUnit);
                 }
                 pUnit->_tick_cnt = pUnit->tick_interval;
             }
-            pUnit->_tick_cnt--;
         }
         li = li->next;
     }

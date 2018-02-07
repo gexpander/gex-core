@@ -111,7 +111,7 @@
 
 #define configUSE_TIMERS                         1
 #define configTIMER_TASK_PRIORITY                4 // above normal
-#define configTIMER_TASK_STACK_DEPTH             128
+#define configTIMER_TASK_STACK_DEPTH             TSK_STACK_TIMERS //128
 #define configTIMER_QUEUE_LENGTH                 4
 
 #define configTOTAL_HEAP_SIZE 4096
@@ -153,7 +153,7 @@ to exclude the API function. */
 #elif defined(GEX_PLAT_F072_DISCOVERY)
     // This is for F072
     #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY   3
-    #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 3
+    #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 1
 
     #define configPRIO_BITS         2
 

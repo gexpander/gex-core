@@ -13,10 +13,10 @@
 error_t Npx_preInit(Unit *unit)
 {
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
-    if (priv == NULL)
+    if (priv == NULL) return E_OUT_OF_MEM;
 
-        // some defaults
-        priv->pin_number = 0;
+    // some defaults
+    priv->pin_number = 0;
     priv->port_name = 'A';
     priv->pixels = 1;
 

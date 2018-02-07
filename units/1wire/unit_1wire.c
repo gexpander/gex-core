@@ -9,9 +9,24 @@
 // 1WIRE master
 #define OW_INTERNAL
 #include "_ow_internal.h"
-#include "_ow_init.h"
-#include "_ow_settings.h"
 #include "_ow_low_level.h"
+
+/** Callback for sending a poll_ready success / failure report */
+static void OW_TimerRespCb(Job *job)
+{
+    Unit *unit = job->unit;
+    assert_param(unit);
+    struct priv *priv = unit->data;
+
+    bool success = (bool) job->data1;
+
+    if (success) {
+        com_respond_ok(priv->busyRequestId);
+    } else {
+        com_respond_error(priv->busyRequestId, E_HW_TIMEOUT);
+    }
+    priv->busy = false;
+}
 
 /**
  * 1-Wire timer callback, used for the 'wait_ready' function.
@@ -30,11 +45,6 @@ void OW_TimerCb(TimerHandle_t xTimer)
     struct priv *priv = unit->data;
     assert_param(priv->busy);
 
-    // XXX Possible bug
-    // This is run on the timers thread. The TF write functions block on a semaphore.
-    // The FreeRTOS documentation warns against blocking in the timers thread,
-    // but does not say why. This can be solved by scheduling the response using the job queue.
-
     if (priv->parasitic) {
         // this is the end of the 750ms measurement time
         goto halt_ok;
@@ -47,16 +57,26 @@ void OW_TimerCb(TimerHandle_t xTimer)
         uint32_t time = PTIM_GetTime();
         if (time - priv->busyStart > 1000) {
             xTimerStop(xTimer, 100);
-            com_respond_error(priv->busyRequestId, E_HW_TIMEOUT);
-            priv->busy = false;
+
+            Job j = {
+                .unit = unit,
+                .data1 = 0, // failure
+                .cb = OW_TimerRespCb,
+            };
+            scheduleJob(&j);
         }
     }
 
     return;
 halt_ok:
     xTimerStop(xTimer, 100);
-    com_respond_ok(priv->busyRequestId);
-    priv->busy = false;
+
+    Job j = {
+        .unit = unit,
+        .data1 = 1, // success
+        .cb = OW_TimerRespCb,
+    };
+    scheduleJob(&j);
 }
 
 
@@ -112,15 +132,22 @@ static error_t OW_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
             priv->busyRequestId = frame_id;
             return E_SUCCESS; // We will respond when the timer expires
 
+        /** Search devices with alarm. No payload, restarts the search. */
         case CMD_SEARCH_ALARM:
             with_alarm = true;
             // fall-through
+        /** Search all devices. No payload, restarts the search. */
         case CMD_SEARCH_ADDR:
             search_reset = true;
             // fall-through
+        /** Continue a previously begun search. */
         case CMD_SEARCH_CONTINUE:;
             uint32_t found_count = 0;
             bool have_more = false;
+            if (!search_reset && priv->searchState.status != OW_SEARCH_MORE) {
+                dbg("Search not ongoing!");
+                return E_PROTOCOL_BREACH;
+            }
 
             TRY(UU_1WIRE_Search(unit, with_alarm, search_reset,
                                 (void *) unit_tmp512, UNIT_TMP_LEN/8, &found_count,
@@ -162,8 +189,8 @@ static error_t OW_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
          * Write payload to the bus, no confirmation (unless requested).
          *
          * Payload:
-         * - Match variant: addr:u64, rest:write_data
-         * - Skip variant:  all:write_data
+         * addr:u64, rest:write_data
+         * if addr is 0, use SKIP_ROM
          */
         case CMD_WRITE:
             addr = pp_u64(pp);
@@ -175,10 +202,10 @@ static error_t OW_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
          * Write and read.
          *
          * Payload:
-         * - Match variant: addr:u64, read_len:u16, rest:write_data
-         * - Skip variant:  read_len:u16, rest:write_data
+         * addr:u64, read_len:u16, rest:write_data
+         * if addr is 0, use SKIP_ROM
          */
-        case CMD_READ:;
+        case CMD_READ:
             addr = pp_u64(pp);
             uint16_t rcount = pp_u16(pp);
             bool test_crc = pp_bool(pp);

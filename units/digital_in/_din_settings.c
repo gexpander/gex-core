@@ -7,7 +7,6 @@
 
 #define DIN_INTERNAL
 #include "_din_internal.h"
-#include "_din_settings.h"
 
 /** Load from a binary buffer stored in Flash */
 void DIn_loadBinary(Unit *unit, PayloadParser *pp)

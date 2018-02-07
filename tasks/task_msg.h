@@ -25,7 +25,7 @@ void TaskMsgJob(const void *argument);
  *
  * @param job
  */
-void scheduleJob(Job *job);
+bool scheduleJob(Job *job);
 
 /**
  * Add a message to the queue. This always takes the entire slot (64 bytes) or multiple
