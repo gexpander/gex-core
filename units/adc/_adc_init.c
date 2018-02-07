@@ -28,6 +28,30 @@ error_t UADC_preInit(Unit *unit)
     return E_SUCCESS;
 }
 
+
+/** Configure frequency */
+error_t UADC_SetSampleRate(Unit *unit, uint32_t hertz)
+{
+    struct priv *priv = unit->data;
+
+    uint16_t presc;
+    uint32_t count;
+    if (!solve_timer(PLAT_APB1_HZ, hertz, true, &presc, &count,
+                     &priv->real_frequency)) {
+        dbg("Failed to resolve timer params.");
+        return E_BAD_VALUE;
+    }
+    dbg("Frequency error %d ppm, presc %d, count %d",
+        (int) lrintf(1000000.0f *
+                     ((priv->real_frequency - hertz) / (float) hertz)),
+        (int) presc, (int) count);
+
+    LL_TIM_SetPrescaler(priv->TIMx, (uint32_t) (presc - 1));
+    LL_TIM_SetAutoReload(priv->TIMx, count - 1);
+
+    return E_SUCCESS;
+}
+
 /** Finalize unit set-up */
 error_t UADC_init(Unit *unit)
 {
@@ -103,19 +127,20 @@ error_t UADC_init(Unit *unit)
     // ------------------- CONFIGURE THE TIMER --------------------------
     dbg("Setting up TIMER");
     {
-        // Find suitable timer values
-        uint16_t presc;
-        uint32_t count;
-        float real_freq;
-        if (!solve_timer(PLAT_APB1_HZ, priv->frequency, true, &presc, &count, &real_freq)) {
-            dbg("Failed to resolve timer params.");
-            return E_BAD_VALUE;
-        }
-        dbg("Frequency error %d ppm, presc %d, count %d",
-            (int) lrintf(1000000.0f * ((real_freq - priv->frequency) / (float)priv->frequency)), (int) presc, (int) count);
-
-        LL_TIM_SetPrescaler(priv->TIMx, (uint32_t) (presc - 1));
-        LL_TIM_SetAutoReload(priv->TIMx, count - 1);
+        TRY(UADC_SetSampleRate(unit, priv->frequency));
+//        // Find suitable timer values
+//        uint16_t presc;
+//        uint32_t count;
+//        float real_freq;
+//        if (!solve_timer(PLAT_APB1_HZ, priv->frequency, true, &presc, &count, &real_freq)) {
+//            dbg("Failed to resolve timer params.");
+//            return E_BAD_VALUE;
+//        }
+//        dbg("Frequency error %d ppm, presc %d, count %d",
+//            (int) lrintf(1000000.0f * ((real_freq - priv->frequency) / (float)priv->frequency)), (int) presc, (int) count);
+//
+//        LL_TIM_SetPrescaler(priv->TIMx, (uint32_t) (presc - 1));
+//        LL_TIM_SetAutoReload(priv->TIMx, count - 1);
         LL_TIM_EnableARRPreload(priv->TIMx);
         LL_TIM_EnableUpdateEvent(priv->TIMx);
         LL_TIM_SetTriggerOutput(priv->TIMx, LL_TIM_TRGO_UPDATE);
@@ -208,8 +233,10 @@ error_t UADC_init(Unit *unit)
 
     irqd_attach(priv->DMA_CHx, UADC_DMA_Handler, unit);
     irqd_attach(priv->ADCx, UADC_ADC_EOS_Handler, unit);
+    dbg("irqs attached");
 
     UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+    dbg("ADC done");
 
     return E_SUCCESS;
 }

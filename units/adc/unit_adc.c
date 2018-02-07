@@ -15,6 +15,7 @@ enum TplCmd_ {
     CMD_READ_SMOOTHED = 1,
 
     CMD_GET_ENABLED_CHANNELS = 10,
+    CMD_GET_SAMPLE_RATE = 11,
 
     CMD_SETUP_TRIGGER = 20,
     CMD_ARM = 21,
@@ -25,6 +26,7 @@ enum TplCmd_ {
     CMD_STREAM_START = 26,
     CMD_STREAM_STOP = 27,
     CMD_SET_SMOOTHING_FACTOR = 28,
+    CMD_SET_SAMPLE_RATE = 29,
 };
 
 /** Handle a request message */
@@ -32,6 +34,8 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 {
     struct priv *priv = unit->data;
     PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
+
+    // TODO toggling individual channels - would require DMA re-init and various changes in the usage of the struct
 
     switch (command) {
         /**
@@ -44,6 +48,23 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                     pb_u8(&pb, i);
                 }
             }
+            com_respond_pb(frame_id, MSG_SUCCESS, &pb);
+            return E_SUCCESS;
+
+        case CMD_SET_SAMPLE_RATE:
+            {
+                uint32_t freq = pp_u32(pp);
+                if (freq == 0) return E_BAD_VALUE;
+
+                TRY(UADC_SetSampleRate(unit, freq));
+            }
+            // Pass through - send back the obtained sample rate
+        /**
+         * Read the real used frequency, expressed as float.
+         * May differ from the configured or requested value due to prescaller limitations.
+         */
+        case CMD_GET_SAMPLE_RATE:
+            pb_float(&pb, priv->real_frequency);
             com_respond_pb(frame_id, MSG_SUCCESS, &pb);
             return E_SUCCESS;
 
@@ -117,7 +138,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                 const uint8_t source = pp_u8(pp);
                 const uint16_t level = pp_u16(pp);
                 const uint8_t edge = pp_u8(pp);
-                const uint16_t pretrig = pp_u16(pp); // TODO test pre-trigger ...
+                const uint16_t pretrig = pp_u16(pp);
                 const uint32_t count = pp_u32(pp);
                 const uint16_t holdoff = pp_u16(pp);
                 const bool auto_rearm = pp_bool(pp);
@@ -260,7 +281,6 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          *   u32 - sample count (for each channel)
          */
         case CMD_BLOCK_CAPTURE:
-            // TODO test
             dbg("> Block cpt");
             if (priv->opmode != ADC_OPMODE_ARMED &&
                 priv->opmode != ADC_OPMODE_REARM_PENDING &&
@@ -276,7 +296,6 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * The stream can be terminated by the stop command.
          */
         case CMD_STREAM_START:
-            // TODO test
             dbg("> Stream ON");
             if (priv->opmode != ADC_OPMODE_ARMED &&
                 priv->opmode != ADC_OPMODE_REARM_PENDING &&
@@ -289,7 +308,6 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Stop a stream.
          */
         case CMD_STREAM_STOP:
-            // TODO test
             dbg("> Stream OFF");
             if (priv->opmode != ADC_OPMODE_STREAM) {
                 com_respond_str(MSG_ERROR, frame_id, "Not streaming");

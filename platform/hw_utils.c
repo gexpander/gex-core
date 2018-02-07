@@ -371,7 +371,10 @@ bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
     *presc = (uint16_t) wPresc;
 
     if (wPresc * wCount == 0) return false;
-    *real_freq = (base_freq / (wPresc * wCount));
+
+    if (real_freq != NULL) {
+        *real_freq = (base_freq / (wPresc * wCount));
+    }
 
     return true;
 }
