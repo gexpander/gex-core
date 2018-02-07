@@ -70,7 +70,6 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 
             for (uint8_t i = 0; i < 18; i++) {
                 if (priv->extended_channels_mask & (1 << i)) {
-                    pb_u8(&pb, i);
                     pb_u16(&pb, priv->last_samples[i]);
                 }
             }
@@ -88,7 +87,6 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 
             for (uint8_t i = 0; i < 18; i++) {
                 if (priv->extended_channels_mask & (1 << i)) {
-                    pb_u8(&pb, i);
                     pb_float(&pb, priv->averaging_bins[i]);
                 }
             }

@@ -17,8 +17,15 @@ enum uadc_opmode {
     ADC_OPMODE_REARM_PENDING, //!< Idle, waiting for the next sample to re-arm (auto trigger).
     ADC_OPMODE_ARMED,  //!< Armed for a trigger. Direct access and averaging are disabled.
     ADC_OPMODE_TRIGD,  //!< Triggered, sending pre-trigger and streaming captured data.
-    ADC_OPMODE_BLCAP,//!< Capture of fixed length without a trigger
+    ADC_OPMODE_BLCAP,  //!< Capture of fixed length without a trigger
     ADC_OPMODE_STREAM, //!< Unlimited capture
+};
+
+enum uadc_event {
+    EVT_CAPT_START = 50,  //!< Capture start (used in event in the first frame when trigger is detected)
+    EVT_CAPT_MORE = 51,   //!< Capture data payload (used as TYPE for all capture types)
+    EVT_CAPT_DONE = 52,   //!< End of trig'd or block capture payload (last frame with data),
+                          //!<   or a farewell message after closing stream using abort(), in this case without data.
 };
 
 /** Private data structure */
@@ -62,6 +69,7 @@ struct priv {
     bool auto_rearm;          //!< Flag that the trigger should be re-armed after the stream finishes
     uint16_t trig_holdoff;    //!< Trigger hold-off time, set when configuring the trigger
     TF_ID stream_frame_id;    //!< Session ID for multi-part stream (response or report)
+    uint8_t stream_serial;
 };
 
 /** Allocate data structure and set defaults */

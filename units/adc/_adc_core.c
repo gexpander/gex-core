@@ -10,9 +10,61 @@
 
 #define DMA_POS(priv) ((priv)->dma_buffer_itemcount - (priv)->DMA_CHx->CNDTR)
 
+static void UADC_JobSendBlockChunk(Job *job)
+{
+    Unit *unit = job->unit;
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    uint32_t start = job->data1;
+    uint32_t count = job->data2;
+    bool close = (bool) job->data3;
+
+    dbg("Send indices [%d -> %d)", (int)start, (int)(start+count));
+
+    TF_TYPE type = close ? EVT_CAPT_DONE : EVT_CAPT_MORE;
+
+    TF_Msg msg = {
+        .frame_id = priv->stream_frame_id,
+        .len = (TF_LEN) (1 + count*sizeof(uint16_t)),
+        .type = type,
+    };
+
+    TF_Respond_Multipart(comm, &msg);
+    TF_Multipart_Payload(comm, &priv->stream_serial, 1);
+    TF_Multipart_Payload(comm, (uint8_t *) (priv->dma_buffer + start), count * sizeof(uint16_t));
+    TF_Multipart_Close(comm);
+
+    priv->stream_serial++;
+}
+
+static void UADC_JobSendEndOfStreamMsg(Job *job)
+{
+    Unit *unit = job->unit;
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    TF_Msg msg = {
+        .type = EVT_CAPT_DONE,
+        .frame_id = (TF_ID) job->data1
+    };
+    TF_Respond(comm, &msg);
+}
+
 void UADC_ReportEndOfStream(Unit *unit)
 {
-    dbg("~~End Of Stream msg~~");
+    assert_param(unit);
+    struct priv *priv = unit->data;
+    assert_param(priv);
+
+    Job j = {
+        .unit = unit,
+        .data1 = priv->stream_frame_id,
+        .cb = UADC_JobSendEndOfStreamMsg
+    };
+    scheduleJob(&j);
 }
 
 void UADC_DMA_Handler(void *arg)
@@ -62,22 +114,24 @@ void UADC_DMA_Handler(void *arg)
                         priv->trig_stream_remain -= sgcount;
                     }
 
-                    dbg("Would send %d groups (u16 offset %d -> %d)", (int) sgcount,
-                        (int) start, (int) (start + sgcount * priv->nb_channels));
+                    bool close = !m_stream && priv->trig_stream_remain == 0;
 
-                    // TODO send the data together with remaining count (used to detect end of transmission)
+                    Job j = {
+                        .unit = unit,
+                        .data1 = start,
+                        .data2 = sgcount * priv->nb_channels,
+                        .data3 = (uint32_t) close,
+                        .cb = UADC_JobSendBlockChunk
+                    };
+                    scheduleJob(&j);
 
-                    if (m_trigd || m_fixcpt) { // Trig'd or Block capture - check for the max count condition
-                        if (priv->trig_stream_remain == 0) {
-                            dbg("End of capture");
-                            UADC_ReportEndOfStream(unit);
-
-                            // If auto-arm enabled, we need to re-arm again.
-                            // However, EOS irq is disabled during the capture.
-                            // We have to wait for the next EOS interrupt to occur.
-                            // TODO verify if keeping the EOS irq enabled during capture has significant performance penalty. If not, we can leave it enabled.
-                            UADC_SwitchMode(unit, (priv->auto_rearm && m_trigd) ? ADC_OPMODE_REARM_PENDING : ADC_OPMODE_IDLE);
-                        }
+                    if (close) {
+                        dbg("End of capture");
+                        // If auto-arm enabled, we need to re-arm again.
+                        // However, EOS irq is disabled during the capture.
+                        // We have to wait for the next EOS interrupt to occur.
+                        // TODO verify if keeping the EOS irq enabled during capture has significant performance penalty. If not, we can leave it enabled.
+                        UADC_SwitchMode(unit, (priv->auto_rearm && m_trigd) ? ADC_OPMODE_REARM_PENDING : ADC_OPMODE_IDLE);
                     }
                 } else {
                     dbg("start==end, skip this irq");
@@ -203,10 +257,11 @@ void UADC_HandleTrigger(Unit *unit, uint8_t edge_type, uint64_t timestamp)
         unit->_tick_cnt = 0;
     }
 
-    // TODO Send pre-trigger
-
     priv->stream_startpos = (uint16_t) DMA_POS(priv);
     priv->trig_stream_remain = priv->trig_len;
+    priv->stream_serial = 0;
+
+    // TODO Send pre-trigger
 
     dbg("Trigger condition hit, edge=%d, startpos %d", edge_type, (int)priv->stream_startpos);
 
@@ -222,6 +277,7 @@ void UADC_StartBlockCapture(Unit *unit, uint32_t len, TF_ID frame_id)
     priv->stream_frame_id = frame_id;
     priv->stream_startpos = (uint16_t) DMA_POS(priv);
     priv->trig_stream_remain = len;
+    priv->stream_serial = 0;
     UADC_SwitchMode(unit, ADC_OPMODE_BLCAP);
 }
 
@@ -234,6 +290,7 @@ void UADC_StartStream(Unit *unit, TF_ID frame_id)
 
     priv->stream_frame_id = frame_id;
     priv->stream_startpos = (uint16_t) DMA_POS(priv);
+    priv->stream_serial = 0;
     dbg("Start streaming.");
     UADC_SwitchMode(unit, ADC_OPMODE_STREAM);
 }
