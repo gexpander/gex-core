@@ -227,7 +227,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                 priv->auto_rearm = false;
                 UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
 
-                if (old_opmode == ADC_OPMODE_FIXCAPT ||
+                if (old_opmode == ADC_OPMODE_BLCAP ||
                     old_opmode == ADC_OPMODE_STREAM ||
                     old_opmode == ADC_OPMODE_TRIGD) {
                     UADC_ReportEndOfStream(unit);

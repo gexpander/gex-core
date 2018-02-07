@@ -17,7 +17,7 @@ enum uadc_opmode {
     ADC_OPMODE_REARM_PENDING, //!< Idle, waiting for the next sample to re-arm (auto trigger).
     ADC_OPMODE_ARMED,  //!< Armed for a trigger. Direct access and averaging are disabled.
     ADC_OPMODE_TRIGD,  //!< Triggered, sending pre-trigger and streaming captured data.
-    ADC_OPMODE_FIXCAPT,//!< Capture of fixed length without a trigger
+    ADC_OPMODE_BLCAP,//!< Capture of fixed length without a trigger
     ADC_OPMODE_STREAM, //!< Unlimited capture
 };
 

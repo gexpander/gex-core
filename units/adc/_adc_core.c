@@ -33,7 +33,7 @@ void UADC_DMA_Handler(void *arg)
         // check what mode we're in
         const bool m_trigd = priv->opmode == ADC_OPMODE_TRIGD;
         const bool m_stream = priv->opmode == ADC_OPMODE_STREAM;
-        const bool m_fixcpt = priv->opmode == ADC_OPMODE_FIXCAPT;
+        const bool m_fixcpt = priv->opmode == ADC_OPMODE_BLCAP;
 
         if (m_trigd || m_stream || m_fixcpt) {
             if (ht || tc) {
@@ -222,7 +222,7 @@ void UADC_StartBlockCapture(Unit *unit, uint32_t len, TF_ID frame_id)
     priv->stream_frame_id = frame_id;
     priv->stream_startpos = (uint16_t) DMA_POS(priv);
     priv->trig_stream_remain = len;
-    UADC_SwitchMode(unit, ADC_OPMODE_FIXCAPT);
+    UADC_SwitchMode(unit, ADC_OPMODE_BLCAP);
 }
 
 /** Start stream */
@@ -333,7 +333,7 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
     }
     else if (new_mode == ADC_OPMODE_TRIGD ||
         new_mode == ADC_OPMODE_STREAM ||
-        new_mode == ADC_OPMODE_FIXCAPT) {
+        new_mode == ADC_OPMODE_BLCAP) {
 
         dbg("ADC switch -> TRIG'D / STREAM / BLOCK");
         assert_param(priv->opmode == ADC_OPMODE_ARMED || priv->opmode == ADC_OPMODE_IDLE);
