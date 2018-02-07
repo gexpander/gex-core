@@ -64,6 +64,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * May differ from the configured or requested value due to prescaller limitations.
          */
         case CMD_GET_SAMPLE_RATE:
+            pb_u32(&pb, priv->real_frequency_int);
             pb_float(&pb, priv->real_frequency);
             com_respond_pb(frame_id, MSG_SUCCESS, &pb);
             return E_SUCCESS;
@@ -104,6 +105,11 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
         case CMD_READ_SMOOTHED:
             if(priv->opmode != ADC_OPMODE_IDLE && priv->opmode != ADC_OPMODE_ARMED) {
                 return E_BUSY;
+            }
+
+            if (priv->real_frequency_int > UADC_MAX_FREQ_FOR_AVERAGING) {
+                com_respond_str(MSG_ERROR, frame_id, "Too fast for smoothing");
+                return E_FAILURE;
             }
 
             for (uint8_t i = 0; i < 18; i++) {

@@ -11,6 +11,8 @@
 
 #include "unit_base.h"
 
+#define UADC_MAX_FREQ_FOR_AVERAGING 20000
+
 enum uadc_opmode {
     ADC_OPMODE_UNINIT, //!< Not yet switched to any mode
     ADC_OPMODE_IDLE,   //!< Idle. Allows immediate value readout and averaging.
@@ -42,6 +44,7 @@ struct priv {
 
     // internal state
     float real_frequency;
+    uint32_t real_frequency_int;
     uint32_t extended_channels_mask; //!< channels bitfield including tsense and vref
     float avg_factor_as_float;
     ADC_TypeDef *ADCx; //!< The ADC peripheral used

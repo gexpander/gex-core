@@ -49,6 +49,8 @@ error_t UADC_SetSampleRate(Unit *unit, uint32_t hertz)
     LL_TIM_SetPrescaler(priv->TIMx, (uint32_t) (presc - 1));
     LL_TIM_SetAutoReload(priv->TIMx, count - 1);
 
+    priv->real_frequency_int = hertz;
+
     return E_SUCCESS;
 }
 

@@ -183,7 +183,9 @@ void UADC_DMA_Handler(void *arg)
                     LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
                 }
 
-//                dbg("start %d, end %d", (int)start, (int)end);
+                if (start > end) {
+                    dbg("start %d, end %d", (int) start, (int) end);
+                }
                 assert_param(start <= end);
 
                 if (start != end) {
@@ -252,19 +254,25 @@ void UADC_DMA_Handler(void *arg)
 
 void UADC_ADC_EOS_Handler(void *arg)
 {
-    uint64_t timestamp = PTIM_GetMicrotime();
     Unit *unit = arg;
-
     assert_param(unit);
     struct priv *priv = unit->data;
     assert_param(priv);
+
+    const bool trig_ready4_rising = (priv->trig_prev_level < priv->trig_level) && (bool) (priv->trig_edge & 0b01);
+    const bool trig_ready4_falling = (priv->trig_prev_level > priv->trig_level) && (bool) (priv->trig_edge & 0b10);
+    const bool armed = (trig_ready4_rising && trig_ready4_falling) && priv->opmode == ADC_OPMODE_ARMED;
+
+    // Normally
+    uint64_t timestamp = 0;
+    if (armed) timestamp = PTIM_GetMicrotime();
 
     LL_ADC_ClearFlag_EOS(priv->ADCx);
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     // Wait for the DMA to complete copying the last sample
     uint16_t dmapos;
-    hw_wait_while((dmapos = (uint16_t) DMA_POS(priv)) % priv->nb_channels != 0, 100);
+    hw_wait_while((dmapos = (uint16_t) DMA_POS(priv)) % priv->nb_channels != 0, 100); // XXX this could be changed to reading it from the DR instead
 
     uint32_t sample_pos;
     if (dmapos == 0) {
@@ -275,53 +283,50 @@ void UADC_ADC_EOS_Handler(void *arg)
     sample_pos -= priv->nb_channels;
 
     int cnt = 0; // index of the sample within the group
-    for (uint32_t i = 0; i < 18; i++) {
-        if (priv->extended_channels_mask & (1 << i)) {
-            uint16_t val = priv->dma_buffer[sample_pos+cnt];
+
+    const uint8_t trig_source = priv->trigger_source;
+    const bool can_average = priv->real_frequency_int < UADC_MAX_FREQ_FOR_AVERAGING;
+    const uint16_t *dma_buffer = priv->dma_buffer;
+    const uint32_t channels_mask = priv->extended_channels_mask;
+
+    for (uint8_t i = 0; i < 18; i++) {
+        if (channels_mask & (1 << i)) {
+            uint16_t val = dma_buffer[sample_pos+cnt];
             cnt++;
 
-            priv->averaging_bins[i] =
-                priv->averaging_bins[i] * (1.0f - priv->avg_factor_as_float) +
-                ((float) val) * priv->avg_factor_as_float;
+            if (can_average) {
+                priv->averaging_bins[i] =
+                    priv->averaging_bins[i] * (1.0f - priv->avg_factor_as_float) +
+                    ((float) val) * priv->avg_factor_as_float;
+            }
 
             priv->last_samples[i] = val;
 
-            if (i == priv->trigger_source) {
-                if (priv->opmode == ADC_OPMODE_ARMED) {
+            if (armed && i == trig_source) {
 //                    dbg("Trig line level %d", (int)val);
-
-                    bool trigd = false;
-                    uint8_t edge_type = 0;
-                    if (priv->trig_prev_level < priv->trig_level && val >= priv->trig_level) {
+                if (trig_ready4_rising && val >= priv->trig_level) {
 //                        dbg("******** Rising edge");
-                        // Rising edge
-                        trigd = (bool) (priv->trig_edge & 0b01);
-                        edge_type = 1;
-                    }
-                    else if (priv->trig_prev_level > priv->trig_level && val <= priv->trig_level) {
+                    // Rising edge
+                    UADC_HandleTrigger(unit, 1, timestamp);
+                }
+                else if (trig_ready4_falling && val <= priv->trig_level) {
 //                        dbg("******** Falling edge");
-                        // Falling edge
-                        trigd = (bool) (priv->trig_edge & 0b10);
-                        edge_type = 2;
-                    }
-
-                    if (trigd) {
-                        UADC_HandleTrigger(unit, edge_type, timestamp);
-                    }
+                    // Falling edge
+                    UADC_HandleTrigger(unit, 2, timestamp);
                 }
-                else if (priv->opmode == ADC_OPMODE_REARM_PENDING) {
-                    if (!priv->auto_rearm) {
-                        // It looks like the flag was cleared by DISARM before we got a new sample.
-                        // Let's just switch to IDLE
-                        UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
-                    } else {
-                        // Re-arming for a new trigger
-                        UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
-                    }
-                }
-
                 priv->trig_prev_level = val;
             }
+        }
+    }
+
+    if (priv->opmode == ADC_OPMODE_REARM_PENDING) {
+        if (!priv->auto_rearm) {
+            // It looks like the flag was cleared by DISARM before we got a new sample.
+            // Let's just switch to IDLE
+            UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+        } else {
+            // Re-arming for a new trigger
+            UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
         }
     }
 }
@@ -538,6 +543,5 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         LL_DMA_EnableIT_TC(priv->DMAx, priv->dma_chnum);
     }
 
-    dbg("Now setting the new opmode");
     priv->opmode = new_mode;
 }
