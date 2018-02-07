@@ -56,7 +56,7 @@ void TaskMain(void const * argument)
             // Periodically check stacks for overrun
             stackmon_check_canaries();
             // Periodically dump all stacks - for checking levels before critical (to reduce size if not needed)
-            if ((cnt%75)==0) stackmon_dump();
+            if ((cnt%150)==0) stackmon_dump();
             continue;
         }
 

@@ -57,10 +57,9 @@ void com_send_pb(TF_TYPE type, PayloadBuilder *pb)
 void com_send_buf(TF_TYPE type, const uint8_t *buf, uint32_t len)
 {
     TF_Msg msg = {
-        .type = MSG_UNIT_REPORT,
+        .type = type,
         .data = buf,
         .len = (TF_LEN) len,
-        .type = type,
     };
 
     TF_Send(comm, &msg); // no listener
