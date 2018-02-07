@@ -612,14 +612,17 @@ void ureg_tick_units(void)
     UlistEntry *li = ulist_head;
     while (li != NULL) {
         Unit *const pUnit = &li->unit;
-        if (pUnit && pUnit->data && pUnit->status == E_SUCCESS && pUnit->tick_interval > 0) {
+        if (pUnit && pUnit->data && pUnit->status == E_SUCCESS && (pUnit->tick_interval > 0 || pUnit->_tick_cnt > 0)) {
+            if (pUnit->_tick_cnt > 0) {
+                pUnit->_tick_cnt--; // check for 0 allows one-off timers
+            }
+
             if (pUnit->_tick_cnt == 0) {
                 if (pUnit->driver->updateTick) {
                     pUnit->driver->updateTick(pUnit);
                 }
                 pUnit->_tick_cnt = pUnit->tick_interval;
             }
-            pUnit->_tick_cnt--;
         }
         li = li->next;
     }

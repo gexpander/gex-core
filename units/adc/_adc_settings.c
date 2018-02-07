@@ -98,7 +98,7 @@ void UADC_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "enable_tsense", str_yn(priv->enable_tsense));
 
     iw_comment(iw, "Enable Vref channel (#17)");
-    iw_entry(iw, "enable_vref", str_yn(priv->enable_tsense));
+    iw_entry(iw, "enable_vref", str_yn(priv->enable_vref));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Sampling time (0-7)");

@@ -11,6 +11,8 @@
 
 #include "unit_base.h"
 
+#define UADC_MAX_FREQ_FOR_AVERAGING 20000
+
 enum uadc_opmode {
     ADC_OPMODE_UNINIT, //!< Not yet switched to any mode
     ADC_OPMODE_IDLE,   //!< Idle. Allows immediate value readout and averaging.
@@ -19,6 +21,7 @@ enum uadc_opmode {
     ADC_OPMODE_TRIGD,  //!< Triggered, sending pre-trigger and streaming captured data.
     ADC_OPMODE_BLCAP,  //!< Capture of fixed length without a trigger
     ADC_OPMODE_STREAM, //!< Unlimited capture
+    ADC_OPMODE_EMERGENCY_SHUTDOWN, //!< Used when the buffers overrun to safely transition to IDLE after a delay
 };
 
 enum uadc_event {
@@ -40,6 +43,8 @@ struct priv {
     uint16_t averaging_factor;  //!< Exponential averaging factor 0-1000
 
     // internal state
+    float real_frequency;
+    uint32_t real_frequency_int;
     uint32_t extended_channels_mask; //!< channels bitfield including tsense and vref
     float avg_factor_as_float;
     ADC_TypeDef *ADCx; //!< The ADC peripheral used
@@ -125,5 +130,8 @@ void UADC_StartStream(Unit *unit, TF_ID frame_id);
 
 /** End stream */
 void UADC_StopStream(Unit *unit);
+
+/** Configure frequency */
+error_t UADC_SetSampleRate(Unit *unit, uint32_t hertz);
 
 #endif //GEX_F072_ADC_INTERNAL_H
