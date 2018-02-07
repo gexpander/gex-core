@@ -109,16 +109,20 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          */
         case CMD_SETUP_TRIGGER:
             dbg("> Setup trigger");
-            if (priv->opmode != ADC_OPMODE_IDLE && priv->opmode != ADC_OPMODE_ARMED) return E_BUSY;
+            if (priv->opmode != ADC_OPMODE_IDLE &&
+                priv->opmode != ADC_OPMODE_ARMED &&
+                priv->opmode != ADC_OPMODE_REARM_PENDING) {
+                return E_BUSY;
+            }
 
             {
-                uint8_t source = pp_u8(pp);
-                uint16_t level = pp_u16(pp);
-                uint8_t edge = pp_u8(pp); // TODO test falling edge and dual edge
-                uint16_t pretrig = pp_u16(pp); // TODO test pre-trigger ...
-                uint32_t count = pp_u32(pp);
-                uint16_t holdoff = pp_u16(pp); // TODO test hold-off ...
-                bool auto_rearm = pp_bool(pp);
+                const uint8_t source = pp_u8(pp);
+                const uint16_t level = pp_u16(pp);
+                const uint8_t edge = pp_u8(pp);
+                const uint16_t pretrig = pp_u16(pp); // TODO test pre-trigger ...
+                const uint32_t count = pp_u32(pp);
+                const uint16_t holdoff = pp_u16(pp);
+                const bool auto_rearm = pp_bool(pp);
 
                 if (source > 17) {
                     com_respond_str(MSG_ERROR, frame_id, "Invalid trig source");
@@ -141,7 +145,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                 }
 
                 // XXX the max size may be too much
-                uint16_t max_pretrig = (priv->dma_buffer_itemcount / priv->nb_channels);
+                const uint16_t max_pretrig = (priv->dma_buffer_itemcount / priv->nb_channels);
                 if (pretrig > max_pretrig) {
                     com_respond_snprintf(frame_id, MSG_ERROR,
                                          "Pretrig too large (max %d)", (int) max_pretrig);
@@ -164,17 +168,28 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          */
         case CMD_ARM:
             dbg("> Arm");
-            if(priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
+            uint8_t sticky = pp_u8(pp);
 
-            if (priv->trig_len == 0) {
-                com_respond_str(MSG_ERROR, frame_id, "Trigger not configured.");
-                return E_FAILURE;
+            if(priv->opmode == ADC_OPMODE_ARMED || priv->opmode == ADC_OPMODE_REARM_PENDING) {
+                // We are armed or will re-arm promptly, act like the call succeeded
+                // The auto flag is set regardless
+            } else {
+                if (priv->opmode != ADC_OPMODE_IDLE) {
+                    return E_BUSY; // capture in progress
+                }
+
+                if (priv->trig_len == 0) {
+                    com_respond_str(MSG_ERROR, frame_id, "Trigger not configured.");
+                    return E_FAILURE;
+                }
+
+                UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
             }
 
-            // avoid firing immediately by the value jumping across the scale
-            priv->trig_prev_level = priv->last_samples[priv->trigger_source];
+            if (sticky != 255) {
+                priv->auto_rearm = (bool)sticky;
+            }
 
-            UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
             return E_SUCCESS;
 
         /**
@@ -182,13 +197,21 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Switches to idle.
          */
         case CMD_DISARM:
-            // TODO test
             dbg("> Disarm");
+
+            priv->auto_rearm = false;
+
             if(priv->opmode == ADC_OPMODE_IDLE) {
                 return E_SUCCESS; // already idle, success - no work to do
             }
+
             // capture in progress
-            if(priv->opmode != ADC_OPMODE_ARMED) return E_BUSY;
+            if (priv->opmode != ADC_OPMODE_ARMED &&
+                priv->opmode != ADC_OPMODE_REARM_PENDING) {
+                // Capture in progress, we already cleared auto rearm, so we're done for now
+                // auto_rearm is checked in the EOS isr and if cleared, does not re-arm.
+                return E_SUCCESS;
+            }
 
             UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
             return E_SUCCESS;
@@ -197,15 +220,18 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Abort any ongoing capture and dis-arm.
          */
         case CMD_ABORT:;
-            // TODO test
             dbg("> Abort capture");
-            enum uadc_opmode old_opmode = priv->opmode;
-            UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+            {
+                enum uadc_opmode old_opmode = priv->opmode;
 
-            if (old_opmode == ADC_OPMODE_FIXCAPT ||
-                old_opmode == ADC_OPMODE_STREAM ||
-                old_opmode == ADC_OPMODE_TRIGD) {
-                UADC_ReportEndOfStream(unit);
+                priv->auto_rearm = false;
+                UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+
+                if (old_opmode == ADC_OPMODE_FIXCAPT ||
+                    old_opmode == ADC_OPMODE_STREAM ||
+                    old_opmode == ADC_OPMODE_TRIGD) {
+                    UADC_ReportEndOfStream(unit);
+                }
             }
             return E_SUCCESS;
 
@@ -214,13 +240,17 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * The reported edge will be 0b11, here meaning "manual trigger"
          */
         case CMD_FORCE_TRIGGER:
-            // TODO test
             dbg("> Force trigger");
-            if(priv->opmode == ADC_OPMODE_IDLE) {
-                com_respond_str(MSG_ERROR, frame_id, "Not armed");
+            // This is similar to block capture, but includes the pre-trig buffer and has fixed size based on trigger config
+            // FORCE is useful for checking if the trigger is set up correctly
+            if (priv->opmode != ADC_OPMODE_ARMED &&
+                priv->opmode != ADC_OPMODE_IDLE &&
+                priv->opmode != ADC_OPMODE_REARM_PENDING) return E_BUSY;
+
+            if (priv->trig_len == 0) {
+                com_respond_str(MSG_ERROR, frame_id, "Trigger not configured.");
                 return E_FAILURE;
             }
-            if(priv->opmode != ADC_OPMODE_ARMED) return E_BUSY;
 
             UADC_HandleTrigger(unit, 0b11, PTIM_GetMicrotime());
             return E_SUCCESS;
@@ -234,7 +264,8 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
         case CMD_BLOCK_CAPTURE:
             // TODO test
             dbg("> Block cpt");
-            if(priv->opmode != ADC_OPMODE_ARMED &&
+            if (priv->opmode != ADC_OPMODE_ARMED &&
+                priv->opmode != ADC_OPMODE_REARM_PENDING &&
                 priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
 
             uint32_t count = pp_u32(pp);
@@ -249,8 +280,9 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
         case CMD_STREAM_START:
             // TODO test
             dbg("> Stream ON");
-            if(priv->opmode != ADC_OPMODE_ARMED &&
-               priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
+            if (priv->opmode != ADC_OPMODE_ARMED &&
+                priv->opmode != ADC_OPMODE_REARM_PENDING &&
+                priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
 
             UADC_StartStream(unit, frame_id);
             return E_SUCCESS;
@@ -261,7 +293,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
         case CMD_STREAM_STOP:
             // TODO test
             dbg("> Stream OFF");
-            if(priv->opmode != ADC_OPMODE_STREAM) {
+            if (priv->opmode != ADC_OPMODE_STREAM) {
                 com_respond_str(MSG_ERROR, frame_id, "Not streaming");
                 return E_FAILURE;
             }

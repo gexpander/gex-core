@@ -31,11 +31,11 @@ void UADC_DMA_Handler(void *arg)
         const bool te = LL_DMA_IsActiveFlag_TE(isrsnapshot, priv->dma_chnum);
 
         // check what mode we're in
-        const bool m_trig = priv->opmode == ADC_OPMODE_TRIGD;
+        const bool m_trigd = priv->opmode == ADC_OPMODE_TRIGD;
         const bool m_stream = priv->opmode == ADC_OPMODE_STREAM;
         const bool m_fixcpt = priv->opmode == ADC_OPMODE_FIXCAPT;
 
-        if (m_trig || m_stream || m_fixcpt) {
+        if (m_trigd || m_stream || m_fixcpt) {
             if (ht || tc) {
                 const uint16_t start = priv->stream_startpos;
                 uint16_t end;
@@ -57,7 +57,7 @@ void UADC_DMA_Handler(void *arg)
                 if (start != end) {
                     uint32_t sgcount = (end - start) / priv->nb_channels;
 
-                    if (m_trig || m_fixcpt) {
+                    if (m_trigd || m_fixcpt) {
                         sgcount = MIN(priv->trig_stream_remain, sgcount);
                         priv->trig_stream_remain -= sgcount;
                     }
@@ -67,14 +67,16 @@ void UADC_DMA_Handler(void *arg)
 
                     // TODO send the data together with remaining count (used to detect end of transmission)
 
-                    if (m_trig || m_fixcpt) {
+                    if (m_trigd || m_fixcpt) { // Trig'd or Block capture - check for the max count condition
                         if (priv->trig_stream_remain == 0) {
                             dbg("End of capture");
                             UADC_ReportEndOfStream(unit);
-                            UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
-                            if (priv->auto_rearm && m_trig) {
-                                UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
-                            }
+
+                            // If auto-arm enabled, we need to re-arm again.
+                            // However, EOS irq is disabled during the capture.
+                            // We have to wait for the next EOS interrupt to occur.
+                            // TODO verify if keeping the EOS irq enabled during capture has significant performance penalty. If not, we can leave it enabled.
+                            UADC_SwitchMode(unit, (priv->auto_rearm && m_trigd) ? ADC_OPMODE_REARM_PENDING : ADC_OPMODE_IDLE);
                         }
                     }
                 } else {
@@ -143,8 +145,8 @@ void UADC_ADC_EOS_Handler(void *arg)
 
             priv->last_samples[i] = val;
 
-            if (priv->opmode == ADC_OPMODE_ARMED) {
-                if (i == priv->trigger_source) {
+            if (i == priv->trigger_source) {
+                if (priv->opmode == ADC_OPMODE_ARMED) {
                     dbg("Trig line level %d", (int)val);
 
                     bool trigd = false;
@@ -165,9 +167,19 @@ void UADC_ADC_EOS_Handler(void *arg)
                     if (trigd) {
                         UADC_HandleTrigger(unit, edge_type, timestamp);
                     }
-
-                    priv->trig_prev_level = val;
                 }
+                else if (priv->opmode == ADC_OPMODE_REARM_PENDING) {
+                    if (!priv->auto_rearm) {
+                        // It looks like the flag was cleared by DISARM before we got a new sample.
+                        // Let's just switch to IDLE
+                        UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+                    } else {
+                        // Re-arming for a new trigger
+                        UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
+                    }
+                }
+
+                priv->trig_prev_level = val;
             }
         }
     }
@@ -290,8 +302,8 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         LL_DMA_DisableIT_HT(priv->DMAx, priv->dma_chnum);
         LL_DMA_DisableIT_TC(priv->DMAx, priv->dma_chnum);
     }
-    else if (new_mode == ADC_OPMODE_IDLE) {
-        dbg("ADC switch -> IDLE");
+    else if (new_mode == ADC_OPMODE_IDLE || new_mode == ADC_OPMODE_REARM_PENDING) {
+        dbg("ADC switch -> IDLE or IDLE/REARM_PENDING");
         // IDLE and ARMED are identical with the exception that the trigger condition is not checked
         // ARMED can be only entered from IDLE, thus we do the init only here.
 
@@ -314,8 +326,10 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
     }
     else if (new_mode == ADC_OPMODE_ARMED) {
         dbg("ADC switch -> ARMED");
-        assert_param(priv->opmode == ADC_OPMODE_IDLE);
-        // there's nothing else to do here
+        assert_param(priv->opmode == ADC_OPMODE_IDLE || priv->opmode == ADC_OPMODE_REARM_PENDING);
+
+        // avoid firing immediately by the value jumping across the scale
+        priv->trig_prev_level = priv->last_samples[priv->trigger_source];
     }
     else if (new_mode == ADC_OPMODE_TRIGD ||
         new_mode == ADC_OPMODE_STREAM ||
