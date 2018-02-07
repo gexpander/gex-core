@@ -240,18 +240,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          */
         case CMD_ABORT:;
             dbg("> Abort capture");
-            {
-                enum uadc_opmode old_opmode = priv->opmode;
-
-                priv->auto_rearm = false;
-                UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
-
-                if (old_opmode == ADC_OPMODE_BLCAP ||
-                    old_opmode == ADC_OPMODE_STREAM ||
-                    old_opmode == ADC_OPMODE_TRIGD) {
-                    UADC_ReportEndOfStream(unit);
-                }
-            }
+            TRY(UU_ADC_AbortCapture(unit));
             return E_SUCCESS;
 
         /**

@@ -11,6 +11,6 @@
 
 extern const UnitDriver UNIT_ADC;
 
-// UU_ prototypes
+error_t UU_ADC_AbortCapture(Unit *unit);
 
 #endif //U_TPL_H

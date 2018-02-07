@@ -24,7 +24,7 @@
 #define FLASH_SAVE_BUF_LEN  128 // Malloc'd buffer for saving to flash
 
 #define MSG_QUE_SLOT_SIZE 64 // FIXME this should be possible to lower, but there's some bug with bulk transfer / INI parser
-#define RX_QUE_CAPACITY    16 // TinyFrame rx queue size (64 bytes each)
+#define RX_QUE_CAPACITY    32 // TinyFrame rx queue size (64 bytes each)
 
 #define TF_MAX_PAYLOAD_RX 512 // TF max Rx payload
 #define TF_SENDBUF_LEN     64 // TF transmit buffer (can be less than a full frame)

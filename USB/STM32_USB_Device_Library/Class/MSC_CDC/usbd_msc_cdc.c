@@ -112,7 +112,7 @@ __ALIGN_BEGIN uint8_t USBD_MSC_CDC_CfgFSDesc[USBD_MSC_CDC_CONFIG_DESC_SIZ]  __AL
                 0x03,                           /* bmAttributes: Interrupt */
                 LOBYTE(CDC_CMD_PACKET_SIZE),     /* wMaxPacketSize: TODO: 2?*/
                 HIBYTE(CDC_CMD_PACKET_SIZE),
-                0xFF,                           /* bInterval: TODO was 0x10?*/
+                0x10, //0xFF,                           /* bInterval: TODO was 0x10?*/
 
             /********** CDC Data Class Interface Descriptor ***********/
 /*75*/      0x09,   /* bLength: Endpoint Descriptor size */

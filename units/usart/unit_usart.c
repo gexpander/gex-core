@@ -65,7 +65,7 @@ void UUSART_DMA_HandleRxFromIRQ(Unit *unit, uint16_t endpos)
         .data2 = count,
         .cb = UUSART_SendReceivedDataToMaster
     };
-    scheduleJob(&j);
+    scheduleJob(&j); // TODO disable unit on failure
 
     // Move the read cursor, wrap around if needed
     if (endpos == UUSART_RXBUF_LEN) endpos = 0;

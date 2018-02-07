@@ -8,7 +8,7 @@
 
 volatile uint32_t msgQueHighWaterMark = 0;
 
-static void que_safe_post(struct rx_sched_combined_que_item *slot)
+static bool que_safe_post(struct rx_sched_combined_que_item *slot)
 {
     uint32_t count = 0;
     assert_param(slot != NULL);
@@ -18,7 +18,7 @@ static void que_safe_post(struct rx_sched_combined_que_item *slot)
         BaseType_t status = xQueueSendFromISR(queMsgJobHandle, slot, &xHigherPriorityTaskWoken);
         if (pdPASS != status) {
             dbg("! Que post from ISR failed");
-            return;
+            return false;
         }
 
         #if USE_STACK_MONITOR
@@ -30,7 +30,7 @@ static void que_safe_post(struct rx_sched_combined_que_item *slot)
         BaseType_t status = xQueueSend(queMsgJobHandle, slot, MSG_QUE_POST_TIMEOUT);
         if (pdPASS != status) {
             dbg("! Que post failed");
-            return;
+            return false;
         }
 
         #if USE_STACK_MONITOR
@@ -41,6 +41,8 @@ static void que_safe_post(struct rx_sched_combined_que_item *slot)
     #if USE_STACK_MONITOR
         msgQueHighWaterMark = MAX(msgQueHighWaterMark, count);
     #endif
+
+    return true;
 }
 
 /**
@@ -48,7 +50,7 @@ static void que_safe_post(struct rx_sched_combined_que_item *slot)
  *
  * @param callback - the callback function
  */
-void scheduleJob(Job *job)
+bool scheduleJob(Job *job)
 {
     assert_param(job->cb != NULL);
 
@@ -57,7 +59,7 @@ void scheduleJob(Job *job)
         .job = *job, // copy content of the struct
     };
 
-    que_safe_post(&slot);
+    return que_safe_post(&slot);
 }
 
 /**
@@ -112,7 +114,10 @@ void rxQuePostMsg(uint8_t *buf, uint32_t len)
         slot.msg.len = len > MSG_QUE_SLOT_SIZE ? MSG_QUE_SLOT_SIZE : len;
         memcpy(slot.msg.data, buf, slot.msg.len);
 
-        que_safe_post(&slot);
+        if (!que_safe_post(&slot)) {
+            dbg("rxQuePostMsg fail!");
+            break;
+        }
 
         len -= slot.msg.len;
         buf += slot.msg.len;

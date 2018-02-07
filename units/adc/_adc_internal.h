@@ -19,6 +19,7 @@ enum uadc_opmode {
     ADC_OPMODE_TRIGD,  //!< Triggered, sending pre-trigger and streaming captured data.
     ADC_OPMODE_BLCAP,  //!< Capture of fixed length without a trigger
     ADC_OPMODE_STREAM, //!< Unlimited capture
+    ADC_OPMODE_EMERGENCY_SHUTDOWN, //!< Used when the buffers overrun to safely transition to IDLE after a delay
 };
 
 enum uadc_event {
