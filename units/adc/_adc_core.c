@@ -140,6 +140,80 @@ void UADC_ReportEndOfStream(Unit *unit)
     scheduleJob(&j);
 }
 
+static void handle_httc(Unit *unit, bool tc)
+{
+    struct priv *priv = unit->data;
+    uint16_t start = priv->stream_startpos;
+    uint16_t end;
+    const bool ht = !tc;
+
+    const bool m_trigd = priv->opmode == ADC_OPMODE_TRIGD;
+    const bool m_stream = priv->opmode == ADC_OPMODE_STREAM;
+    const bool m_fixcpt = priv->opmode == ADC_OPMODE_BLCAP;
+
+    if (ht) {
+//                    dbg("HT");
+        end = (uint16_t) (priv->dma_buffer_itemcount / 2);
+        LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
+    }
+    else {
+//                    dbg("TC");
+        end = (uint16_t) priv->dma_buffer_itemcount;
+        LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
+    }
+
+    if (ht == tc) {
+        // This shouldn't happen - looks like we missed the TC flag
+        dbg("!! %d -> %d", (int) start, (int) end);
+        // TODO we could try to catch up. for now, just take what is easy to grab and hope it doesnt matter
+        if (end == 64) start = 0;
+    }
+
+    if (start != end) {
+        uint32_t sgcount = (end - start) / priv->nb_channels;
+
+        if (m_trigd || m_fixcpt) {
+            sgcount = MIN(priv->trig_stream_remain, sgcount);
+            priv->trig_stream_remain -= sgcount;
+        }
+
+        bool close = !m_stream && priv->trig_stream_remain == 0;
+
+        Job j = {
+            .unit = unit,
+            .data1 = start,
+            .data2 = sgcount * priv->nb_channels,
+            .data3 = (uint32_t) close,
+            .cb = UADC_JobSendBlockChunk
+        };
+        if (!scheduleJob(&j)) {
+            // Abort if we can't queue - the stream would tear and we'd hog the system with error messages
+            dbg("(!) Buffers overflow, abort capture");
+            emergency = true;
+            UADC_SwitchMode(unit, ADC_OPMODE_EMERGENCY_SHUTDOWN);
+            return;
+        }
+
+        if (close) {
+//                        dbg("End of capture");
+            // If auto-arm enabled, we need to re-arm again.
+            // However, EOS irq is disabled during the capture.
+            // We have to wait for the next EOS interrupt to occur.
+            // TODO verify if keeping the EOS irq enabled during capture has significant performance penalty. If not, we can leave it enabled.
+            UADC_SwitchMode(unit, (priv->auto_rearm && m_trigd) ? ADC_OPMODE_REARM_PENDING : ADC_OPMODE_IDLE);
+        }
+    } else {
+//                    dbg("start==end, skip this irq");
+    }
+
+    if (tc) {
+        priv->stream_startpos = 0;
+    }
+    else {
+        priv->stream_startpos = end;
+    }
+}
+
 void UADC_DMA_Handler(void *arg)
 {
     Unit *unit = arg;
@@ -169,67 +243,17 @@ void UADC_DMA_Handler(void *arg)
 
         if (m_trigd || m_stream || m_fixcpt) {
             if (ht || tc) {
-                const uint16_t start = priv->stream_startpos;
-                uint16_t end;
-
-                if (ht) {
-//                    dbg("HT");
-                    end = (uint16_t) (priv->dma_buffer_itemcount / 2);
-                    LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
-                }
-                else {
-//                    dbg("TC");
-                    end = (uint16_t) priv->dma_buffer_itemcount;
-                    LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
-                }
-
-                if (start > end) {
-                    dbg("start %d, end %d", (int) start, (int) end);
-                }
-                assert_param(start <= end);
-
-                if (start != end) {
-                    uint32_t sgcount = (end - start) / priv->nb_channels;
-
-                    if (m_trigd || m_fixcpt) {
-                        sgcount = MIN(priv->trig_stream_remain, sgcount);
-                        priv->trig_stream_remain -= sgcount;
-                    }
-
-                    bool close = !m_stream && priv->trig_stream_remain == 0;
-
-                    Job j = {
-                        .unit = unit,
-                        .data1 = start,
-                        .data2 = sgcount * priv->nb_channels,
-                        .data3 = (uint32_t) close,
-                        .cb = UADC_JobSendBlockChunk
-                    };
-                    if (!scheduleJob(&j)) {
-                        // Abort if we can't queue - the stream would tear and we'd hog the system with error messages
-                        dbg("(!) Buffers overflow, abort capture");
-                        emergency = true;
-                        UADC_SwitchMode(unit, ADC_OPMODE_EMERGENCY_SHUTDOWN);
-                        return;
-                    }
-
-                    if (close) {
-//                        dbg("End of capture");
-                        // If auto-arm enabled, we need to re-arm again.
-                        // However, EOS irq is disabled during the capture.
-                        // We have to wait for the next EOS interrupt to occur.
-                        // TODO verify if keeping the EOS irq enabled during capture has significant performance penalty. If not, we can leave it enabled.
-                        UADC_SwitchMode(unit, (priv->auto_rearm && m_trigd) ? ADC_OPMODE_REARM_PENDING : ADC_OPMODE_IDLE);
+                if (ht && tc) {
+                    uint16_t half = (uint16_t) (priv->dma_buffer_itemcount / 2);
+                    if (priv->stream_startpos > half) {
+                        handle_httc(unit, true);
+                        handle_httc(unit, false);
+                    } else {
+                        handle_httc(unit, false);
+                        handle_httc(unit, true);
                     }
                 } else {
-//                    dbg("start==end, skip this irq");
-                }
-
-                if (tc) {
-                    priv->stream_startpos = 0;
-                }
-                else {
-                    priv->stream_startpos = end;
+                    handle_httc(unit, tc);
                 }
             }
         } else {
@@ -259,13 +283,9 @@ void UADC_ADC_EOS_Handler(void *arg)
     struct priv *priv = unit->data;
     assert_param(priv);
 
-    const bool trig_ready4_rising = (priv->trig_prev_level < priv->trig_level) && (bool) (priv->trig_edge & 0b01);
-    const bool trig_ready4_falling = (priv->trig_prev_level > priv->trig_level) && (bool) (priv->trig_edge & 0b10);
-    const bool armed = (trig_ready4_rising && trig_ready4_falling) && priv->opmode == ADC_OPMODE_ARMED;
-
     // Normally
     uint64_t timestamp = 0;
-    if (armed) timestamp = PTIM_GetMicrotime();
+    if (priv->opmode == ADC_OPMODE_ARMED) timestamp = PTIM_GetMicrotime();
 
     LL_ADC_ClearFlag_EOS(priv->ADCx);
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
@@ -284,14 +304,12 @@ void UADC_ADC_EOS_Handler(void *arg)
 
     int cnt = 0; // index of the sample within the group
 
-    const uint8_t trig_source = priv->trigger_source;
     const bool can_average = priv->real_frequency_int < UADC_MAX_FREQ_FOR_AVERAGING;
-    const uint16_t *dma_buffer = priv->dma_buffer;
     const uint32_t channels_mask = priv->extended_channels_mask;
 
     for (uint8_t i = 0; i < 18; i++) {
         if (channels_mask & (1 << i)) {
-            uint16_t val = dma_buffer[sample_pos+cnt];
+            uint16_t val = priv->dma_buffer[sample_pos+cnt];
             cnt++;
 
             if (can_average) {
@@ -301,24 +319,27 @@ void UADC_ADC_EOS_Handler(void *arg)
             }
 
             priv->last_samples[i] = val;
-
-            if (armed && i == trig_source) {
-//                    dbg("Trig line level %d", (int)val);
-                if (trig_ready4_rising && val >= priv->trig_level) {
-//                        dbg("******** Rising edge");
-                    // Rising edge
-                    UADC_HandleTrigger(unit, 1, timestamp);
-                }
-                else if (trig_ready4_falling && val <= priv->trig_level) {
-//                        dbg("******** Falling edge");
-                    // Falling edge
-                    UADC_HandleTrigger(unit, 2, timestamp);
-                }
-                priv->trig_prev_level = val;
-            }
         }
     }
 
+    if (priv->opmode == ADC_OPMODE_ARMED) {
+        uint16_t val =  priv->last_samples[priv->trigger_source];
+
+//        dbg("Trig line level %d", (int)val);
+        if ((priv->trig_prev_level < priv->trig_level) && val >= priv->trig_level && (bool) (priv->trig_edge & 0b01)) {
+//            dbg("******** Rising edge");
+            // Rising edge
+            UADC_HandleTrigger(unit, 1, timestamp);
+        }
+        else if ((priv->trig_prev_level > priv->trig_level) && val <= priv->trig_level && (bool) (priv->trig_edge & 0b10)) {
+//            dbg("******** Falling edge");
+            // Falling edge
+            UADC_HandleTrigger(unit, 2, timestamp);
+        }
+        priv->trig_prev_level = val;
+    }
+
+    // auto-rearm was waiting for the next sample
     if (priv->opmode == ADC_OPMODE_REARM_PENDING) {
         if (!priv->auto_rearm) {
             // It looks like the flag was cleared by DISARM before we got a new sample.

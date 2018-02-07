@@ -196,7 +196,7 @@ error_t UADC_init(Unit *unit)
             priv->dma_buffer_itemcount*sizeof(uint16_t),
             priv->nb_channels);
 
-        priv->dma_buffer = malloc_ck(priv->dma_buffer_itemcount * sizeof(uint16_t));
+        priv->dma_buffer = calloc_ck(priv->dma_buffer_itemcount, sizeof(uint16_t));
         if (NULL == priv->dma_buffer) return E_OUT_OF_MEM;
         assert_param(((uint32_t) priv->dma_buffer & 3) == 0); // must be aligned
 
