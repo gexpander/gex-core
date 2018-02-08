@@ -14,16 +14,12 @@
 static void UADC_JobSendBlockChunk(Job *job)
 {
     Unit *unit = job->unit;
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
 
-    uint32_t start = job->data1;
-    uint32_t count = job->data2;
-    bool close = (bool) (job->data3 & 0x80);
-    bool tc = (bool) (job->data3 & 0x01);
-
-//    dbg("Send indices [%d -> %d)", (int)start, (int)(start+count));
+    const uint32_t start = job->data1;
+    const uint32_t count = job->data2;
+    const bool close = (bool) (job->data3 & 0x80);
+    const bool tc = (bool) (job->data3 & 0x01);
 
     TF_TYPE type = close ? EVT_CAPT_DONE : EVT_CAPT_MORE;
 
@@ -47,9 +43,7 @@ static void UADC_JobSendBlockChunk(Job *job)
 static void UADC_JobSendTriggerCaptureHeader(Job *job)
 {
     Unit *unit = job->unit;
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
 
     EventReport er = {
         .unit = unit,
@@ -116,9 +110,7 @@ static void UADC_JobSendTriggerCaptureHeader(Job *job)
 static void UADC_JobSendEndOfStreamMsg(Job *job)
 {
     Unit *unit = job->unit;
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
 
     TF_Msg msg = {
         .type = EVT_CAPT_DONE,
@@ -129,9 +121,7 @@ static void UADC_JobSendEndOfStreamMsg(Job *job)
 
 void UADC_ReportEndOfStream(Unit *unit)
 {
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
 
     Job j = {
         .unit = unit,
@@ -153,21 +143,12 @@ static void handle_httc(Unit *unit, bool tc)
     const bool m_fixcpt = priv->opmode == ADC_OPMODE_BLCAP;
 
     if (ht) {
-//                    dbg("HT");
         end = (uint16_t) (priv->dma_buffer_itemcount / 2);
         LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
     }
     else {
-//                    dbg("TC");
         end = (uint16_t) priv->dma_buffer_itemcount;
         LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
-    }
-
-    if (ht == tc) {
-        // This shouldn't happen - looks like we missed the TC flag
-        dbg("!! %d -> %d", (int) start, (int) end);
-        // TODO we could try to catch up. for now, just take what is easy to grab and hope it doesnt matter
-        if (end == 64) start = 0;
     }
 
     if (start != end) {
@@ -186,11 +167,13 @@ static void handle_httc(Unit *unit, bool tc)
             return;
         }
 
+        // Here we set the tc/ht pending flags for detecting overrun
+
         Job j = {
             .unit = unit,
             .data1 = start,
             .data2 = sgcount * priv->nb_channels,
-            .data3 = (uint32_t) (close*0x80) | (tc*1),
+            .data3 = (uint32_t) (close*0x80) | (tc*1), // bitfields to indicate what's happening
             .cb = UADC_JobSendBlockChunk
         };
 
@@ -212,8 +195,6 @@ static void handle_httc(Unit *unit, bool tc)
             // We have to wait for the next EOS interrupt to occur.
             UADC_SwitchMode(unit, (priv->auto_rearm && m_trigd) ? ADC_OPMODE_REARM_PENDING : ADC_OPMODE_IDLE);
         }
-    } else {
-//                    dbg("start==end, skip this irq");
     }
 
     if (tc) {
@@ -227,10 +208,7 @@ static void handle_httc(Unit *unit, bool tc)
 void UADC_DMA_Handler(void *arg)
 {
     Unit *unit = arg;
-
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
 
     if (priv->opmode == ADC_OPMODE_UNINIT) {
         LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
@@ -256,11 +234,11 @@ void UADC_DMA_Handler(void *arg)
                 if (ht && tc) {
                     uint16_t half = (uint16_t) (priv->dma_buffer_itemcount / 2);
                     if (priv->stream_startpos > half) {
-                        handle_httc(unit, true);
-                        handle_httc(unit, false);
+                        handle_httc(unit, true); // TC
+                        handle_httc(unit, false); // HT
                     } else {
-                        handle_httc(unit, false);
-                        handle_httc(unit, true);
+                        handle_httc(unit, false); // HT
+                        handle_httc(unit, true); // TC
                     }
                 } else {
                     handle_httc(unit, tc);
@@ -289,9 +267,7 @@ void UADC_DMA_Handler(void *arg)
 void UADC_ADC_EOS_Handler(void *arg)
 {
     Unit *unit = arg;
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
 
     // Normally
     uint64_t timestamp = 0;
@@ -364,9 +340,7 @@ void UADC_ADC_EOS_Handler(void *arg)
 
 void UADC_HandleTrigger(Unit *unit, uint8_t edge_type, uint64_t timestamp)
 {
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     if (priv->trig_holdoff != 0 && priv->trig_holdoff_remain > 0) {
@@ -401,9 +375,7 @@ void UADC_HandleTrigger(Unit *unit, uint8_t edge_type, uint64_t timestamp)
 
 void UADC_StartBlockCapture(Unit *unit, uint32_t len, TF_ID frame_id)
 {
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     priv->stream_frame_id = frame_id;
@@ -416,9 +388,7 @@ void UADC_StartBlockCapture(Unit *unit, uint32_t len, TF_ID frame_id)
 /** Start stream */
 void UADC_StartStream(Unit *unit, TF_ID frame_id)
 {
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     priv->stream_frame_id = frame_id;
@@ -430,9 +400,7 @@ void UADC_StartStream(Unit *unit, TF_ID frame_id)
 /** End stream */
 void UADC_StopStream(Unit *unit)
 {
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     UADC_ReportEndOfStream(unit);
@@ -442,9 +410,7 @@ void UADC_StopStream(Unit *unit)
 /** Handle unit update tick - expire the trigger hold-off */
 void UADC_updateTick(Unit *unit)
 {
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
 
     // Recover from shutdown after a delay
     if (priv->opmode == ADC_OPMODE_EMERGENCY_SHUTDOWN) {
@@ -468,9 +434,7 @@ void UADC_updateTick(Unit *unit)
 
 void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
 {
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv);
 
     const enum uadc_opmode old_mode = priv->opmode;
 

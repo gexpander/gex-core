@@ -306,7 +306,8 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
 void USBD_CDC_TransmitDone(USBD_HandleTypeDef *pdev)
 {
-//  assert_param(xTaskGetCurrentTaskHandle() == tskMainHandle);
+    // This is called from the ISR directly, unlike the other functions - that's because
+    // all this does is notify the TF write impl that the Tx EP is ready via a semaphore.
 
   // Notify the semaphore that we're ready to transmit more
   assert_param(semVcomTxReadyHandle != NULL);
