@@ -74,7 +74,10 @@ struct priv {
     bool auto_rearm;          //!< Flag that the trigger should be re-armed after the stream finishes
     uint16_t trig_holdoff;    //!< Trigger hold-off time, set when configuring the trigger
     TF_ID stream_frame_id;    //!< Session ID for multi-part stream (response or report)
-    uint8_t stream_serial;
+    uint8_t stream_serial;    //!< Serial nr of a stream frame
+
+    bool tc_pending;
+    bool ht_pending;
 };
 
 /** Allocate data structure and set defaults */

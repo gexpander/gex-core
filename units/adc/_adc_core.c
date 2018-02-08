@@ -11,9 +11,6 @@
 
 #define DMA_POS(priv) ((priv)->dma_buffer_itemcount - (priv)->DMA_CHx->CNDTR)
 
-volatile bool emergency = false;
-//#define CRUMB() if(emergency) trap("crumb")
-
 static void UADC_JobSendBlockChunk(Job *job)
 {
     Unit *unit = job->unit;
@@ -23,7 +20,8 @@ static void UADC_JobSendBlockChunk(Job *job)
 
     uint32_t start = job->data1;
     uint32_t count = job->data2;
-    bool close = (bool) job->data3;
+    bool close = (bool) (job->data3 & 0x80);
+    bool tc = (bool) (job->data3 & 0x01);
 
 //    dbg("Send indices [%d -> %d)", (int)start, (int)(start+count));
 
@@ -39,6 +37,9 @@ static void UADC_JobSendBlockChunk(Job *job)
     TF_Multipart_Payload(comm, &priv->stream_serial, 1);
     TF_Multipart_Payload(comm, (uint8_t *) (priv->dma_buffer + start), count * sizeof(uint16_t));
     TF_Multipart_Close(comm);
+
+    if (tc) priv->tc_pending = false;
+    else priv->ht_pending = false;
 
     priv->stream_serial++;
 }
@@ -179,27 +180,36 @@ static void handle_httc(Unit *unit, bool tc)
 
         bool close = !m_stream && priv->trig_stream_remain == 0;
 
+        if ((tc && priv->tc_pending) || (ht && priv->ht_pending)) {
+            dbg("(!) DMA not handled in time, abort capture");
+            UADC_SwitchMode(unit, ADC_OPMODE_EMERGENCY_SHUTDOWN);
+            return;
+        }
+
         Job j = {
             .unit = unit,
             .data1 = start,
             .data2 = sgcount * priv->nb_channels,
-            .data3 = (uint32_t) close,
+            .data3 = (uint32_t) (close*0x80) | (tc*1),
             .cb = UADC_JobSendBlockChunk
         };
+
+        if (tc)
+            priv->tc_pending = true;
+        else
+            priv->ht_pending = true;
+
         if (!scheduleJob(&j)) {
             // Abort if we can't queue - the stream would tear and we'd hog the system with error messages
             dbg("(!) Buffers overflow, abort capture");
-            emergency = true;
             UADC_SwitchMode(unit, ADC_OPMODE_EMERGENCY_SHUTDOWN);
             return;
         }
 
         if (close) {
-//                        dbg("End of capture");
             // If auto-arm enabled, we need to re-arm again.
             // However, EOS irq is disabled during the capture.
             // We have to wait for the next EOS interrupt to occur.
-            // TODO verify if keeping the EOS irq enabled during capture has significant performance penalty. If not, we can leave it enabled.
             UADC_SwitchMode(unit, (priv->auto_rearm && m_trigd) ? ADC_OPMODE_REARM_PENDING : ADC_OPMODE_IDLE);
         }
     } else {
@@ -498,6 +508,9 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
     else if (new_mode == ADC_OPMODE_IDLE || new_mode == ADC_OPMODE_REARM_PENDING) {
         // IDLE and ARMED are identical with the exception that the trigger condition is not checked
         // ARMED can be only entered from IDLE, thus we do the init only here.
+
+        priv->tc_pending = false;
+        priv->ht_pending = false;
 
         // In IDLE, we don't need the DMA interrupts
         LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
