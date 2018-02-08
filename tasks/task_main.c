@@ -81,9 +81,9 @@ void TaskMain(void const * argument)
 #endif
 
         // CDC - config packets and data in/out
-        if (msg & (USBEVT_FLAG_EPx_IN(CDC_IN_EP))) {
-            USBD_CDC_DataIn(&hUsbDeviceFS, CDC_IN_EP);
-        }
+//        if (msg & (USBEVT_FLAG_EPx_IN(CDC_IN_EP))) {
+//            USBD_CDC_DataIn(&hUsbDeviceFS, CDC_IN_EP);
+//        }
         if (msg & (USBEVT_FLAG_EPx_IN(CDC_CMD_EP))) {
             USBD_CDC_DataIn(&hUsbDeviceFS, CDC_CMD_EP);
         }

@@ -178,11 +178,11 @@ void MX_FREERTOS_Init(void) {
 
   /* Create the thread(s) */
   /* definition and creation of tskMain */
-  osThreadStaticDef(tskMain, TaskMain, osPriorityHigh, 0, TSK_STACK_MAIN, mainTaskStack, &mainTaskControlBlock);
+  osThreadStaticDef(tskMain, TaskMain, TSK_MAIN_PRIO, 0, TSK_STACK_MAIN, mainTaskStack, &mainTaskControlBlock);
   tskMainHandle = osThreadCreate(osThread(tskMain), NULL);
 
   /* definition and creation of TaskMessaging */
-  osThreadStaticDef(tskMsg, TaskMsgJob, osPriorityNormal, 0, TSK_STACK_MSG, msgJobQueTaskStack, &msgJobQueTaskControlBlock);
+  osThreadStaticDef(tskMsg, TaskMsgJob, TSK_JOBS_PRIO, 0, TSK_STACK_MSG, msgJobQueTaskStack, &msgJobQueTaskControlBlock);
   tskMsgJobHandle = osThreadCreate(osThread(tskMsg), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */

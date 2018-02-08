@@ -89,8 +89,9 @@
 /* Ensure stdint is only used by the compiler, and not the assembler. */
 #if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
     #include <stdint.h>
-    #include "main.h" 
-    extern uint32_t SystemCoreClock;
+    #include "main.h"
+    #include "plat_compat.h"
+extern uint32_t SystemCoreClock;
 #endif
 
 #define configUSE_PREEMPTION                     1
@@ -110,11 +111,11 @@
 #define configENABLE_BACKWARD_COMPATIBILITY      0
 
 #define configUSE_TIMERS                         1
-#define configTIMER_TASK_PRIORITY                4 // above normal
+#define configTIMER_TASK_PRIORITY                TSK_TIMERS_PRIO // above normal
 #define configTIMER_TASK_STACK_DEPTH             TSK_STACK_TIMERS //128
 #define configTIMER_QUEUE_LENGTH                 4
 
-#define configTOTAL_HEAP_SIZE 4096
+#define configTOTAL_HEAP_SIZE PLAT_HEAP_SIZE
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0

@@ -7,6 +7,11 @@
 
 #define VFS_DRIVE_NAME "GEX"
 
+// -------- Priorities -------------
+#define TSK_MAIN_PRIO osPriorityNormal
+#define TSK_JOBS_PRIO osPriorityHigh
+#define TSK_TIMERS_PRIO 4 // this must be in the 0-7 range
+
 // -------- Static buffers ---------
 // USB / VFS task stack size
 #if DISABLE_MSC
@@ -17,9 +22,11 @@
 
 // 180 is normally enough if not doing extensive debug logging
 #define TSK_STACK_MSG       200 // TF message handler task stack size (all unit commands run on this thread)
-
 #define TSK_STACK_IDLE    64 //configMINIMAL_STACK_SIZE
 #define TSK_STACK_TIMERS  64 //configTIMER_TASK_STACK_DEPTH
+
+#define PLAT_HEAP_SIZE 4096
+
 
 
 #define BULK_READ_BUF_LEN 256   // Buffer for TF bulk reads
@@ -28,7 +35,7 @@
 #define FLASH_SAVE_BUF_LEN  128 // Malloc'd buffer for saving to flash
 
 #define MSG_QUE_SLOT_SIZE 64 // FIXME this should be possible to lower, but there's some bug with bulk transfer / INI parser
-#define RX_QUE_CAPACITY    36 // TinyFrame rx queue size (64 bytes each)
+#define RX_QUE_CAPACITY    16 // TinyFrame rx queue size (64 bytes each)
 
 #define TF_MAX_PAYLOAD_RX 512 // TF max Rx payload
 #define TF_SENDBUF_LEN     64 // TF transmit buffer (can be less than a full frame)

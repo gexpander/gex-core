@@ -9,6 +9,7 @@
 #include "usbd_msc.h"
 #include "usbd_cdc.h"
 #include "usbd_msc_cdc.h"
+#include "USB/usb_device.h"
 
 #define USBD_MSC_CDC_CONFIG_DESC_SIZ 98
 /* USB Mass storage device Configuration Descriptor */
@@ -112,7 +113,7 @@ __ALIGN_BEGIN uint8_t USBD_MSC_CDC_CfgFSDesc[USBD_MSC_CDC_CONFIG_DESC_SIZ]  __AL
                 0x03,                           /* bmAttributes: Interrupt */
                 LOBYTE(CDC_CMD_PACKET_SIZE),     /* wMaxPacketSize: TODO: 2?*/
                 HIBYTE(CDC_CMD_PACKET_SIZE),
-                0x10, //0xFF,                           /* bInterval: TODO was 0x10?*/
+                0xFF,                           /* bInterval: TODO was 0x10?*/
 
             /********** CDC Data Class Interface Descriptor ***********/
 /*75*/      0x09,   /* bLength: Endpoint Descriptor size */
@@ -232,6 +233,13 @@ static uint8_t USBD_MSC_CDC_EP0_RxReady(struct _USBD_HandleTypeDef *pdev)
 static uint8_t USBD_MSC_CDC_DataIn(struct _USBD_HandleTypeDef *pdev, uint8_t epnum)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    // This is a notification about data been Tx'd - avoid the bounce via main thread.
+    if (epnum == (CDC_IN_EP&0x7)) {
+        USBD_CDC_DataIn(&hUsbDeviceFS, CDC_IN_EP);
+        return USBD_OK;
+    }
+
     xTaskNotifyFromISR(tskMainHandle, USBEVT_FLAG_EPx_IN(epnum), eSetBits, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
  //   if (epnum == MSC_EPIN_ADDR||epnum==MSC_EPOUT_ADDR) USBD_MSC_DataIn(pdev, epnum);
