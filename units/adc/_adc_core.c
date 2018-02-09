@@ -21,6 +21,8 @@ static void UADC_JobSendBlockChunk(Job *job)
     const bool close = (bool) (job->data3 & 0x80);
     const bool tc = (bool) (job->data3 & 0x01);
 
+//    assert_param(count <= priv->buf_itemcount);
+
     TF_TYPE type = close ? EVT_CAPT_DONE : EVT_CAPT_MORE;
 
     TF_Msg msg = {
@@ -28,7 +30,6 @@ static void UADC_JobSendBlockChunk(Job *job)
         .len = (TF_LEN) (1 /*seq*/ + count * sizeof(uint16_t)),
         .type = type,
     };
-
     TF_Respond_Multipart(comm, &msg);
     TF_Multipart_Payload(comm, &priv->stream_serial, 1);
     TF_Multipart_Payload(comm, (uint8_t *) (priv->dma_buffer + start), count * sizeof(uint16_t));
@@ -109,7 +110,7 @@ void UADC_ReportEndOfStream(Unit *unit)
 
     Job j = {
         .unit = unit,
-        .data1 = priv->stream_frame_id,
+        .data1 = priv->stream_frame_id, // copy the ID, it may be invalid by the time the cb gets executed
         .cb = UADC_JobSendEndOfStreamMsg
     };
     scheduleJob(&j);
@@ -128,14 +129,16 @@ static void handle_httc(Unit *unit, bool tc)
 
     if (ht) {
         end = (priv->buf_itemcount / 2);
-        LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
     }
     else {
         end = priv->buf_itemcount;
-        LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
     }
 
     if (start != end) {
+        if (end < start) {
+            trap("end < start! %d < %d, tc %d", (int)end, (int)start, (int)tc);
+        }
+
         uint32_t sgcount = (end - start) / priv->nb_channels;
 
         if (m_trigd || m_fixcpt) {
@@ -184,7 +187,7 @@ static void handle_httc(Unit *unit, bool tc)
         priv->stream_startpos = 0;
     }
     else {
-        priv->stream_startpos = end;
+        priv->stream_startpos = priv->buf_itemcount / 2;
     }
 }
 
@@ -207,6 +210,9 @@ void UADC_DMA_Handler(void *arg)
         const bool ht = LL_DMA_IsActiveFlag_HT(isrsnapshot, priv->dma_chnum);
         const bool te = LL_DMA_IsActiveFlag_TE(isrsnapshot, priv->dma_chnum);
 
+        if (ht) LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
+        if (tc) LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
+
         // check what mode we're in
         const bool m_trigd = priv->opmode == ADC_OPMODE_TRIGD;
         const bool m_stream = priv->opmode == ADC_OPMODE_STREAM;
@@ -214,8 +220,8 @@ void UADC_DMA_Handler(void *arg)
 
         if (m_trigd || m_stream || m_fixcpt) {
             if (ht || tc) {
+                const uint32_t half = (uint32_t) (priv->buf_itemcount / 2);
                 if (ht && tc) {
-                    const uint32_t half = (uint32_t) (priv->buf_itemcount / 2);
                     if (priv->stream_startpos > half) {
                         handle_httc(unit, true); // TC
                         handle_httc(unit, false); // HT
@@ -224,19 +230,16 @@ void UADC_DMA_Handler(void *arg)
                         handle_httc(unit, true); // TC
                     }
                 } else {
+                    if (ht && priv->stream_startpos > half) {
+                        // We missed the TC interrupt while e.g. setting up the stream / interrupt. catch up!
+                        handle_httc(unit, true); // TC
+                    }
                     handle_httc(unit, tc);
                 }
             }
         } else {
             // This shouldn't happen, the interrupt should be disabled in this opmode
             dbg("(!) not streaming, ADC DMA IT should be disabled");
-
-            if (ht) {
-                LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
-            }
-            else {
-                LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
-            }
         }
 
         if (te) {
@@ -351,6 +354,23 @@ void UADC_HandleTrigger(Unit *unit, uint8_t edge_type, uint64_t timestamp)
     UADC_SwitchMode(unit, ADC_OPMODE_TRIGD);
 }
 
+void UADC_AbortCapture(Unit *unit)
+{
+    struct priv *priv = unit->data;
+
+    const enum uadc_opmode old_opmode = priv->opmode;
+
+    priv->auto_rearm = false;
+
+    if (old_opmode == ADC_OPMODE_BLCAP ||
+        old_opmode == ADC_OPMODE_STREAM ||
+        old_opmode == ADC_OPMODE_TRIGD) {
+        UADC_ReportEndOfStream(unit);
+    }
+
+    UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+}
+
 void UADC_StartBlockCapture(Unit *unit, uint32_t len, TF_ID frame_id)
 {
     struct priv *priv = unit->data;
@@ -370,8 +390,6 @@ void UADC_StartStream(Unit *unit, TF_ID frame_id)
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     priv->stream_frame_id = frame_id;
-    priv->stream_startpos = DMA_POS(priv);
-    priv->stream_serial = 0;
     UADC_SwitchMode(unit, ADC_OPMODE_STREAM);
 }
 
@@ -394,9 +412,9 @@ void UADC_updateTick(Unit *unit)
     if (priv->opmode == ADC_OPMODE_EMERGENCY_SHUTDOWN) {
         adc_dbg("ADC recovering from emergency shutdown");
 
-        UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
-        LL_TIM_EnableCounter(priv->TIMx);
         UADC_ReportEndOfStream(unit);
+        LL_TIM_EnableCounter(priv->TIMx);
+        UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
         unit->tick_interval = 0;
         return;
     }
@@ -428,6 +446,8 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         adc_dbg("ADC switch -> UNINIT");
         // Stop the DMA, timer and disable ADC - this is called before tearing down the unit
         LL_TIM_DisableCounter(priv->TIMx);
+        LL_ADC_ClearFlag_EOS(priv->ADCx);
+        LL_ADC_DisableIT_EOS(priv->ADCx);
 
         // Switch off the ADC
         if (LL_ADC_IsEnabled(priv->ADCx)) {
@@ -444,6 +464,8 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         LL_DMA_DisableChannel(priv->DMAx, priv->dma_chnum);
         LL_DMA_DisableIT_HT(priv->DMAx, priv->dma_chnum);
         LL_DMA_DisableIT_TC(priv->DMAx, priv->dma_chnum);
+        LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
+        LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
     }
     else if (new_mode == ADC_OPMODE_IDLE || new_mode == ADC_OPMODE_REARM_PENDING) {
         // IDLE and ARMED are identical with the exception that the trigger condition is not checked
@@ -501,7 +523,6 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
     else if (new_mode == ADC_OPMODE_TRIGD ||
         new_mode == ADC_OPMODE_STREAM ||
         new_mode == ADC_OPMODE_BLCAP) {
-
         adc_dbg("ADC switch -> CAPTURE");
         assert_param(old_mode == ADC_OPMODE_ARMED || old_mode == ADC_OPMODE_IDLE);
 
@@ -514,6 +535,12 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
         LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
 
+        // those must be as close as possible to the enabling
+        // if not trig'd, we don't care for lost samples before (this could cause a DMA irq miss / ht/tc mismatch with the startpos)
+        if (new_mode != ADC_OPMODE_TRIGD) {
+            priv->stream_startpos = DMA_POS(priv);
+            priv->stream_serial = 0;
+        }
         LL_DMA_EnableIT_HT(priv->DMAx, priv->dma_chnum);
         LL_DMA_EnableIT_TC(priv->DMAx, priv->dma_chnum);
     }

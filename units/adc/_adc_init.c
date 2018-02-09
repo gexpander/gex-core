@@ -2,7 +2,6 @@
 // Created by MightyPork on 2018/02/03.
 //
 
-#include <stm32f072xb.h>
 #include "platform.h"
 #include "unit_base.h"
 
@@ -34,14 +33,12 @@ error_t UADC_SetSampleRate(Unit *unit, uint32_t hertz)
 
     uint16_t presc;
     uint32_t count;
-    if (!solve_timer(PLAT_APB1_HZ, hertz, true, &presc, &count,
-                     &priv->real_frequency)) {
+    if (!solve_timer(PLAT_APB1_HZ, hertz, true, &presc, &count, &priv->real_frequency)) {
         dbg("Failed to resolve timer params.");
         return E_BAD_VALUE;
     }
     adc_dbg("Frequency error %d ppm, presc %d, count %d",
-        (int) lrintf(1000000.0f *
-                     ((priv->real_frequency - hertz) / (float) hertz)),
+        (int) lrintf(1000000.0f *  ((priv->real_frequency - hertz) / (float) hertz)),
         (int) presc, (int) count);
 
     LL_TIM_SetPrescaler(priv->TIMx, (uint32_t) (presc - 1));
@@ -50,6 +47,44 @@ error_t UADC_SetSampleRate(Unit *unit, uint32_t hertz)
     priv->real_frequency_int = hertz;
 
     return E_SUCCESS;
+}
+
+void UADC_SetupDMA(Unit *unit)
+{
+    struct priv *priv = unit->data;
+
+    adc_dbg("Setting up DMA");
+    {
+        uint32_t itemcount = priv->nb_channels * (priv->cfg.buffer_size / (priv->nb_channels));
+        if (itemcount % 2 == 1) itemcount -= priv->nb_channels; // ensure the count is even
+        priv->buf_itemcount = itemcount;
+
+        adc_dbg("DMA item count is %d (%d bytes), There are %d samples per group.",
+                (int)priv->buf_itemcount,
+                (int)(priv->buf_itemcount * sizeof(uint16_t)),
+                (int)priv->nb_channels);
+
+        {
+            LL_DMA_InitTypeDef init;
+            LL_DMA_StructInit(&init);
+            init.Direction = LL_DMA_DIRECTION_PERIPH_TO_MEMORY;
+
+            init.Mode = LL_DMA_MODE_CIRCULAR;
+            init.NbData = itemcount;
+
+            init.PeriphOrM2MSrcAddress = (uint32_t) &priv->ADCx->DR;
+            init.PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_HALFWORD;
+            init.PeriphOrM2MSrcIncMode = LL_DMA_PERIPH_NOINCREMENT;
+
+            init.MemoryOrM2MDstAddress = (uint32_t) priv->dma_buffer;
+            init.MemoryOrM2MDstDataSize = LL_DMA_MDATAALIGN_HALFWORD;
+            init.MemoryOrM2MDstIncMode = LL_DMA_MEMORY_INCREMENT;
+
+            assert_param(SUCCESS == LL_DMA_Init(priv->DMAx, priv->dma_chnum, &init));
+        }
+
+//        LL_DMA_EnableChannel(priv->DMAx, priv->dma_chnum);
+    }
 }
 
 /** Finalize unit set-up */
@@ -118,6 +153,12 @@ error_t UADC_init(Unit *unit)
         }
     }
 
+    // ---------------- Alloc the buffer ----------------------
+    adc_dbg("Allocating buffer of size %d half-words", (int)priv->cfg.buffer_size);
+    priv->dma_buffer = calloc_ck(priv->cfg.buffer_size, sizeof(uint16_t));
+    if (NULL == priv->dma_buffer) return E_OUT_OF_MEM;
+    assert_param(((uint32_t) priv->dma_buffer & 3) == 0); // must be aligned
+
     // ------------------- ENABLE CLOCKS --------------------------
     {
         // enable peripherals clock
@@ -166,42 +207,7 @@ error_t UADC_init(Unit *unit)
     }
 
     // --------------------- CONFIGURE DMA -------------------------------
-    adc_dbg("Setting up DMA");
-    {
-        uint32_t itemcount = priv->nb_channels * (priv->cfg.buffer_size / (priv->nb_channels));
-        if (itemcount % 2 == 1) itemcount -= priv->nb_channels; // ensure the count is even
-        priv->buf_itemcount = itemcount;
-
-        adc_dbg("DMA item count is %d (%d bytes), There are %d samples per group.",
-            priv->buf_itemcount,
-            priv->buf_itemcount * sizeof(uint16_t),
-            priv->nb_channels);
-
-        priv->dma_buffer = calloc_ck(priv->buf_itemcount, sizeof(uint16_t));
-        if (NULL == priv->dma_buffer) return E_OUT_OF_MEM;
-        assert_param(((uint32_t) priv->dma_buffer & 3) == 0); // must be aligned
-
-        {
-            LL_DMA_InitTypeDef init;
-            LL_DMA_StructInit(&init);
-            init.Direction = LL_DMA_DIRECTION_PERIPH_TO_MEMORY;
-
-            init.Mode = LL_DMA_MODE_CIRCULAR;
-            init.NbData = itemcount;
-
-            init.PeriphOrM2MSrcAddress = (uint32_t) &priv->ADCx->DR;
-            init.PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_HALFWORD;
-            init.PeriphOrM2MSrcIncMode = LL_DMA_PERIPH_NOINCREMENT;
-
-            init.MemoryOrM2MDstAddress = (uint32_t) priv->dma_buffer;
-            init.MemoryOrM2MDstDataSize = LL_DMA_MDATAALIGN_HALFWORD;
-            init.MemoryOrM2MDstIncMode = LL_DMA_MEMORY_INCREMENT;
-
-            assert_param(SUCCESS == LL_DMA_Init(priv->DMAx, priv->dma_chnum, &init));
-        }
-
-        LL_DMA_EnableChannel(priv->DMAx, priv->dma_chnum);
-    }
+    UADC_SetupDMA(unit);
 
     // prepare the avg factor float for the ISR
     if (priv->cfg.averaging_factor > 1000) priv->cfg.averaging_factor = 1000; // normalize
@@ -238,9 +244,10 @@ void UADC_deInit(Unit *unit)
         irqd_detach(priv->ADCx, UADC_ADC_EOS_Handler);
 
         LL_DMA_DeInit(priv->DMAx, priv->dma_chnum);
-
-        free_ck(priv->dma_buffer);
     }
+
+    // free buffer if not NULL
+    free_ck(priv->dma_buffer);
 
     // Release all resources, deinit pins
     rsc_teardown(unit);

@@ -11,7 +11,6 @@ volatile uint32_t msgQueHighWaterMark = 0;
 static bool que_safe_post(struct rx_sched_combined_que_item *slot)
 {
     uint32_t count = 0;
-    assert_param(slot != NULL);
 
     if (inIRQ()) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -80,12 +79,9 @@ void TaskMsgJob(const void *argument)
         xQueueReceive(queMsgJobHandle, &slot, osWaitForever);
 
         if (slot.is_job) {
-            assert_param(slot.job.cb != NULL);
             slot.job.cb(&slot.job);
         }
         else {
-            assert_param(slot.msg.len > 0 && slot.msg.len <= MSG_QUE_SLOT_SIZE); // check the len is within bounds
-
             #if CDC_LOOPBACK_TEST
                 TF_WriteImpl(comm, slot.msg.data, slot.msg.len);
             #else

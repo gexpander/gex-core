@@ -27,6 +27,8 @@ enum AdcCmd_ {
     CMD_STREAM_STOP = 27,
     CMD_SET_SMOOTHING_FACTOR = 28,
     CMD_SET_SAMPLE_RATE = 29,
+    CMD_ENABLE_CHANNELS = 30,
+    CMD_SET_SAMPLE_TIME = 31,
 };
 
 /** Handle a request message */
@@ -34,8 +36,6 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 {
     struct priv *priv = unit->data;
     PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
-
-    // TODO toggling individual channels - would require DMA re-init and various changes in the usage of the struct
 
     switch (command) {
         /**
@@ -78,6 +78,69 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                 uint16_t fac = pp_u16(pp);
                 if (fac > 1000) return E_BAD_VALUE;
                 priv->avg_factor_as_float = fac / 1000.0f;
+            }
+            return E_SUCCESS;
+
+        /**
+         * Set sample time
+         * pld: u8:0-7
+         */
+        case CMD_SET_SAMPLE_TIME:
+            {
+                uint8_t tim = pp_u8(pp);
+                if (tim > 7) return E_BAD_VALUE;
+                UADC_SwitchMode(unit, ADC_OPMODE_UNINIT);
+                {
+                    LL_ADC_SetSamplingTimeCommonChannels(priv->ADCx, LL_ADC_SAMPLETIMES[tim]);
+                }
+                UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+            }
+            return E_SUCCESS;
+
+        /**
+         * Enable channels. The channels must've been configured in the settings (except ch 16 and 17 which are available always)
+         * pld: u32: bitmap of channels
+         */
+        case CMD_ENABLE_CHANNELS:
+            {
+                uint32_t new_channels = pp_u32(pp);
+
+                // this tears down the peripherals sufficiently so we can re-configure them. Going back to IDLE re-inits this
+                UADC_SwitchMode(unit, ADC_OPMODE_UNINIT);
+
+                uint32_t illegal_channels = new_channels & ~(priv->cfg.channels | (1<<16) | (1<<17)); // 16 and 17 may be enabled always
+                if (illegal_channels != 0) {
+                    com_respond_str(MSG_ERROR, frame_id, "Some requested channels not available");
+                    UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+                    return E_FAILURE;
+                }
+
+                uint8_t nb_channels = 0;
+                // count the enabled channels
+                for(int i = 0; i < 32; i++) {
+                    if (new_channels & (1<<i)) {
+                        nb_channels++;
+                    }
+                }
+
+                if (nb_channels == 0) {
+                    com_respond_str(MSG_ERROR, frame_id, "Need at least 1 channel");
+                    UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+                    return E_FAILURE;
+                }
+
+                if (priv->cfg.buffer_size < nb_channels * 2) {
+                    com_respond_str(MSG_ERROR, frame_id, "Insufficient buf size");
+                    UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+                    return E_BAD_CONFIG;
+                }
+
+                priv->nb_channels = nb_channels;
+                priv->ADCx->CHSELR = new_channels; // apply it to the ADC
+                priv->channels_mask = new_channels;
+
+                UADC_SetupDMA(unit);
+                UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
             }
             return E_SUCCESS;
 
@@ -246,7 +309,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          */
         case CMD_ABORT:;
             adc_dbg("> Abort capture");
-            TRY(UU_ADC_AbortCapture(unit));
+            UADC_AbortCapture(unit);
             return E_SUCCESS;
 
         /**

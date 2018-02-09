@@ -11,7 +11,7 @@
 
 #include "unit_base.h"
 
-//#define adc_dbg(...) dbg(##__VA_ARGS__)
+//#define adc_dbg dbg
 #define adc_dbg(...) do {} while(0)
 
 #define UADC_MAX_FREQ_FOR_AVERAGING 20000
@@ -115,6 +115,9 @@ error_t UADC_init(Unit *unit);
 /** Tear down the unit */
 void UADC_deInit(Unit *unit);
 
+/** Configure DMA (buffer count etc) */
+void UADC_SetupDMA(Unit *unit);
+
 // ------------------------------------------------------------------------
 
 /** DMA half/complete handler */
@@ -146,5 +149,8 @@ void UADC_StopStream(Unit *unit);
 
 /** Configure frequency */
 error_t UADC_SetSampleRate(Unit *unit, uint32_t hertz);
+
+/** Abort capture */
+void UADC_AbortCapture(Unit *unit);
 
 #endif //GEX_F072_ADC_INTERNAL_H
