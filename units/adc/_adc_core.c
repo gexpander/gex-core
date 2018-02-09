@@ -9,7 +9,7 @@
 #define ADC_INTERNAL
 #include "_adc_internal.h"
 
-#define DMA_POS(priv) ((priv)->dma_buffer_itemcount - (priv)->DMA_CHx->CNDTR)
+#define DMA_POS(priv) ((priv)->buf_itemcount - (priv)->DMA_CHx->CNDTR)
 
 static void UADC_JobSendBlockChunk(Job *job)
 {
@@ -25,7 +25,7 @@ static void UADC_JobSendBlockChunk(Job *job)
 
     TF_Msg msg = {
         .frame_id = priv->stream_frame_id,
-        .len = (TF_LEN) (1 + count*sizeof(uint16_t)),
+        .len = (TF_LEN) (1 /*seq*/ + count * sizeof(uint16_t)),
         .type = type,
     };
 
@@ -49,55 +49,42 @@ static void UADC_JobSendTriggerCaptureHeader(Job *job)
         .unit = unit,
         .type = EVT_CAPT_START,
         .timestamp = job->timestamp,
-        .length = (priv->pretrig_len+1)*priv->nb_channels*sizeof(uint16_t) + 2 /*pretrig len*/ + 1 /*edge*/ + 1 /* seq */
+        .length = (priv->pretrig_len+1) * priv->nb_channels * sizeof(uint16_t) + 4 /*pretrig len*/ + 1 /*edge*/ + 1 /* seq */
     };
 
-    uint16_t index_trigd = (uint16_t) job->data1;
+    uint32_t index_trigd = job->data1;
     uint8_t edge = (uint8_t) job->data2;
 
     EventReport_Start(&er);
     priv->stream_frame_id = er.sent_msg_id;
-//    dbg("Sending TRIG HEADER with id %d (idx %d)", (int)er.sent_msg_id, (int)index_trigd);
     {
         // preamble
         uint8_t buf[4];
         PayloadBuilder pb = pb_start(buf, 4, NULL);
-        pb_u16(&pb, priv->pretrig_len);
+        pb_u32(&pb, priv->pretrig_len);
         pb_u8(&pb, edge);
         pb_u8(&pb, priv->stream_serial++); // This is the serial counter for the first chunk
-                       // (containing the pre-trigger, or empty if no pretrig configured)
+                                           // (containing the pre-trigger, or empty if no pretrig configured)
         EventReport_PB(&pb);
 
         if (priv->pretrig_len > 0) {
             // pretrig
-            uint16_t pretrig_remain = (uint16_t) ((priv->pretrig_len + 1) * priv->nb_channels); // +1 because we want pretrig 0 to exactly start with the triggering sample
+            uint32_t pretrig_remain = (priv->pretrig_len + 1) * priv->nb_channels; // +1 because we want pretrig 0 to exactly start with the triggering sample
 
-            assert_param(index_trigd <= priv->dma_buffer_itemcount);
+            assert_param(index_trigd <= priv->buf_itemcount);
 
             // this is one past the last entry of the triggering capture group
             if (pretrig_remain > index_trigd) {
                 // used items in the wrap-around part of the buffer
-                uint16_t items_from_end = pretrig_remain - index_trigd;
-                assert_param(priv->dma_buffer_itemcount - items_from_end >= index_trigd);
+                uint32_t items_from_end = pretrig_remain - index_trigd;
+                assert_param(priv->buf_itemcount - items_from_end >= index_trigd);
 
-//                dbg("Pretrig wraparound part: start %d, len %d",
-//                    (int) (priv->dma_buffer_itemcount - items_from_end),
-//                    (int) items_from_end
-//                );
-
-                EventReport_Data(
-                    (uint8_t *) &priv->dma_buffer[priv->dma_buffer_itemcount -
-                                                  items_from_end],
-                    items_from_end * sizeof(uint16_t));
+                EventReport_Data((uint8_t *) &priv->dma_buffer[priv->buf_itemcount - items_from_end],
+                                 items_from_end * sizeof(uint16_t));
 
                 assert_param(items_from_end <= pretrig_remain);
                 pretrig_remain -= items_from_end;
             }
-
-//            dbg("Pretrig front part: start %d, len %d",
-//                (int) (index_trigd - pretrig_remain),
-//                (int) pretrig_remain
-//            );
 
             assert_param(pretrig_remain <= index_trigd);
             EventReport_Data((uint8_t *) &priv->dma_buffer[index_trigd - pretrig_remain],
@@ -109,9 +96,6 @@ static void UADC_JobSendTriggerCaptureHeader(Job *job)
 
 static void UADC_JobSendEndOfStreamMsg(Job *job)
 {
-    Unit *unit = job->unit;
-    struct priv *priv = unit->data;
-
     TF_Msg msg = {
         .type = EVT_CAPT_DONE,
         .frame_id = (TF_ID) job->data1
@@ -134,8 +118,8 @@ void UADC_ReportEndOfStream(Unit *unit)
 static void handle_httc(Unit *unit, bool tc)
 {
     struct priv *priv = unit->data;
-    uint16_t start = priv->stream_startpos;
-    uint16_t end;
+    uint32_t start = priv->stream_startpos;
+    uint32_t end;
     const bool ht = !tc;
 
     const bool m_trigd = priv->opmode == ADC_OPMODE_TRIGD;
@@ -143,11 +127,11 @@ static void handle_httc(Unit *unit, bool tc)
     const bool m_fixcpt = priv->opmode == ADC_OPMODE_BLCAP;
 
     if (ht) {
-        end = (uint16_t) (priv->dma_buffer_itemcount / 2);
+        end = (priv->buf_itemcount / 2);
         LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
     }
     else {
-        end = (uint16_t) priv->dma_buffer_itemcount;
+        end = priv->buf_itemcount;
         LL_DMA_ClearFlag_TC(priv->DMAx, priv->dma_chnum);
     }
 
@@ -162,7 +146,7 @@ static void handle_httc(Unit *unit, bool tc)
         bool close = !m_stream && priv->trig_stream_remain == 0;
 
         if ((tc && priv->tc_pending) || (ht && priv->ht_pending)) {
-            dbg("(!) DMA not handled in time, abort capture");
+            dbg("(!) ADC DMA not handled in time, abort capture");
             UADC_SwitchMode(unit, ADC_OPMODE_EMERGENCY_SHUTDOWN);
             return;
         }
@@ -184,7 +168,6 @@ static void handle_httc(Unit *unit, bool tc)
 
         if (!scheduleJob(&j)) {
             // Abort if we can't queue - the stream would tear and we'd hog the system with error messages
-            dbg("(!) Buffers overflow, abort capture");
             UADC_SwitchMode(unit, ADC_OPMODE_EMERGENCY_SHUTDOWN);
             return;
         }
@@ -232,7 +215,7 @@ void UADC_DMA_Handler(void *arg)
         if (m_trigd || m_stream || m_fixcpt) {
             if (ht || tc) {
                 if (ht && tc) {
-                    uint16_t half = (uint16_t) (priv->dma_buffer_itemcount / 2);
+                    const uint32_t half = (uint32_t) (priv->buf_itemcount / 2);
                     if (priv->stream_startpos > half) {
                         handle_httc(unit, true); // TC
                         handle_httc(unit, false); // HT
@@ -246,7 +229,7 @@ void UADC_DMA_Handler(void *arg)
             }
         } else {
             // This shouldn't happen, the interrupt should be disabled in this opmode
-            dbg("(!) not streaming, DMA IT should be disabled");
+            dbg("(!) not streaming, ADC DMA IT should be disabled");
 
             if (ht) {
                 LL_DMA_ClearFlag_HT(priv->DMAx, priv->dma_chnum);
@@ -258,7 +241,7 @@ void UADC_DMA_Handler(void *arg)
 
         if (te) {
             // this shouldn't happen - error
-            dbg("ADC DMA TE!");
+            adc_dbg("ADC DMA TE!");
             LL_DMA_ClearFlag_TE(priv->DMAx, priv->dma_chnum);
         }
     }
@@ -277,12 +260,12 @@ void UADC_ADC_EOS_Handler(void *arg)
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     // Wait for the DMA to complete copying the last sample
-    uint16_t dmapos;
-    hw_wait_while((dmapos = (uint16_t) DMA_POS(priv)) % priv->nb_channels != 0, 100); // XXX this could be changed to reading it from the DR instead
+    uint32_t dmapos;
+    hw_wait_while((dmapos = DMA_POS(priv)) % priv->nb_channels != 0, 100); // XXX this could be changed to reading it from the DR instead
 
     uint32_t sample_pos;
     if (dmapos == 0) {
-        sample_pos = (uint32_t) (priv->dma_buffer_itemcount);
+        sample_pos = (uint32_t) (priv->buf_itemcount);
     } else {
         sample_pos = dmapos;
     }
@@ -291,11 +274,11 @@ void UADC_ADC_EOS_Handler(void *arg)
     int cnt = 0; // index of the sample within the group
 
     const bool can_average = priv->real_frequency_int < UADC_MAX_FREQ_FOR_AVERAGING;
-    const uint32_t channels_mask = priv->extended_channels_mask;
+    const uint32_t channels_mask = priv->channels_mask;
 
     for (uint8_t i = 0; i < 18; i++) {
         if (channels_mask & (1 << i)) {
-            uint16_t val = priv->dma_buffer[sample_pos+cnt];
+            const uint16_t val = priv->dma_buffer[sample_pos+cnt];
             cnt++;
 
             if (can_average) {
@@ -309,16 +292,13 @@ void UADC_ADC_EOS_Handler(void *arg)
     }
 
     if (priv->opmode == ADC_OPMODE_ARMED) {
-        uint16_t val =  priv->last_samples[priv->trigger_source];
+        const uint16_t val =  priv->last_samples[priv->trigger_source];
 
-//        dbg("Trig line level %d", (int)val);
         if ((priv->trig_prev_level < priv->trig_level) && val >= priv->trig_level && (bool) (priv->trig_edge & 0b01)) {
-//            dbg("******** Rising edge");
             // Rising edge
             UADC_HandleTrigger(unit, 1, timestamp);
         }
         else if ((priv->trig_prev_level > priv->trig_level) && val <= priv->trig_level && (bool) (priv->trig_edge & 0b10)) {
-//            dbg("******** Falling edge");
             // Falling edge
             UADC_HandleTrigger(unit, 2, timestamp);
         }
@@ -344,7 +324,7 @@ void UADC_HandleTrigger(Unit *unit, uint8_t edge_type, uint64_t timestamp)
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     if (priv->trig_holdoff != 0 && priv->trig_holdoff_remain > 0) {
-//        dbg("Trig discarded due to holdoff.");
+        // Trig discarded due to holdoff
         return;
     }
 
@@ -355,11 +335,9 @@ void UADC_HandleTrigger(Unit *unit, uint8_t edge_type, uint64_t timestamp)
         unit->_tick_cnt = 1;
     }
 
-    priv->stream_startpos = (uint16_t) DMA_POS(priv);
+    priv->stream_startpos = DMA_POS(priv);
     priv->trig_stream_remain = priv->trig_len;
     priv->stream_serial = 0;
-
-//    dbg("Trigger condition hit, edge=%d, startpos %d", edge_type, (int)priv->stream_startpos);
 
     Job j = {
         .unit = unit,
@@ -379,7 +357,7 @@ void UADC_StartBlockCapture(Unit *unit, uint32_t len, TF_ID frame_id)
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     priv->stream_frame_id = frame_id;
-    priv->stream_startpos = (uint16_t) DMA_POS(priv);
+    priv->stream_startpos = DMA_POS(priv);
     priv->trig_stream_remain = len;
     priv->stream_serial = 0;
     UADC_SwitchMode(unit, ADC_OPMODE_BLCAP);
@@ -392,7 +370,7 @@ void UADC_StartStream(Unit *unit, TF_ID frame_id)
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     priv->stream_frame_id = frame_id;
-    priv->stream_startpos = (uint16_t) DMA_POS(priv);
+    priv->stream_startpos = DMA_POS(priv);
     priv->stream_serial = 0;
     UADC_SwitchMode(unit, ADC_OPMODE_STREAM);
 }
@@ -414,7 +392,8 @@ void UADC_updateTick(Unit *unit)
 
     // Recover from shutdown after a delay
     if (priv->opmode == ADC_OPMODE_EMERGENCY_SHUTDOWN) {
-        dbg("Recovering from emergency shutdown");
+        adc_dbg("ADC recovering from emergency shutdown");
+
         UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
         LL_TIM_EnableCounter(priv->TIMx);
         UADC_ReportEndOfStream(unit);
@@ -446,7 +425,7 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
     priv->opmode = ADC_OPMODE_UNINIT;
 
     if (new_mode == ADC_OPMODE_UNINIT) {
-//        dbg("ADC switch -> UNINIT");
+        adc_dbg("ADC switch -> UNINIT");
         // Stop the DMA, timer and disable ADC - this is called before tearing down the unit
         LL_TIM_DisableCounter(priv->TIMx);
 
@@ -454,17 +433,14 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         if (LL_ADC_IsEnabled(priv->ADCx)) {
             // Cancel ongoing conversion
             if (LL_ADC_REG_IsConversionOngoing(priv->ADCx)) {
-//                dbg("Stopping ADC conv");
                 LL_ADC_REG_StopConversion(priv->ADCx);
                 hw_wait_while(LL_ADC_REG_IsStopConversionOngoing(priv->ADCx), 100);
             }
 
             LL_ADC_Disable(priv->ADCx);
-//            dbg("Disabling ADC");
             hw_wait_while(LL_ADC_IsDisableOngoing(priv->ADCx), 100);
         }
 
-//        dbg("Disabling DMA");
         LL_DMA_DisableChannel(priv->DMAx, priv->dma_chnum);
         LL_DMA_DisableIT_HT(priv->DMAx, priv->dma_chnum);
         LL_DMA_DisableIT_TC(priv->DMAx, priv->dma_chnum);
@@ -496,6 +472,7 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         }
     }
     else if (new_mode == ADC_OPMODE_EMERGENCY_SHUTDOWN) {
+        adc_dbg("ADC switch -> EMERGENCY_STOP");
         // Emergency shutdown is used when the job queue overflows and the stream is torn
         // This however doesn't help in the case when user sets such a high frequency
         // that the whole app becomes unresponsive due to the completion ISR, need to verify the value manually.
@@ -515,7 +492,7 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         unit->_tick_cnt = 250; // 1-off
     }
     else if (new_mode == ADC_OPMODE_ARMED) {
-//        dbg("ADC switch -> ARMED");
+        adc_dbg("ADC switch -> ARMED");
         assert_param(old_mode == ADC_OPMODE_IDLE || old_mode == ADC_OPMODE_REARM_PENDING);
 
         // avoid firing immediately by the value jumping across the scale
@@ -525,7 +502,7 @@ void UADC_SwitchMode(Unit *unit, enum uadc_opmode new_mode)
         new_mode == ADC_OPMODE_STREAM ||
         new_mode == ADC_OPMODE_BLCAP) {
 
-//        dbg("ADC switch -> TRIG'D / STREAM / BLOCK");
+        adc_dbg("ADC switch -> CAPTURE");
         assert_param(old_mode == ADC_OPMODE_ARMED || old_mode == ADC_OPMODE_IDLE);
 
         // during the capture, we disallow direct readout and averaging to reduce overhead

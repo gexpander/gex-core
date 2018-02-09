@@ -69,7 +69,7 @@ bool parse_port_name(const char *value, char *targetName);
  * @param suc - set to False if parsing failed
  * @return the resulting bitmap
  */
-uint16_t parse_pinmask(const char *value, bool *suc);
+uint32_t parse_pinmask(const char *value, bool *suc);
 
 /**
  * Convert a pin bitmap to the ASCII format understood by str_parse_pinmask()
@@ -79,7 +79,7 @@ uint16_t parse_pinmask(const char *value, bool *suc);
  * @param buffer - output string buffer
  * @return the output buffer
  */
-char * pinmask2str(uint16_t pins, char *buffer);
+char * pinmask2str(uint32_t pins, char *buffer);
 
 /**
  * Convert a pin bitmap to the ASCII format understood by str_parse_pinmask()
@@ -89,7 +89,7 @@ char * pinmask2str(uint16_t pins, char *buffer);
  * @param buffer - output string buffer
  * @return the output buffer
  */
-char * pinmask2str_up(uint16_t pins, char *buffer);
+char * pinmask2str_up(uint32_t pins, char *buffer);
 
 /**
  * Spread packed port pins using a mask
@@ -98,7 +98,7 @@ char * pinmask2str_up(uint16_t pins, char *buffer);
  * @param mask - positions of the bits (eg. 0x8803)
  * @return - bits spread to their positions (always counting from right)
  */
-uint16_t pinmask_spread(uint16_t packed, uint16_t mask);
+uint32_t pinmask_spread(uint32_t packed, uint32_t mask);
 
 /**
  * Pack spread port pins using a mask
@@ -107,14 +107,14 @@ uint16_t pinmask_spread(uint16_t packed, uint16_t mask);
  * @param mask - mask of the bits we want to pack (eg. 0x8803)
  * @return - packed bits, right aligned (eg. 0b1110)
  */
-uint16_t pinmask_pack(uint16_t spread, uint16_t mask);
+uint32_t pinmask_pack(uint32_t spread, uint32_t mask);
 
 /**
  * Convert spread port pin number to a packed index using a mask
  *
  * eg. with a mask 0b1010 and index 3, the result is 1 (bit 1 of the packed - 0bX0)
  */
-uint8_t pinmask_translate(uint16_t mask, uint8_t index);
+uint8_t pinmask_translate(uint32_t mask, uint8_t index);
 
 /**
  * Set all GPIO resources held by unit to analog.

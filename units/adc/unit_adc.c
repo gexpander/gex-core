@@ -10,7 +10,7 @@
 
 // ------------------------------------------------------------------------
 
-enum TplCmd_ {
+enum AdcCmd_ {
     CMD_READ_RAW = 0,
     CMD_READ_SMOOTHED = 1,
 
@@ -44,7 +44,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          */
         case CMD_GET_ENABLED_CHANNELS:
             for (uint8_t i = 0; i < 18; i++) {
-                if (priv->extended_channels_mask & (1 << i)) {
+                if (priv->channels_mask & (1 << i)) {
                     pb_u8(&pb, i);
                 }
             }
@@ -91,7 +91,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             }
 
             for (uint8_t i = 0; i < 18; i++) {
-                if (priv->extended_channels_mask & (1 << i)) {
+                if (priv->channels_mask & (1 << i)) {
                     pb_u16(&pb, priv->last_samples[i]);
                 }
             }
@@ -113,7 +113,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             }
 
             for (uint8_t i = 0; i < 18; i++) {
-                if (priv->extended_channels_mask & (1 << i)) {
+                if (priv->channels_mask & (1 << i)) {
                     pb_float(&pb, priv->averaging_bins[i]);
                 }
             }
@@ -133,7 +133,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          *   u8(bool) - auto re-arm after firing and completing the capture
          */
         case CMD_SETUP_TRIGGER:
-            dbg("> Setup trigger");
+            adc_dbg("> Setup trigger");
             if (priv->opmode != ADC_OPMODE_IDLE &&
                 priv->opmode != ADC_OPMODE_ARMED &&
                 priv->opmode != ADC_OPMODE_REARM_PENDING) {
@@ -144,17 +144,17 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                 const uint8_t source = pp_u8(pp);
                 const uint16_t level = pp_u16(pp);
                 const uint8_t edge = pp_u8(pp);
-                const uint16_t pretrig = pp_u16(pp);
+                const uint32_t pretrig = pp_u32(pp);
                 const uint32_t count = pp_u32(pp);
                 const uint16_t holdoff = pp_u16(pp);
                 const bool auto_rearm = pp_bool(pp);
 
-                if (source > 17) {
+                if (source > UADC_MAX_CHANNEL) {
                     com_respond_str(MSG_ERROR, frame_id, "Invalid trig source");
                     return E_FAILURE;
                 }
 
-                if (0 == (priv->extended_channels_mask & (1 << source))) {
+                if (0 == (priv->channels_mask & (1 << source))) {
                     com_respond_str(MSG_ERROR, frame_id, "Channel not enabled");
                     return E_FAILURE;
                 }
@@ -170,7 +170,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                 }
 
                 // XXX the max size may be too much
-                const uint16_t max_pretrig = (priv->dma_buffer_itemcount / priv->nb_channels);
+                const uint32_t max_pretrig = (priv->buf_itemcount / priv->nb_channels);
                 if (pretrig > max_pretrig) {
                     com_respond_snprintf(frame_id, MSG_ERROR,
                                          "Pretrig too large (max %d)", (int) max_pretrig);
@@ -192,7 +192,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Arm (permissible only if idle and the trigger is configured)
          */
         case CMD_ARM:
-            dbg("> Arm");
+            adc_dbg("> Arm");
             uint8_t sticky = pp_u8(pp);
 
             if(priv->opmode == ADC_OPMODE_ARMED || priv->opmode == ADC_OPMODE_REARM_PENDING) {
@@ -222,7 +222,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Switches to idle.
          */
         case CMD_DISARM:
-            dbg("> Disarm");
+            adc_dbg("> Disarm");
 
             priv->auto_rearm = false;
 
@@ -245,7 +245,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Abort any ongoing capture and dis-arm.
          */
         case CMD_ABORT:;
-            dbg("> Abort capture");
+            adc_dbg("> Abort capture");
             TRY(UU_ADC_AbortCapture(unit));
             return E_SUCCESS;
 
@@ -254,7 +254,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * The reported edge will be 0b11, here meaning "manual trigger"
          */
         case CMD_FORCE_TRIGGER:
-            dbg("> Force trigger");
+            adc_dbg("> Force trigger");
             // This is similar to block capture, but includes the pre-trig buffer and has fixed size based on trigger config
             // FORCE is useful for checking if the trigger is set up correctly
             if (priv->opmode != ADC_OPMODE_ARMED &&
@@ -276,7 +276,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          *   u32 - sample count (for each channel)
          */
         case CMD_BLOCK_CAPTURE:
-            dbg("> Block cpt");
+            adc_dbg("> Block cpt");
             if (priv->opmode != ADC_OPMODE_ARMED &&
                 priv->opmode != ADC_OPMODE_REARM_PENDING &&
                 priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
@@ -291,7 +291,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * The stream can be terminated by the stop command.
          */
         case CMD_STREAM_START:
-            dbg("> Stream ON");
+            adc_dbg("> Stream ON");
             if (priv->opmode != ADC_OPMODE_ARMED &&
                 priv->opmode != ADC_OPMODE_REARM_PENDING &&
                 priv->opmode != ADC_OPMODE_IDLE) return E_BUSY;
@@ -303,7 +303,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
          * Stop a stream.
          */
         case CMD_STREAM_STOP:
-            dbg("> Stream OFF");
+            adc_dbg("> Stream OFF");
             if (priv->opmode != ADC_OPMODE_STREAM) {
                 com_respond_str(MSG_ERROR, frame_id, "Not streaming");
                 return E_FAILURE;

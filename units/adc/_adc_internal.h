@@ -11,7 +11,12 @@
 
 #include "unit_base.h"
 
+//#define adc_dbg(...) dbg(##__VA_ARGS__)
+#define adc_dbg(...) do {} while(0)
+
 #define UADC_MAX_FREQ_FOR_AVERAGING 20000
+
+#define UADC_MAX_CHANNEL 17
 
 enum uadc_opmode {
     ADC_OPMODE_UNINIT, //!< Not yet switched to any mode
@@ -33,41 +38,46 @@ enum uadc_event {
 
 /** Private data structure */
 struct priv {
-    // settings
-    uint16_t channels;    //!< bit flags (will be recorded in order 0-15)
-    bool enable_tsense;   //!< append a signal from the temperature channel (voltage proportional to Tj)
-    bool enable_vref;     //!< append a signal from the internal voltage reference
-    uint8_t sample_time;  //!< 0-7 (corresponds to 1.5-239.5 cycles) - time for the sampling capacitor to charge
-    uint32_t frequency;   //!< Timer frequency in Hz. Note: not all frequencies can be achieved accurately
-    uint16_t buffer_size; //!< Buffer size in bytes (count 2 bytes per channel per measurement) - faster sampling freq needs bigger buffer
-    uint16_t averaging_factor;  //!< Exponential averaging factor 0-1000
+    struct {
+        uint32_t channels;    //!< bit flags (will be recorded in order 0-15)
+        uint8_t sample_time;  //!< 0-7 (corresponds to 1.5-239.5 cycles) - time for the sampling capacitor to charge
+        uint32_t frequency;   //!< Timer frequency in Hz. Note: not all frequencies can be achieved accurately
+        uint32_t buffer_size; //!< Buffer size in bytes (count 2 bytes per channel per measurement) - faster sampling freq needs bigger buffer
+        uint16_t averaging_factor;  //!< Exponential averaging factor 0-1000
+    } cfg;
 
-    // internal state
-    float real_frequency;
-    uint32_t real_frequency_int;
-    uint32_t extended_channels_mask; //!< channels bitfield including tsense and vref
-    float avg_factor_as_float;
+    // Peripherals
     ADC_TypeDef *ADCx; //!< The ADC peripheral used
     ADC_Common_TypeDef *ADCx_Common; //!< The ADC common control block
     TIM_TypeDef *TIMx; //!< ADC timing timer instance
     DMA_TypeDef *DMAx; //!< DMA isnatnce used
     uint8_t dma_chnum; //!< DMA channel number
     DMA_Channel_TypeDef *DMA_CHx; //!< DMA channel instance
-    uint16_t *dma_buffer;     //!< malloc'd buffer for the samples
-    uint8_t nb_channels;      //!< nbr of enabled adc channels
-    uint16_t dma_buffer_itemcount; //!< real size of the buffer in samples (adjusted to fit 2x whole multiple of sample group)
 
+    // Live config
+    float real_frequency;
+    uint32_t real_frequency_int;
+    uint32_t channels_mask; //!< channels bitfield including tsense and vref
+    float avg_factor_as_float;
+
+    uint16_t *dma_buffer; //!< malloc'd buffer for the samples
+    uint8_t nb_channels; //!< nbr of enabled adc channels
+    uint32_t buf_itemcount;  //!< real size of the buffer in samples (adjusted to fit 2x whole multiple of sample group)
+
+    // Trigger state
     uint32_t trig_stream_remain;   //!< Counter of samples remaining to be sent in the post-trigger stream
     uint16_t trig_holdoff_remain;  //!< Tmp counter for the currently active hold-off
     uint16_t trig_prev_level;      //!< Value of the previous sample, used to detect trigger edge
-    uint16_t stream_startpos; //!< Byte offset in the DMA buffer where the next capture for a stream should start.
+    uint32_t stream_startpos; //!< Byte offset in the DMA buffer where the next capture for a stream should start.
                               //!<   Updated in TH/TC and on trigger (after the preceding data is sent as a pretrig buffer)
+
     enum uadc_opmode opmode;  //!< OpMode (state machine state)
     float averaging_bins[18]; //!< Averaging buffers, enough space to accommodate all channels (16 external + 2 internal)
     uint16_t last_samples[18]; //!< If averaging is disabled, the last captured sample is stored here.
 
+    // Trigger config
     uint8_t trigger_source;   //!< number of the pin selected as a trigger source
-    uint16_t pretrig_len;     //!< Pre-trigger length, nbr of historical samples to report when trigger occurs
+    uint32_t pretrig_len;     //!< Pre-trigger length, nbr of historical samples to report when trigger occurs
     uint32_t trig_len;        //!< Trigger length, nbr of samples to report AFTER a trigger occurs
     uint16_t trig_level;      //!< Triggering level in LSB
     uint8_t  trig_edge;       //!< Which edge we want to trigger on. 1-rising, 2-falling, 3-both

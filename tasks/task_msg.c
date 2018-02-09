@@ -17,7 +17,7 @@ static bool que_safe_post(struct rx_sched_combined_que_item *slot)
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         BaseType_t status = xQueueSendFromISR(queMsgJobHandle, slot, &xHigherPriorityTaskWoken);
         if (pdPASS != status) {
-            dbg("! Que post from ISR failed");
+            dbg("(!) Que post from ISR failed");
             return false;
         }
 
@@ -29,7 +29,7 @@ static bool que_safe_post(struct rx_sched_combined_que_item *slot)
     } else {
         BaseType_t status = xQueueSend(queMsgJobHandle, slot, MSG_QUE_POST_TIMEOUT);
         if (pdPASS != status) {
-            dbg("! Que post failed");
+            dbg("(!) Que post failed");
             return false;
         }
 

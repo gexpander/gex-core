@@ -86,7 +86,7 @@ bool parse_port_name(const char *value, char *targetName)
 }
 
 /** Parse a list of pin numbers with ranges and commans/semicolons to a bitmask */
-uint16_t parse_pinmask(const char *value, bool *suc)
+uint32_t parse_pinmask(const char *value, bool *suc)
 {
     uint32_t bits = 0;
     uint32_t acu = 0;
@@ -116,7 +116,10 @@ uint16_t parse_pinmask(const char *value, bool *suc)
                 rangestart = swp;
             }
 
-            for(uint32_t i=rangestart; i<=acu; i++) {
+            if (rangestart > 31) rangestart = 31;
+            if (acu > 31) acu = 31;
+
+            for(uint32_t i=rangestart; i <= acu; i++) {
                 bits |= 1<<i;
             }
 
@@ -135,11 +138,11 @@ uint16_t parse_pinmask(const char *value, bool *suc)
 
     if (bits > 0xFFFF) *suc = false;
 
-    return (uint16_t) bits;
+    return bits;
 }
 
 /** Convert a pin bitmask to the ASCII format understood by str_parse_pinmask() */
-char * pinmask2str(uint16_t pins, char *buffer)
+char * pinmask2str(uint32_t pins, char *buffer)
 {
     char *b = buffer;
     uint32_t start = 0;
@@ -152,13 +155,13 @@ char * pinmask2str(uint16_t pins, char *buffer)
         return buffer;
     }
 
-    for (int32_t i = 15; i >= -1; i--) {
+    for (int32_t i = 31; i >= -1; i--) {
         bool bit;
 
         if (i == -1) {
             bit = false;
         } else {
-            bit = 0 != (pins & 0x8000);
+            bit = 0 != (pins & 0x80000000);
             pins <<= 1;
         }
 
@@ -189,7 +192,7 @@ char * pinmask2str(uint16_t pins, char *buffer)
     return buffer;
 }
 
-char * pinmask2str_up(uint16_t pins, char *buffer)
+char * pinmask2str_up(uint32_t pins, char *buffer)
 {
     char *b = buffer;
     uint32_t start = 0;
@@ -202,10 +205,10 @@ char * pinmask2str_up(uint16_t pins, char *buffer)
         return buffer;
     }
 
-    for (int32_t i = 0; i <= 16; i++) {
+    for (int32_t i = 0; i <= 32; i++) {
         bool bit;
 
-        if (i == 16) {
+        if (i == 32) {
             bit = false;
         } else {
             bit = 0 != (pins & 1);
@@ -240,11 +243,11 @@ char * pinmask2str_up(uint16_t pins, char *buffer)
 }
 
 /** Spread packed port pins using a mask */
-uint16_t pinmask_spread(uint16_t packed, uint16_t mask)
+uint32_t pinmask_spread(uint32_t packed, uint32_t mask)
 {
-    uint16_t result = 0;
-    uint16_t poke = 1;
-    for (int i = 0; i<16; i++) {
+    uint32_t result = 0;
+    uint32_t poke = 1;
+    for (int i = 0; i<32; i++) {
         if (mask & (1<<i)) {
             if (packed & poke) {
                 result |= 1<<i;
@@ -256,11 +259,11 @@ uint16_t pinmask_spread(uint16_t packed, uint16_t mask)
 }
 
 /** Pack spread port pins using a mask */
-uint16_t pinmask_pack(uint16_t spread, uint16_t mask)
+uint32_t pinmask_pack(uint32_t spread, uint32_t mask)
 {
-    uint16_t result = 0;
-    uint16_t poke = 1;
-    for (int i = 0; i<16; i++) {
+    uint32_t result = 0;
+    uint32_t poke = 1;
+    for (int i = 0; i<32; i++) {
         if (mask & (1<<i)) {
             if (spread & (1<<i)) {
                 result |= poke;
@@ -272,10 +275,10 @@ uint16_t pinmask_pack(uint16_t spread, uint16_t mask)
 }
 
 /** Convert spread port pin number to a packed index using a mask */
-uint8_t pinmask_translate(uint16_t mask, uint8_t index)
+uint8_t pinmask_translate(uint32_t mask, uint8_t index)
 {
     int cnt = 0;
-    for (int i = 0; i<16; i++) {
+    for (int i = 0; i<32; i++) {
         if (mask & (1<<i)) {
             if (i == index) return (uint8_t) cnt;
             cnt++;
