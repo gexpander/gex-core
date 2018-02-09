@@ -136,8 +136,6 @@ uint32_t parse_pinmask(const char *value, bool *suc)
         }
     } while (c != 0);
 
-    if (bits > 0xFFFF) *suc = false;
-
     return bits;
 }
 
