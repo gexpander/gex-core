@@ -61,6 +61,8 @@ error_t UU_DOut_GetPinCount(Unit *unit, uint8_t *count);
 /** Spread a packed word */
 error_t UU_DOut_Spread(Unit *unit, uint16_t packed, uint16_t *spread_out);
 
+// those are like the normal functions, but without driver checking and other verification (where applicable)
+// also the argument must be already spread, which saves time if the same value is used repeatedly
 uint16_t UU_DOut_Spread_HS(Unit *unit, uint16_t packed);
 void UU_DOut_Write_HS(Unit *unit, uint16_t spread);
 void UU_DOut_Set_HS(Unit *unit, uint16_t spread);
