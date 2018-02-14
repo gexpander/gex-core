@@ -56,4 +56,15 @@ error_t UU_DOut_Toggle(Unit *unit, uint16_t packed);
  */
 error_t UU_DOut_GetPinCount(Unit *unit, uint8_t *count);
 
+// --- high-speed variants, without type checking and spreading ---
+
+/** Spread a packed word */
+error_t UU_DOut_Spread(Unit *unit, uint16_t packed, uint16_t *spread_out);
+
+uint16_t UU_DOut_Spread_HS(Unit *unit, uint16_t packed);
+void UU_DOut_Write_HS(Unit *unit, uint16_t spread);
+void UU_DOut_Set_HS(Unit *unit, uint16_t spread);
+void UU_DOut_Clear_HS(Unit *unit, uint16_t spread);
+void UU_DOut_Toggle_HS(Unit *unit, uint16_t spread);
+
 #endif //U_DOUT_H

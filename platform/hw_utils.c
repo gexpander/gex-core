@@ -240,34 +240,45 @@ char * pinmask2str_up(uint32_t pins, char *buffer)
     return buffer;
 }
 
-/** Spread packed port pins using a mask */
-uint32_t pinmask_spread(uint32_t packed, uint32_t mask)
+/** spread a packed pinfield using a mask */
+uint32_t pinmask_spread_32(uint32_t packed, uint32_t mask)
 {
     uint32_t result = 0;
     uint32_t poke = 1;
+    if(packed == 0) return 0;
+
     for (int i = 0; i<32; i++) {
-        if (mask & (1<<i)) {
+        if (mask & 1) {
             if (packed & poke) {
                 result |= 1<<i;
+                packed ^= poke;
+                if (packed == 0) break;
             }
             poke <<= 1;
         }
+        mask >>= 1;
+        // if (mask == 0) break;
     }
+
     return result;
 }
 
 /** Pack spread port pins using a mask */
-uint32_t pinmask_pack(uint32_t spread, uint32_t mask)
+uint32_t pinmask_pack_32(uint32_t spread, uint32_t mask)
 {
     uint32_t result = 0;
     uint32_t poke = 1;
     for (int i = 0; i<32; i++) {
-        if (mask & (1<<i)) {
+        if (mask & 1) {
             if (spread & (1<<i)) {
                 result |= poke;
+                spread ^= (1<<i);
+                if (spread == 0) break;
             }
             poke <<= 1;
         }
+        mask >>= 1;
+        // if (mask == 0) break;
     }
     return result;
 }
