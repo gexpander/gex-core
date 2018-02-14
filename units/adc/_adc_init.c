@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2018/02/03.
 //
+// ADC unit init and de-init functions
+//
 
 #include "platform.h"
 #include "unit_base.h"
@@ -15,10 +17,10 @@ error_t UADC_preInit(Unit *unit)
     if (priv == NULL) return E_OUT_OF_MEM;
 
     priv->cfg.channels = 1<<16; // Tsense by default - always available, easy testing
-    priv->cfg.sample_time = 0b010; // 13.5c
+    priv->cfg.sample_time = 0b010; // 13.5c - good enough and the default 0b00 value really is useless
     priv->cfg.frequency = 1000;
-    priv->cfg.buffer_size = 256;
-    priv->cfg.averaging_factor = 500;
+    priv->cfg.buffer_size = 256; // in half-words
+    priv->cfg.averaging_factor = 500; // 0.5
 
     priv->opmode = ADC_OPMODE_UNINIT;
 
@@ -49,6 +51,13 @@ error_t UADC_SetSampleRate(Unit *unit, uint32_t hertz)
     return E_SUCCESS;
 }
 
+/**
+ * Set up the ADC DMA.
+ * This is split to its own function because it's also called when the user adjusts the
+ * enabled channels and we need to re-configure it.
+ *
+ * @param unit
+ */
 void UADC_SetupDMA(Unit *unit)
 {
     struct priv *priv = unit->data;
@@ -83,7 +92,7 @@ void UADC_SetupDMA(Unit *unit)
             assert_param(SUCCESS == LL_DMA_Init(priv->DMAx, priv->dma_chnum, &init));
         }
 
-//        LL_DMA_EnableChannel(priv->DMAx, priv->dma_chnum);
+//        LL_DMA_EnableChannel(priv->DMAx, priv->dma_chnum); // this is done in the switch mode func now
     }
 }
 
@@ -224,8 +233,6 @@ error_t UADC_init(Unit *unit)
 
     return E_SUCCESS;
 }
-
-
 
 /** Tear down the unit */
 void UADC_deInit(Unit *unit)

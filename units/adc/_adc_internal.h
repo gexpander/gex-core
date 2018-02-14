@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2018/02/03.
 //
+// Defines and prototypes used internally by the ADC unit.
+//
 
 #ifndef GEX_F072_ADC_INTERNAL_H
 #define GEX_F072_ADC_INTERNAL_H

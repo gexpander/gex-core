@@ -1,7 +1,8 @@
 //
 // Created by MightyPork on 2017/11/25.
 //
-// Digital input unit; single or multiple pin read access on one port (A-F)
+// ADC unit with several DSO-like features, like triggering, pre-trigger, block capture,
+// streaming, smoothing...
 //
 
 #ifndef U_TPL_H

@@ -51,6 +51,10 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
             com_respond_pb(frame_id, MSG_SUCCESS, &pb);
             return E_SUCCESS;
 
+        /**
+         * Set the sample rate in Hz
+         * plad: hz:u32
+         */
         case CMD_SET_SAMPLE_RATE:
             {
                 uint32_t freq = pp_u32(pp);

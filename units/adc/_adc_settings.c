@@ -1,6 +1,8 @@
 //
 // Created by MightyPork on 2018/02/03.
 //
+// ADC unit settings reading / parsing
+//
 
 #include "platform.h"
 #include "unit_base.h"
