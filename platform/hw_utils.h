@@ -98,7 +98,13 @@ char * pinmask2str_up(uint32_t pins, char *buffer);
  * @param mask - positions of the bits (eg. 0x8803)
  * @return - bits spread to their positions (always counting from right)
  */
-uint32_t pinmask_spread(uint32_t packed, uint32_t mask);
+uint32_t pinmask_spread_32(uint32_t packed, uint32_t mask);
+
+/** Spread packed port pins using a mask - 16-bit version */
+static inline uint16_t pinmask_spread(uint16_t packed, uint16_t mask)
+{
+    return (uint16_t) pinmask_spread_32(packed, mask);
+}
 
 /**
  * Pack spread port pins using a mask
@@ -107,7 +113,13 @@ uint32_t pinmask_spread(uint32_t packed, uint32_t mask);
  * @param mask - mask of the bits we want to pack (eg. 0x8803)
  * @return - packed bits, right aligned (eg. 0b1110)
  */
-uint32_t pinmask_pack(uint32_t spread, uint32_t mask);
+uint32_t pinmask_pack_32(uint32_t spread, uint32_t mask);
+
+/** Pack spread port pins using a mask - 16-bit version */
+static inline uint16_t pinmask_pack(uint32_t spread, uint32_t mask)
+{
+    return (uint16_t) pinmask_pack_32(spread, mask);
+}
 
 /**
  * Convert spread port pin number to a packed index using a mask

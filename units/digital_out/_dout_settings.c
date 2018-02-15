@@ -47,13 +47,13 @@ error_t DOut_loadIni(Unit *unit, const char *key, const char *value)
         suc = parse_port_name(value, &priv->port_name);
     }
     else if (streq(key, "pins")) {
-        priv->pins = parse_pinmask(value, &suc);
+        priv->pins = (uint16_t) parse_pinmask(value, &suc);
     }
     else if (streq(key, "initial")) {
-        priv->initial = parse_pinmask(value, &suc);
+        priv->initial = (uint16_t) parse_pinmask(value, &suc);
     }
     else if (streq(key, "open-drain")) {
-        priv->open_drain = parse_pinmask(value, &suc);
+        priv->open_drain = (uint16_t) parse_pinmask(value, &suc);
     }
     else {
         return E_BAD_KEY;
