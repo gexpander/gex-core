@@ -73,9 +73,9 @@ void vfs_user_build_filesystem(void)
     // Setup the filesystem based on target parameters
     vfs_init(daplink_drive_name, 0/*unused "disk size"*/);
 
-    vfs_create_file("UNITS   INI", read_file_units_ini, NULL, iw_measure_total(settings_build_units_ini));
-    vfs_create_file("SYSTEM  INI", read_file_system_ini, NULL, iw_measure_total(settings_build_system_ini));
-    vfs_create_file("PINOUT  TXT", read_file_pinout_txt, NULL, iw_measure_total(settings_build_pinout_txt));
+    vfs_create_file("UNITS   INI", read_file_units_ini, NULL, iw_measure_total(settings_build_units_ini, 0));
+    vfs_create_file("SYSTEM  INI", read_file_system_ini, NULL, iw_measure_total(settings_build_system_ini, 0));
+    vfs_create_file("PINOUT  TXT", read_file_pinout_txt, NULL, iw_measure_total(settings_build_pinout_txt, 0));
 }
 
 

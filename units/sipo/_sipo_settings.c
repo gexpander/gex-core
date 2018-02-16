@@ -103,11 +103,11 @@ void USIPO_writeIni(Unit *unit, IniWriter *iw)
 {
     struct priv *priv = unit->data;
 
-    iw_comment(iw, "Shift pin & its active edge");
+    iw_comment(iw, "Shift pin & its active edge (1-rising,0-falling)");
     iw_entry(iw, "shift-pin", "%c%d", priv->shift_pname,  priv->shift_pnum);
     iw_entry(iw, "shift-pol", "%d", priv->shift_pol);
 
-    iw_comment(iw, "Store pin & its active edge (1-rising,0-falling)");
+    iw_comment(iw, "Store pin & its active edge");
     iw_entry(iw, "store-pin", "%c%d", priv->store_pname,  priv->store_pnum);
     iw_entry(iw, "store-pol", "%d", priv->store_pol);
 

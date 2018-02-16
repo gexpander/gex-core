@@ -79,9 +79,10 @@ void USIPO_deInit(Unit *unit);
  * @param unit
  * @param buffer - buffer of data to send
  * @param buflen - number of bytes in the buffer
+ * @param terminal_data - data to set before sending the store pulse (final data lines state, will not appear in the SIPOs)
  * @return success
  */
-error_t UU_SIPO_Write(Unit *unit, const uint8_t *buffer, uint16_t buflen);
+error_t UU_SIPO_Write(Unit *unit, const uint8_t *buffer, uint16_t buflen, uint16_t terminal_data);
 
 /**
  * Direct access to the output data pins (may be useful for debugging, or circuits that use them

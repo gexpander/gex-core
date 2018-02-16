@@ -30,7 +30,7 @@ static void send_pulse(bool pol, GPIO_TypeDef *port, uint32_t ll)
 
 #pragma GCC push_options
 #pragma GCC optimize ("O2")
-error_t UU_SIPO_Write(Unit *unit, const uint8_t *buffer, uint16_t buflen)
+error_t UU_SIPO_Write(Unit *unit, const uint8_t *buffer, uint16_t buflen, uint16_t terminal_data)
 {
     CHECK_TYPE(unit, &UNIT_SIPO);
     struct priv *priv = unit->data;
@@ -64,6 +64,11 @@ error_t UU_SIPO_Write(Unit *unit, const uint8_t *buffer, uint16_t buflen)
             send_pulse(priv->shift_pol, priv->shift_port, priv->shift_ll);
         }
     }
+
+    // load the final data - this may be used by some other circuitry or
+    // simply to rest the lines at a defined known level
+    uint16_t spread = pinmask_spread(terminal_data, mask);
+    priv->data_port->BSRR = spread | (((~spread) & mask) << 16);
 
     send_pulse(priv->store_pol, priv->store_port, priv->store_ll);
     return E_SUCCESS;

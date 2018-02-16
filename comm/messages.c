@@ -71,6 +71,7 @@ static void settings_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer
     if (bulk->offset == 0) iw_begin();
 
     IniWriter iw = iw_init((char *)buffer, bulk->offset, chunk);
+    iw.tag = 1;
     settings_build_units_ini(&iw);
 }
 
@@ -85,7 +86,7 @@ static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
     assert_param(bulk != NULL);
 
     bulk->frame_id = msg->frame_id;
-    bulk->len = iw_measure_total(settings_build_units_ini);
+    bulk->len = iw_measure_total(settings_build_units_ini, 1);
     bulk->read = settings_bulkread_cb;
     bulk->userdata = NULL;
 

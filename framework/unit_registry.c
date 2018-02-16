@@ -340,19 +340,26 @@ bool ureg_finalize_all_init(void)
         } else {
             pUnit->status = pUnit->driver->init(pUnit);
             if (pUnit->status != E_SUCCESS) {
-                dbg("!!! error initing unit %s: %s", pUnit->name,
-                    error_get_message(pUnit->status));
+                dbg("!!! error initing unit %s: %s", pUnit->name, error_get_message(pUnit->status));
             }
 
             // try to assign unique callsigns
-            // FIXME this is wrong, sometimes leads to duplicate CS
             if (pUnit->callsign == 0) {
-                pUnit->callsign = callsign++;
-            }
-            else {
-                if (pUnit->callsign >= callsign) {
-                    callsign = (uint8_t) (pUnit->callsign + 1);
-                }
+                // this is very inefficient but should be reliable
+                bool change = false;
+                do {
+                    UlistEntry *xli = ulist_head;
+                    while (xli != NULL) {
+                        if (xli->unit.callsign != 0) {
+                            if (xli->unit.callsign == callsign) {
+                                change = true;
+                                callsign++;
+                            }
+                        }
+                        xli = xli->next;
+                    }
+                } while (change && callsign < 255);
+                pUnit->callsign = callsign;
             }
         }
 
@@ -398,8 +405,9 @@ void ureg_build_ini(IniWriter *iw)
 
     // Unit list
     iw_section(iw, "UNITS");
-    iw_comment(iw, "Create units by adding their names next to a type (e.g. PIN=A,B),");
+    iw_comment(iw, "Create units by adding their names next to a type (e.g. DO=A,B),");
     iw_comment(iw, "remove the same way. Reload to update the unit sections below.");
+    iw_cmt_newline(iw);
 
     // This could certainly be done in some more efficient way ...
     re = ureg_head;
@@ -412,7 +420,6 @@ void ureg_build_ini(IniWriter *iw)
 
         const UnitDriver *const pDriver = re->driver;
 
-        iw_cmt_newline(iw);
         iw_comment(iw, pDriver->description);
         iw_string(iw, pDriver->name);
         iw_string(iw, "=");

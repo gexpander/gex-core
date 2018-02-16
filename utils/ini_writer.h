@@ -18,6 +18,7 @@ typedef struct iniwriter_ {
     char *ptr;
     uint32_t skip;
     uint32_t count;
+    uint32_t tag; // general purpose field (used to identify for which purpose is the file being read)
 } IniWriter;
 
 /**
@@ -43,7 +44,7 @@ void iw_end(void);
  * @param count - number of bytes to write, truncate rest
  * @return structure initializer
  */
-#define iw_init(buffer, skip, count) (IniWriter){buffer, skip, count}
+#define iw_init(xbuffer, xskip, xcount) (IniWriter){.ptr=(xbuffer), .skip=(xskip), .count=(xcount)}
 
 /**
  * Try to write a buffer to the file
@@ -131,6 +132,6 @@ void iw_entry(IniWriter *iw, const char *key, const char *format, ...)
  * @param handler - function that normally writes to the writer
  * @return byte count
  */
-uint32_t iw_measure_total(void (*handler)(IniWriter *));
+uint32_t iw_measure_total(void (*handler)(IniWriter *), uint32_t tag);
 
 #endif //INIWRITER_H

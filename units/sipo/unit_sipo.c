@@ -26,8 +26,9 @@ static error_t USIPO_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, 
         case CMD_WRITE:
             {
                 uint32_t len;
+                uint16_t terminal_packed = pp_u16(pp);
                 const uint8_t *tail = pp_tail(pp, &len);
-                TRY(UU_SIPO_Write(unit, (uint8_t *) tail, (uint16_t) len));
+                TRY(UU_SIPO_Write(unit, (uint8_t *) tail, (uint16_t) len, terminal_packed));
             }
             return E_SUCCESS;
 

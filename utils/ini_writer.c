@@ -119,9 +119,10 @@ void iw_entry(IniWriter *iw, const char *key, const char *format, ...)
     iw_newline(iw);	// one newline after entry
 }
 
-uint32_t iw_measure_total(void (*handler)(IniWriter *))
+uint32_t iw_measure_total(void (*handler)(IniWriter *), uint32_t tag)
 {
     IniWriter iw = iw_init(NULL, 0xFFFFFFFF, 1);
+    iw.tag = tag;
     iw_begin();
     handler(&iw);
     iw_end();

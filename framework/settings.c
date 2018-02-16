@@ -229,7 +229,6 @@ static void gex_file_preamble(IniWriter *iw, const char *filename)
     iw_hdr_comment(iw, filename);
     iw_hdr_comment(iw, "GEX v%s on %s", GEX_VERSION, GEX_PLATFORM);
     iw_hdr_comment(iw, "built %s at %s", __DATE__, __TIME__);
-    iw_cmt_newline(iw);
 }
 
 /** Generate a config file header (write instructions) */
@@ -237,12 +236,15 @@ static void ini_preamble(IniWriter *iw, const char *filename)
 {
     gex_file_preamble(iw, filename);
 
-    iw_comment(iw, "Overwrite this file to change settings.");
-    #if PLAT_LOCK_BTN
-        iw_comment(iw, "Press the LOCK button to save them to Flash.");
-    #else
-        iw_comment(iw, "Close the LOCK jumper to save them to Flash.");
-    #endif
+    if (iw->tag == 0) { // tag 1 is set when exporting via the API
+        iw_cmt_newline(iw);
+        iw_comment(iw, "Overwrite this file to change settings.");
+        #if PLAT_LOCK_BTN
+            iw_comment(iw, "Press the LOCK button to save them to Flash.");
+        #else
+            iw_comment(iw, "Close the LOCK jumper to save them to Flash.");
+        #endif
+    }
 }
 
 // --- UNITS.INI ---
@@ -284,7 +286,7 @@ extern void plat_print_system_pinout(IniWriter *iw);
 void settings_build_pinout_txt(IniWriter *iw)
 {
     gex_file_preamble(iw, "PINOUT.TXT");
-
+    iw_cmt_newline(iw);
     rsc_print_all_available(iw);
     ureg_print_unit_resources(iw);
     plat_print_system_pinout(iw);
