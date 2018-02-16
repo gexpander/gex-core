@@ -17,6 +17,7 @@
 #include "units/test/unit_test.h"
 #include "units/usart/unit_usart.h"
 #include "units/spi/unit_spi.h"
+#include "units/sipo/unit_sipo.h"
 #include "hw_utils.h"
 
 void plat_init_resources(void)
@@ -86,6 +87,7 @@ void plat_init_resources(void)
     ureg_add_type(&UNIT_USART);
     ureg_add_type(&UNIT_1WIRE);
     ureg_add_type(&UNIT_ADC);
+    ureg_add_type(&UNIT_SIPO);
 
     // Free all present resources
     {

@@ -67,4 +67,54 @@ error_t USIPO_init(Unit *unit);
 /** Tear down the unit */
 void USIPO_deInit(Unit *unit);
 
+// ------------------------------------------------------------------------
+
+/**
+ * Write a buffer to the pins.
+ * Buffer contains data for the individual channels, sequentially (AAAAAA BBBBBB CCCCCC ...)
+ * The bytes are sent LSB first, from the last byte (e.g. 1,2,3 - 3 is sent first, LSB-first).
+ *
+ * The chunks order is from the lowest to the highest bit
+ *
+ * @param unit
+ * @param buffer - buffer of data to send
+ * @param buflen - number of bytes in the buffer
+ * @return success
+ */
+error_t UU_SIPO_Write(Unit *unit, const uint8_t *buffer, uint16_t buflen);
+
+/**
+ * Direct access to the output data pins (may be useful for debugging, or circuits that use them
+ * for something else when not loading a new value).
+ *
+ * @param unit
+ * @param data_packed - packed data to set on the output (right-aligned, highest to lowest pin)
+ * @return success
+ */
+error_t UU_SIPO_DirectData(Unit *unit, uint16_t data_packed);
+
+/**
+ * Send a clear pulse.
+ *
+ * @param unit
+ * @return success
+ */
+error_t UU_SIPO_DirectClear(Unit *unit);
+
+/**
+ * Send a shift pulse.
+ *
+ * @param unit
+ * @return success
+ */
+error_t UU_SIPO_DirectShift(Unit *unit);
+
+/**
+ * Send a store pulse.
+ *
+ * @param unit
+ * @return success
+ */
+error_t UU_SIPO_DirectStore(Unit *unit);
+
 #endif //GEX_F072_SIPO_INTERNAL_H

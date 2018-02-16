@@ -108,6 +108,9 @@ error_t USIPO_init(Unit *unit)
     else
         LL_GPIO_SetOutputPin(priv->clear_port, priv->clear_ll);
 
+    // initial clear
+    UU_SIPO_DirectClear(unit);
+
     return E_SUCCESS;
 }
 

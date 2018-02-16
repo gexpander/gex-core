@@ -103,13 +103,13 @@ void USIPO_writeIni(Unit *unit, IniWriter *iw)
 {
     struct priv *priv = unit->data;
 
-    iw_comment(iw, "Store pin & its active edge (1-rising,0-falling)");
-    iw_entry(iw, "store-pin", "%c%d", priv->store_pname,  priv->store_pnum);
-    iw_entry(iw, "store-pol", "%d", priv->store_pol);
-
     iw_comment(iw, "Shift pin & its active edge");
     iw_entry(iw, "shift-pin", "%c%d", priv->shift_pname,  priv->shift_pnum);
     iw_entry(iw, "shift-pol", "%d", priv->shift_pol);
+
+    iw_comment(iw, "Store pin & its active edge (1-rising,0-falling)");
+    iw_entry(iw, "store-pin", "%c%d", priv->store_pname,  priv->store_pnum);
+    iw_entry(iw, "store-pol", "%d", priv->store_pol);
 
     iw_comment(iw, "Clear pin & its active level");
     iw_entry(iw, "clear-pin", "%c%d", priv->clear_pname,  priv->clear_pnum);
@@ -117,6 +117,6 @@ void USIPO_writeIni(Unit *unit, IniWriter *iw)
 
     iw_comment(iw, "Data port and pins");
     iw_entry(iw, "data-port", "%c", priv->data_pname);
-    iw_entry(iw, "data-pins", "%s", pinmask2str(priv->data_pins, unit_tmp512));
+    iw_entry(iw, "data-pins", "%s", pinmask2str_up(priv->data_pins, unit_tmp512));
 }
 

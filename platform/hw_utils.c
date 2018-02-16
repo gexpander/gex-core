@@ -240,6 +240,8 @@ char * pinmask2str_up(uint32_t pins, char *buffer)
     return buffer;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize ("O2")
 /** spread a packed pinfield using a mask */
 uint32_t pinmask_spread_32(uint32_t packed, uint32_t mask)
 {
@@ -247,7 +249,7 @@ uint32_t pinmask_spread_32(uint32_t packed, uint32_t mask)
     uint32_t poke = 1;
     if(packed == 0) return 0;
 
-    for (int i = 0; i<32; i++) {
+    for (int i = 0; i < 32; i++) {
         if (mask & 1) {
             if (packed & poke) {
                 result |= 1<<i;
@@ -295,6 +297,7 @@ uint8_t pinmask_translate(uint32_t mask, uint8_t index)
     }
     return 0;
 }
+#pragma GCC pop_options
 
 /** Configure unit pins as analog (part of unit teardown) */
 void hw_deinit_unit_pins(Unit *unit)
