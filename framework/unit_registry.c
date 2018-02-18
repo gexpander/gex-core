@@ -346,8 +346,9 @@ bool ureg_finalize_all_init(void)
             // try to assign unique callsigns
             if (pUnit->callsign == 0) {
                 // this is very inefficient but should be reliable
-                bool change = false;
+                bool change;
                 do {
+                    change = false;
                     UlistEntry *xli = ulist_head;
                     while (xli != NULL) {
                         if (xli->unit.callsign != 0) {
