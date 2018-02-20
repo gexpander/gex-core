@@ -28,6 +28,7 @@
     X(CHECKSUM_MISMATCH, NULL) /* bus checksum failed */ \
     X(PROTOCOL_BREACH, NULL)   /* eating with the wrong spoon */  \
     X(BUSY, NULL)              /* Unit is busy */ \
+    X(BAD_MODE, NULL)        /* Command not permissible in current opmode */ \
     \
     /* VFS user errors (those are meant to be shown to user) */ \
     X(VFS_ERROR_DURING_TRANSFER, "Error during transfer") \

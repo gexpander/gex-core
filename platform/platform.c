@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/26.
 //
 
+#include <units/fcap/unit_fcap.h>
 #include "platform.h"
 #include "usbd_core.h"
 #include "USB/usb_device.h"
@@ -88,6 +89,7 @@ void plat_init_resources(void)
     ureg_add_type(&UNIT_1WIRE);
     ureg_add_type(&UNIT_ADC);
     ureg_add_type(&UNIT_SIPO);
+    ureg_add_type(&UNIT_FCAP);
 
     // Free all present resources
     {

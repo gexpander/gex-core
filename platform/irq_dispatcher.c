@@ -61,6 +61,7 @@ static struct callbacks_ {
     struct cbslot dma2_7;
     struct cbslot dma2_8;
 
+    struct cbslot tim2;
     struct cbslot tim6;
     struct cbslot tim7;
     struct cbslot tim15;
@@ -102,7 +103,7 @@ void irqd_init(void)
     HAL_NVIC_SetPriority(ADC1_COMP_IRQn, 1, 0); // ADC group completion - higher prio than DMA to let it handle the last halfword first
 
 //    NVIC_EnableIRQ(TIM1_IRQn);                  /*!< TIM1 global Interrupt                                          */
-//    NVIC_EnableIRQ(TIM2_IRQn);                  /*!< TIM2 global Interrupt                                           */
+    NVIC_EnableIRQ(TIM2_IRQn);                  /*!< TIM2 global Interrupt                                           */
 //    NVIC_EnableIRQ(TIM3_IRQn);                  /*!< TIM3 global Interrupt                                           */
 
     NVIC_EnableIRQ(TIM6_DAC_IRQn);              /*!< TIM6 global and DAC channel underrun error Interrupt            */
@@ -159,6 +160,7 @@ static struct cbslot *get_slot_for_periph(void *periph)
         else if (periph == USART5) slot = &callbacks.usart5;
 #endif
 
+    else if (periph == TIM2) slot = &callbacks.tim2;
     else if (periph == TIM6) slot = &callbacks.tim6;
     else if (periph == TIM7) slot = &callbacks.tim7;
     else if (periph == TIM15) slot = &callbacks.tim15;
@@ -303,6 +305,11 @@ void EXTI4_15_IRQHandler(void)
 // ------------ INTERRUPTS -------------
 
 // TIM14 is used to generate HAL timebase and its handler is in the file "timebase.c"
+
+void TIM2_IRQHandler(void)
+{
+    CALL_IRQ_HANDLER(callbacks.tim2);
+}
 
 void TIM6_DAC_IRQHandler(void)
 {
