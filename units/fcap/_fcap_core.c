@@ -7,6 +7,10 @@
 #define FCAP_INTERNAL
 #include "_fcap_internal.h"
 
+void UFCAP_StopMeasurement(Unit *unit);
+void UFCAP_ConfigureForPWMCapture(Unit *unit);
+void UFCAP_ConfigureForDirectCapture(Unit *unit);
+
 static void UFCAP_PWMBurstReportJob(Job *job)
 {
     Unit *unit = job->unit;
@@ -39,7 +43,6 @@ void UFCAP_TimerHandler(void *arg)
 
     if (priv->opmode == OPMODE_PWM_CONT) {
         if (LL_TIM_IsActiveFlag_CC1(TIMx)) {
-//            assert_param(!LL_TIM_IsActiveFlag_CC1OVR(TIMx));
             if (priv->n_skip > 0) {
                 priv->n_skip--;
             } else {
@@ -51,7 +54,6 @@ void UFCAP_TimerHandler(void *arg)
         }
 
         if (LL_TIM_IsActiveFlag_CC2(TIMx)) {
-//            assert_param(!LL_TIM_IsActiveFlag_CC2OVR(TIMx));
             priv->pwm_cont.ontime = LL_TIM_IC_GetCaptureCH2(TIMx);
             LL_TIM_ClearFlag_CC2(TIMx);
             LL_TIM_ClearFlag_CC2OVR(TIMx);
@@ -59,7 +61,6 @@ void UFCAP_TimerHandler(void *arg)
     }
     else if (priv->opmode == OPMODE_PWM_BURST) {
         if (LL_TIM_IsActiveFlag_CC1(TIMx)) {
-//            assert_param(!LL_TIM_IsActiveFlag_CC1OVR(TIMx));
             const uint32_t period = LL_TIM_IC_GetCaptureCH1(TIMx);
             const uint32_t ontime = priv->pwm_burst.ontime;
 
@@ -85,7 +86,6 @@ void UFCAP_TimerHandler(void *arg)
         }
 
         if (LL_TIM_IsActiveFlag_CC2(TIMx)) {
-//            assert_param(!LL_TIM_IsActiveFlag_CC2OVR(TIMx));
             priv->pwm_burst.ontime = LL_TIM_IC_GetCaptureCH2(TIMx);
             LL_TIM_ClearFlag_CC2(TIMx);
             LL_TIM_ClearFlag_CC2OVR(TIMx);
@@ -94,6 +94,9 @@ void UFCAP_TimerHandler(void *arg)
     else if (priv->opmode == OPMODE_IDLE) {
         // clear everything - in idle it would cycle in the handler forever
         TIMx->SR = 0;
+    }
+    else {
+        trap("Unhandled fcap TIMx irq");
     }
 }
 
@@ -120,9 +123,9 @@ static void UFCAP_ClearTimerConfig(Unit *unit)
 void UFCAP_StopMeasurement(Unit *unit)
 {
     struct priv * const priv = unit->data;
-    TIM_TypeDef * const TIMx = priv->TIMx;
 
-    LL_TIM_DeInit(TIMx); // clear all flags and settings
+    LL_TIM_DeInit(priv->TIMx); // clear all flags and settings
+    LL_TIM_DeInit(priv->TIMy); // clear all flags and settings
 }
 
 /**
@@ -161,6 +164,11 @@ void UFCAP_SwitchMode(Unit *unit, enum fcap_opmode opmode)
             priv->n_skip = 1; // discard the first cycle (will be incomplete)
             UFCAP_ConfigureForPWMCapture(unit); // is also stopped and restarted
             break;
+
+        case OPMODE_COUNTER_CONT:
+            UFCAP_ConfigureForDirectCapture(unit);
+            break;
+
         default:
             trap("Unhandled opmode %d", (int)opmode);
     }
@@ -208,3 +216,49 @@ void UFCAP_ConfigureForPWMCapture(Unit *unit)
     LL_TIM_EnableIT_CC2(TIMx);
     LL_TIM_EnableCounter(TIMx);
 }
+
+
+/**
+ * Configure peripherals for an indirect capture (PWM measurement) - continuous or burst
+ * @param unit
+ */
+void UFCAP_ConfigureForDirectCapture(Unit *unit)
+{
+    struct priv * const priv = unit->data;
+    const uint32_t ll_ch_a = priv->ll_ch_a; //
+
+    UFCAP_ClearTimerConfig(unit);
+    {
+        TIM_TypeDef *const TIMy = priv->TIMy;
+        uint16_t presc = PLAT_AHB_MHZ * 500; // this produces 2 kHz
+        uint32_t count = 2001;
+
+        LL_TIM_SetPrescaler(TIMy, (uint32_t) (presc - 1));
+        LL_TIM_SetAutoReload(TIMy, count - 1);
+        LL_TIM_EnableARRPreload(TIMy);
+        LL_TIM_GenerateEvent_UPDATE(TIMy);
+        LL_TIM_SetOnePulseMode(TIMy, LL_TIM_ONEPULSEMODE_SINGLE); // TODO check if this works
+        LL_TIM_OC_EnableFast(TIMy, LL_TIM_CHANNEL_CH1);
+
+        dbg("TIMy presc %d, count %d", (int) presc, (int) count);
+
+        LL_TIM_SetTriggerOutput(TIMy, LL_TIM_TRGO_OC1REF);
+        LL_TIM_OC_SetMode(TIMy, LL_TIM_CHANNEL_CH1, LL_TIM_OCMODE_PWM1); // 1 until CC, then 0
+        LL_TIM_OC_SetCompareCH1(TIMy, count - 1); // XXX maybe this must be lower
+        LL_TIM_CC_EnableChannel(TIMy, LL_TIM_CHANNEL_CH1); // enable the output channel that produces a trigger
+    }
+
+    {
+        // TIMx - the slave
+        TIM_TypeDef *const TIMx = priv->TIMx;
+        LL_TIM_SetSlaveMode(TIMx, LL_TIM_SLAVEMODE_GATED);
+        LL_TIM_SetTriggerInput(TIMx, LL_TIM_TS_ITR3); // ITR3 is TIM14 which we use as TIMy
+        LL_TIM_EnableMasterSlaveMode(TIMx);
+        LL_TIM_EnableExternalClock(TIMx); // TODO must check and deny this mode if the pin is not on CH1 = external trigger input
+
+        LL_TIM_EnableCounter(TIMx);
+    }
+
+    LL_TIM_EnableCounter(priv->TIMy); // XXX this will start the pulse (maybe)
+}
+

@@ -16,6 +16,8 @@ enum fcap_opmode {
     OPMODE_BUSY = 1, // used after capture is done, before it's reported
     OPMODE_PWM_CONT = 2,
     OPMODE_PWM_BURST = 3, // averaging
+    OPMODE_COUNTER_CONT = 4,
+    OPMODE_COUNTER_BURST = 5, // averaging
 };
 
 /** Private data structure */
@@ -26,6 +28,7 @@ struct priv {
 
     // internal state
     TIM_TypeDef *TIMx;
+    TIM_TypeDef *TIMy; // used as a timebase source for TIMx in direct mode
     uint32_t ll_ch_b;
     uint32_t ll_ch_a;
     bool a_direct;
@@ -49,6 +52,10 @@ struct priv {
             uint16_t n_count; //!< Periods captured
             uint16_t n_target; //!< Periods captured - requested count
         } pwm_burst;
+
+        struct {
+            uint32_t last_count; //!< Pulse count in the last capture window
+        } cnt_cont;
     };
 };
 
@@ -79,12 +86,8 @@ void UFCAP_deInit(Unit *unit);
 
 // ------------------------------------------------------------------------
 
-void UFCAP_TimerHandler(void *arg);
-
-void UFCAP_StopMeasurement(Unit *unit);
-
-void UFCAP_ConfigureForPWMCapture(Unit *unit);
-
 void UFCAP_SwitchMode(Unit *unit, enum fcap_opmode opmode);
+
+void UFCAP_TimerHandler(void *arg);
 
 #endif //GEX_F072_FCAP_INTERNAL_H

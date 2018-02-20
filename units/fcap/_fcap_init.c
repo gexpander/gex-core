@@ -33,6 +33,9 @@ error_t UFCAP_init(Unit *unit)
     TIM_TypeDef * const TIMx = TIM2;
     Resource timRsc = R_TIM2;
 
+    TIM_TypeDef * const TIMy = TIM14;
+    Resource tim2Rsc = R_TIM14;
+
     uint32_t ll_ch_a = 0;
     uint32_t ll_ch_b = 0;
 
@@ -79,6 +82,7 @@ error_t UFCAP_init(Unit *unit)
 
     TRY(rsc_claim_pin(unit, priv->signal_pname, priv->signal_pnum));
     TRY(rsc_claim(unit, timRsc));
+    TRY(rsc_claim(unit, tim2Rsc));
 
     // ---- INIT ----
     assert_param(ll_ch_a != ll_ch_b);
@@ -91,7 +95,9 @@ error_t UFCAP_init(Unit *unit)
     TRY(hw_configure_gpio_af(priv->signal_pname, priv->signal_pnum, ll_timpin_af));
 
     hw_periph_clock_enable(TIMx);
+    hw_periph_clock_enable(TIMy);
     irqd_attach(TIMx, UFCAP_TimerHandler, unit);
+    // TODO attach TIMy to a handler
 
     UFCAP_SwitchMode(unit, OPMODE_IDLE);
 
@@ -108,8 +114,13 @@ void UFCAP_deInit(Unit *unit)
         UFCAP_SwitchMode(unit, OPMODE_IDLE);
 
         TIM_TypeDef *TIMx = priv->TIMx;
+        TIM_TypeDef *TIMy = priv->TIMy;
         LL_TIM_DeInit(TIMx);
-        irqd_attach(TIMx, UFCAP_TimerHandler, unit);
+        LL_TIM_DeInit(TIMy);
+        irqd_detach(TIMx, UFCAP_TimerHandler);
+        // TODO detach TIMy when any handler is added
+        hw_periph_clock_disable(TIMx);
+        hw_periph_clock_disable(TIMy);
     }
 
     // Release all resources, deinit pins

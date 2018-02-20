@@ -7,10 +7,12 @@
 
 // ---------------------------- HAL TIMEBASE -----------------------------
 
-#define TIMEBASE_TIMER TIM14
+#define TIMEBASE_TIMER TIM17
 
 HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
 {
+    // EDIT - used 17 instead because 14 was needed for fcap
+
     // TIM14 is a simple 16-bit timer timer with no special features.
     // This makes it a good choice for the timebase generation. We set it to generate
     // an interrupt every 1 ms
@@ -19,9 +21,9 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
 
     // - TIM14 is always up-counting
     // - using APB1 clock
-    __HAL_RCC_TIM14_CLK_ENABLE();
-    NVIC_SetPriority(TIM14_IRQn, TickPriority); // highest possible priority
-    NVIC_EnableIRQ(TIM14_IRQn);
+    __HAL_RCC_TIM17_CLK_ENABLE();
+    NVIC_SetPriority(TIM17_IRQn, TickPriority); // highest possible priority
+    NVIC_EnableIRQ(TIM17_IRQn);
 
     /* Compute TIM1 clock */
     uint32_t uwTimclock = HAL_RCC_GetPCLK1Freq();
@@ -45,7 +47,7 @@ HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
 static volatile uint32_t uwUptimeMs = 0;
 
 /* TIMEBASE TIMER ISR */
-void TIM14_IRQHandler(void)
+void TIM17_IRQHandler(void)
 {
     uwUptimeMs++;
     LL_TIM_ClearFlag_UPDATE(TIMEBASE_TIMER);
@@ -89,10 +91,10 @@ uint64_t PTIM_GetMicrotime(void)
         uwMicros = TIMEBASE_TIMER->CNT;
         uwMillis = uwUptimeMs;
 
-        if (LL_TIM_IsActiveFlag_UPDATE(TIM14)) {
+        if (LL_TIM_IsActiveFlag_UPDATE(TIMEBASE_TIMER)) {
             // This means the timer has overflown after we disabled IRQ
             // Use the last CNT value before the overflow
-            uwMicros = TIM14->ARR; // this is 999us
+            uwMicros = TIMEBASE_TIMER->ARR; // this is 999us
         }
     }
     vPortExitCritical();

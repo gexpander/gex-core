@@ -64,7 +64,9 @@ static struct callbacks_ {
     struct cbslot tim2;
     struct cbslot tim6;
     struct cbslot tim7;
+    struct cbslot tim14;
     struct cbslot tim15;
+    struct cbslot tim16;
 
     struct cbslot adc1;
 
@@ -104,23 +106,31 @@ void irqd_init(void)
 
 //    NVIC_EnableIRQ(TIM1_IRQn);                  /*!< TIM1 global Interrupt                                          */
     NVIC_EnableIRQ(TIM2_IRQn);                  /*!< TIM2 global Interrupt                                           */
+    HAL_NVIC_SetPriority(TIM2_IRQn, 2, 0); // Used by FCAP
+
 //    NVIC_EnableIRQ(TIM3_IRQn);                  /*!< TIM3 global Interrupt                                           */
 
     NVIC_EnableIRQ(TIM6_DAC_IRQn);              /*!< TIM6 global and DAC channel underrun error Interrupt            */
     HAL_NVIC_SetPriority(TIM7_IRQn, 2, 0); // Used for DAC timing
 
     NVIC_EnableIRQ(TIM7_IRQn);                  /*!< TIM7 global Interrupt                                           */
-    HAL_NVIC_SetPriority(TIM7_IRQn, 2, 0);
+    HAL_NVIC_SetPriority(TIM7_IRQn, 2, 0);// this will be for dac (?)
 
-    /* Tim14 is used for HAL timebase, because SysTick is used to time FreeRTOS and has the lowest priority. */
-    /* Tim14's priority is set to 0 in the init routine, which runs early in the startup sequence */
-    //  NVIC_EnableIRQ(TIM14_IRQn); /*!< TIM14 global Interrupt */
+    NVIC_EnableIRQ(TIM14_IRQn); /*used by fcap as a time reference for direct capture */ /*!< TIM14 global Interrupt */
+    HAL_NVIC_SetPriority(TIM14_IRQn, 2, 0);
 
     NVIC_EnableIRQ(TIM15_IRQn);                 /*!< TIM15 global Interrupt                                          */
-    HAL_NVIC_SetPriority(TIM15_IRQn, 2, 0);
+    HAL_NVIC_SetPriority(TIM15_IRQn, 2, 0); // Used by ADC
 
-//    NVIC_EnableIRQ(TIM16_IRQn);                 /*!< TIM16 global Interrupt                                          */
+    NVIC_EnableIRQ(TIM16_IRQn);                  /*!< TIM16 global Interrupt                                          */
+    HAL_NVIC_SetPriority(TIM16_IRQn, 2, 0);
+
+
+    /* Tim17 is used for HAL timebase, because SysTick is used to time FreeRTOS and has the lowest priority. */
+    /* Tim17's priority is set to 0 in the init routine, which runs early in the startup sequence */
 //    NVIC_EnableIRQ(TIM17_IRQn);                 /*!< TIM17 global Interrupt                                          */
+
+
 //    NVIC_EnableIRQ(I2C1_IRQn);                  /*!< I2C1 Event Interrupt & EXTI Line23 Interrupt (I2C1 wakeup)      */
 //    NVIC_EnableIRQ(I2C2_IRQn);                  /*!< I2C2 Event Interrupt                                            */
 //    NVIC_EnableIRQ(SPI1_IRQn);                  /*!< SPI1 global Interrupt                                           */
@@ -163,7 +173,10 @@ static struct cbslot *get_slot_for_periph(void *periph)
     else if (periph == TIM2) slot = &callbacks.tim2;
     else if (periph == TIM6) slot = &callbacks.tim6;
     else if (periph == TIM7) slot = &callbacks.tim7;
+    else if (periph == TIM14) slot = &callbacks.tim14;
     else if (periph == TIM15) slot = &callbacks.tim15;
+    else if (periph == TIM16) slot = &callbacks.tim16;
+    // 17 - used by timebase
 
     else if (periph == ADC1) slot = &callbacks.adc1;
 
@@ -324,6 +337,11 @@ void TIM7_IRQHandler(void)
 void TIM15_IRQHandler(void)
 {
     CALL_IRQ_HANDLER(callbacks.tim15);
+}
+
+void TIM16_IRQHandler(void)
+{
+    CALL_IRQ_HANDLER(callbacks.tim16);
 }
 
 void ADC1_COMP_IRQHandler(void)
