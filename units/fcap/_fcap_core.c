@@ -40,8 +40,12 @@ void UFCAP_TimerHandler(void *arg)
     if (priv->opmode == OPMODE_PWM_CONT) {
         if (LL_TIM_IsActiveFlag_CC1(TIMx)) {
 //            assert_param(!LL_TIM_IsActiveFlag_CC1OVR(TIMx));
-            priv->pwm_cont.last_period = LL_TIM_IC_GetCaptureCH1(TIMx);
-            priv->pwm_cont.last_ontime = priv->pwm_cont.ontime;
+            if (priv->n_skip > 0) {
+                priv->n_skip--;
+            } else {
+                priv->pwm_cont.last_period = LL_TIM_IC_GetCaptureCH1(TIMx);
+                priv->pwm_cont.last_ontime = priv->pwm_cont.ontime;
+            }
             LL_TIM_ClearFlag_CC1(TIMx);
             LL_TIM_ClearFlag_CC1OVR(TIMx);
         }
@@ -59,8 +63,8 @@ void UFCAP_TimerHandler(void *arg)
             const uint32_t period = LL_TIM_IC_GetCaptureCH1(TIMx);
             const uint32_t ontime = priv->pwm_burst.ontime;
 
-            if (priv->pwm_burst.n_skip > 0) {
-                priv->pwm_burst.n_skip--;
+            if (priv->n_skip > 0) {
+                priv->n_skip--;
             } else {
                 priv->pwm_burst.ontime_acu += ontime;
                 priv->pwm_burst.period_acu += period;
@@ -108,21 +112,25 @@ static void UFCAP_ClearTimerConfig(Unit *unit)
     LL_TIM_GenerateEvent_UPDATE(TIMx);
 }
 
+/**
+ * Reset all timer registers
+ *
+ * @param unit
+ */
 void UFCAP_StopMeasurement(Unit *unit)
 {
     struct priv * const priv = unit->data;
     TIM_TypeDef * const TIMx = priv->TIMx;
 
-    LL_TIM_DisableCounter(TIMx);
-    LL_TIM_DisableIT_CC1(TIMx);
-    LL_TIM_DisableIT_CC2(TIMx);
-    LL_TIM_ClearFlag_CC1(TIMx);
-    LL_TIM_ClearFlag_CC2(TIMx);
-    LL_TIM_ClearFlag_CC1OVR(TIMx);
-    LL_TIM_ClearFlag_CC2OVR(TIMx);
-    LL_TIM_SetCounter(TIMx, 0);
+    LL_TIM_DeInit(TIMx); // clear all flags and settings
 }
 
+/**
+ * Switch the FCAP module opmode
+ *
+ * @param unit
+ * @param opmode
+ */
 void UFCAP_SwitchMode(Unit *unit, enum fcap_opmode opmode)
 {
     struct priv * const priv = unit->data;
@@ -141,15 +149,16 @@ void UFCAP_SwitchMode(Unit *unit, enum fcap_opmode opmode)
             priv->pwm_cont.last_ontime = 0;
             priv->pwm_cont.last_period = 0;
             priv->pwm_cont.ontime = 0;
+            priv->n_skip = 1; // discard the first cycle (will be incomplete)
             UFCAP_ConfigureForPWMCapture(unit); // is also stopped and restarted
             break;
 
         case OPMODE_PWM_BURST:
             priv->pwm_burst.ontime = 0;
             priv->pwm_burst.n_count = 0;
-            priv->pwm_burst.n_skip = 1; // discard the first cycle (will be incomplete)
             priv->pwm_burst.period_acu = 0;
             priv->pwm_burst.ontime_acu = 0;
+            priv->n_skip = 1; // discard the first cycle (will be incomplete)
             UFCAP_ConfigureForPWMCapture(unit); // is also stopped and restarted
             break;
         default:
@@ -157,6 +166,10 @@ void UFCAP_SwitchMode(Unit *unit, enum fcap_opmode opmode)
     }
 }
 
+/**
+ * Configure peripherals for an indirect capture (PWM measurement) - continuous or burst
+ * @param unit
+ */
 void UFCAP_ConfigureForPWMCapture(Unit *unit)
 {
     struct priv * const priv = unit->data;

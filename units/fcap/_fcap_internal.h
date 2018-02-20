@@ -33,6 +33,7 @@ struct priv {
     enum fcap_opmode opmode;
 
     TF_ID request_id;
+    uint8_t n_skip; //!< Periods to skip before starting the real capture
 
     union {
         struct {
@@ -47,7 +48,6 @@ struct priv {
             uint64_t ontime_acu; //!< length of the last captured ontime, sum
             uint16_t n_count; //!< Periods captured
             uint16_t n_target; //!< Periods captured - requested count
-            uint8_t n_skip; //!< Periods to skip before starting the real capture
         } pwm_burst;
     };
 };
