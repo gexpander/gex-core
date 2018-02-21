@@ -317,8 +317,6 @@ void EXTI4_15_IRQHandler(void)
 
 // ------------ INTERRUPTS -------------
 
-// TIM14 is used to generate HAL timebase and its handler is in the file "timebase.c"
-
 void TIM2_IRQHandler(void)
 {
     CALL_IRQ_HANDLER(callbacks.tim2);
@@ -332,6 +330,11 @@ void TIM6_DAC_IRQHandler(void)
 void TIM7_IRQHandler(void)
 {
     CALL_IRQ_HANDLER(callbacks.tim7);
+}
+
+void TIM14_IRQHandler(void)
+{
+    CALL_IRQ_HANDLER(callbacks.tim14);
 }
 
 void TIM15_IRQHandler(void)

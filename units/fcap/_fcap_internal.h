@@ -17,7 +17,8 @@ enum fcap_opmode {
     OPMODE_PWM_CONT = 2,
     OPMODE_PWM_BURST = 3, // averaging
     OPMODE_COUNTER_CONT = 4,
-    OPMODE_COUNTER_BURST = 5, // averaging
+    OPMODE_COUNTER_BURST = 5,
+    OPMODE_COUNTER_FREERUNNING = 6,
 };
 
 /** Private data structure */
@@ -55,7 +56,12 @@ struct priv {
 
         struct {
             uint32_t last_count; //!< Pulse count in the last capture window
+            uint16_t msec; //!< Configured nbr of milliseconds to count
         } cnt_cont;
+
+        struct {
+            uint16_t msec; //!< Configured nbr of milliseconds to count
+        } cnt_burst;
     };
 };
 
@@ -88,6 +94,9 @@ void UFCAP_deInit(Unit *unit);
 
 void UFCAP_SwitchMode(Unit *unit, enum fcap_opmode opmode);
 
-void UFCAP_TimerHandler(void *arg);
+void UFCAP_TIMxHandler(void *arg);
+void UFCAP_TIMyHandler(void *arg);
+
+uint32_t UFCAP_GetFreeCounterValue(Unit *unit);
 
 #endif //GEX_F072_FCAP_INTERNAL_H

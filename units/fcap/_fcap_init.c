@@ -88,18 +88,24 @@ error_t UFCAP_init(Unit *unit)
     assert_param(ll_ch_a != ll_ch_b);
 
     priv->TIMx = TIMx;
+    priv->TIMy = TIMy;
     priv->ll_ch_a = ll_ch_a;
     priv->ll_ch_b = ll_ch_b;
     priv->a_direct = a_direct;
 
     TRY(hw_configure_gpio_af(priv->signal_pname, priv->signal_pnum, ll_timpin_af));
 
+    GPIO_TypeDef *gpio = hw_port2periph(priv->signal_pname, &suc);
+    uint32_t ll_pin = hw_pin2ll(priv->signal_pnum, &suc);
+    LL_GPIO_SetPinPull(gpio, ll_pin, LL_GPIO_PULL_DOWN); // XXX change to pull-up if the polarity is inverted
+
     hw_periph_clock_enable(TIMx);
     hw_periph_clock_enable(TIMy);
-    irqd_attach(TIMx, UFCAP_TimerHandler, unit);
-    // TODO attach TIMy to a handler
+    irqd_attach(TIMx, UFCAP_TIMxHandler, unit);
+    irqd_attach(TIMy, UFCAP_TIMyHandler, unit);
 
-    UFCAP_SwitchMode(unit, OPMODE_IDLE);
+//    UFCAP_SwitchMode(unit, OPMODE_IDLE);
+    UFCAP_SwitchMode(unit, OPMODE_COUNTER_CONT);
 
     return E_SUCCESS;
 }
@@ -117,8 +123,8 @@ void UFCAP_deInit(Unit *unit)
         TIM_TypeDef *TIMy = priv->TIMy;
         LL_TIM_DeInit(TIMx);
         LL_TIM_DeInit(TIMy);
-        irqd_detach(TIMx, UFCAP_TimerHandler);
-        // TODO detach TIMy when any handler is added
+        irqd_detach(TIMx, UFCAP_TIMxHandler);
+        irqd_detach(TIMy, UFCAP_TIMyHandler);
         hw_periph_clock_disable(TIMx);
         hw_periph_clock_disable(TIMy);
     }

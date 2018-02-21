@@ -51,7 +51,7 @@
 #define INI_VALUE_MAX  30 // Ini parser value buffer
 
 // -------- Stack buffers ----------
-#define DBG_BUF_LEN      80 // Size of the snprintf buffer for debug messages
+#define DBG_BUF_LEN      100 // Size of the snprintf buffer for debug messages
 #define ERR_MSG_STR_LEN  64 // Error message buffer size
 #define IWBUFFER_LEN     80 // Ini writer buffer for sprintf
 

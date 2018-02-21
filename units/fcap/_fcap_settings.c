@@ -55,8 +55,9 @@ void UFCAP_writeIni(Unit *unit, IniWriter *iw)
 {
     struct priv *priv = unit->data;
 
-    iw_comment(iw, "Signal input pin");
-    iw_comment(iw, "One of: A0, A1, A5, A15, B3");
+    iw_comment(iw, "Signal input pin - one of:");
+    iw_comment(iw, " Full support:  A0, A5, A15");
+    iw_comment(iw, " Indirect only: A1, B3");
     iw_entry(iw, "signal-pin", "%c%d", priv->signal_pname,  priv->signal_pnum);
 }
 

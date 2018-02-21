@@ -2,14 +2,23 @@
 // Created by MightyPork on 2018/02/20.
 //
 
+#include <stm32f072xb.h>
 #include "platform.h"
 
 #define FCAP_INTERNAL
 #include "_fcap_internal.h"
 
-void UFCAP_StopMeasurement(Unit *unit);
-void UFCAP_ConfigureForPWMCapture(Unit *unit);
-void UFCAP_ConfigureForDirectCapture(Unit *unit);
+static void UFCAP_StopMeasurement(Unit *unit);
+static void UFCAP_ConfigureForPWMCapture(Unit *unit);
+static void UFCAP_ConfigureForDirectCapture(Unit *unit);
+static void UFCAP_ConfigureForFreeCapture(Unit *unit);
+
+uint32_t UFCAP_GetFreeCounterValue(Unit *unit)
+{
+    struct priv * const priv = unit->data;
+    TIM_TypeDef * const TIMx = priv->TIMx;
+    return TIMx->CNT;
+}
 
 static void UFCAP_PWMBurstReportJob(Job *job)
 {
@@ -32,7 +41,26 @@ static void UFCAP_PWMBurstReportJob(Job *job)
     priv->opmode = OPMODE_IDLE;
 }
 
-void UFCAP_TimerHandler(void *arg)
+static void UFCAP_CountBurstReportJob(Job *job)
+{
+    Unit *unit = job->unit;
+    struct priv * const priv = unit->data;
+
+    uint8_t buf[6];
+    PayloadBuilder pb = pb_start(buf, 20, NULL);
+
+    pb_u16(&pb, priv->cnt_burst.msec);
+    pb_u32(&pb, job->data1);
+
+    assert_param(pb.ok);
+
+    com_respond_pb(priv->request_id, MSG_SUCCESS, &pb);
+
+    // timer is already stopped, now in OPMODE_BUSY
+    priv->opmode = OPMODE_IDLE;
+}
+
+void UFCAP_TIMxHandler(void *arg)
 {
     Unit *unit = arg;
     assert_param(unit);
@@ -100,6 +128,45 @@ void UFCAP_TimerHandler(void *arg)
     }
 }
 
+void UFCAP_TIMyHandler(void *arg)
+{
+    Unit *unit = arg;
+    assert_param(unit);
+    struct priv *const priv = unit->data;
+    assert_param(priv);
+
+    TIM_TypeDef * const TIMx = priv->TIMx;
+    TIM_TypeDef * const TIMy = priv->TIMy;
+    uint32_t cnt = TIMx->CNT; // TIMx should be stopped now
+
+    dbg("> TIMy Handler, TIMx cntr is %d", cnt);
+    priv->cnt_cont.last_count = cnt;
+
+    if (priv->opmode == OPMODE_COUNTER_CONT) {
+        LL_TIM_SetCounter(TIMx, 0);
+        LL_TIM_EnableCounter(TIMy); // next loop
+    } else if (priv->opmode == OPMODE_COUNTER_BURST) {
+        priv->opmode = OPMODE_BUSY;
+        UFCAP_StopMeasurement(unit);
+
+        Job j = {
+            .cb = UFCAP_CountBurstReportJob,
+            .unit = unit,
+            .data1 = cnt,
+        };
+        scheduleJob(&j);
+    }
+    else if (priv->opmode == OPMODE_IDLE) {
+        // clear everything - in idle it would cycle in the handler forever
+        TIMy->SR = 0;
+    }
+    else {
+        trap("Unhandled fcap TIMy irq");
+    }
+
+    LL_TIM_ClearFlag_UPDATE(TIMy);
+}
+
 static void UFCAP_ClearTimerConfig(Unit *unit)
 {
     struct priv * const priv = unit->data;
@@ -120,7 +187,7 @@ static void UFCAP_ClearTimerConfig(Unit *unit)
  *
  * @param unit
  */
-void UFCAP_StopMeasurement(Unit *unit)
+static void UFCAP_StopMeasurement(Unit *unit)
 {
     struct priv * const priv = unit->data;
 
@@ -166,7 +233,18 @@ void UFCAP_SwitchMode(Unit *unit, enum fcap_opmode opmode)
             break;
 
         case OPMODE_COUNTER_CONT:
+            priv->cnt_cont.last_count = 0;
+            priv->n_skip = 1; // discard the first cycle (will be incomplete)
             UFCAP_ConfigureForDirectCapture(unit);
+            break;
+
+        case OPMODE_COUNTER_BURST:
+            priv->n_skip = 0; // no skip here (if there was any)
+            UFCAP_ConfigureForDirectCapture(unit);
+            break;
+
+        case OPMODE_COUNTER_FREERUNNING:
+            UFCAP_ConfigureForFreeCapture(unit);
             break;
 
         default:
@@ -178,7 +256,7 @@ void UFCAP_SwitchMode(Unit *unit, enum fcap_opmode opmode)
  * Configure peripherals for an indirect capture (PWM measurement) - continuous or burst
  * @param unit
  */
-void UFCAP_ConfigureForPWMCapture(Unit *unit)
+static void UFCAP_ConfigureForPWMCapture(Unit *unit)
 {
     struct priv * const priv = unit->data;
     TIM_TypeDef * const TIMx = priv->TIMx;
@@ -222,30 +300,34 @@ void UFCAP_ConfigureForPWMCapture(Unit *unit)
  * Configure peripherals for an indirect capture (PWM measurement) - continuous or burst
  * @param unit
  */
-void UFCAP_ConfigureForDirectCapture(Unit *unit)
+static void UFCAP_ConfigureForDirectCapture(Unit *unit)
 {
     struct priv * const priv = unit->data;
-    const uint32_t ll_ch_a = priv->ll_ch_a; //
+
+//    dbg("Configuring Direct capture...");
 
     UFCAP_ClearTimerConfig(unit);
     {
         TIM_TypeDef *const TIMy = priv->TIMy;
-        uint16_t presc = PLAT_AHB_MHZ * 500; // this produces 2 kHz
-        uint32_t count = 2001;
+        assert_param(PLAT_AHB_MHZ<=65);
+        uint16_t presc = PLAT_AHB_MHZ*1000;
+        uint32_t count = priv->cnt_cont.msec+1; // it's one tick longer because we generate OCREF on the exact msec count - it must be at least 1 tick long
 
         LL_TIM_SetPrescaler(TIMy, (uint32_t) (presc - 1));
         LL_TIM_SetAutoReload(TIMy, count - 1);
         LL_TIM_EnableARRPreload(TIMy);
         LL_TIM_GenerateEvent_UPDATE(TIMy);
-        LL_TIM_SetOnePulseMode(TIMy, LL_TIM_ONEPULSEMODE_SINGLE); // TODO check if this works
+        LL_TIM_SetOnePulseMode(TIMy, LL_TIM_ONEPULSEMODE_SINGLE);
         LL_TIM_OC_EnableFast(TIMy, LL_TIM_CHANNEL_CH1);
 
-        dbg("TIMy presc %d, count %d", (int) presc, (int) count);
+//        dbg("TIMy presc %d, count %d", (int) presc, (int) count);
 
         LL_TIM_SetTriggerOutput(TIMy, LL_TIM_TRGO_OC1REF);
         LL_TIM_OC_SetMode(TIMy, LL_TIM_CHANNEL_CH1, LL_TIM_OCMODE_PWM1); // 1 until CC, then 0
-        LL_TIM_OC_SetCompareCH1(TIMy, count - 1); // XXX maybe this must be lower
+        LL_TIM_OC_SetCompareCH1(TIMy, count-1);
         LL_TIM_CC_EnableChannel(TIMy, LL_TIM_CHANNEL_CH1); // enable the output channel that produces a trigger
+
+        LL_TIM_EnableIT_UPDATE(TIMy);
     }
 
     {
@@ -254,11 +336,27 @@ void UFCAP_ConfigureForDirectCapture(Unit *unit)
         LL_TIM_SetSlaveMode(TIMx, LL_TIM_SLAVEMODE_GATED);
         LL_TIM_SetTriggerInput(TIMx, LL_TIM_TS_ITR3); // ITR3 is TIM14 which we use as TIMy
         LL_TIM_EnableMasterSlaveMode(TIMx);
+
         LL_TIM_EnableExternalClock(TIMx); // TODO must check and deny this mode if the pin is not on CH1 = external trigger input
 
+        LL_TIM_SetCounter(TIMx, 0);
         LL_TIM_EnableCounter(TIMx);
     }
 
-    LL_TIM_EnableCounter(priv->TIMy); // XXX this will start the pulse (maybe)
+    LL_TIM_EnableCounter(priv->TIMy); // XXX this will start the first pulse (maybe)
 }
 
+
+/**
+ * Freerunning capture (counting pulses - geiger)
+ * @param unit
+ */
+static void UFCAP_ConfigureForFreeCapture(Unit *unit)
+{
+    struct priv * const priv = unit->data;
+
+    TIM_TypeDef *const TIMx = priv->TIMx;
+    LL_TIM_EnableExternalClock(TIMx);
+    LL_TIM_SetCounter(TIMx, 0);
+    LL_TIM_EnableCounter(TIMx);
+}
