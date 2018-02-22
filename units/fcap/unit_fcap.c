@@ -22,19 +22,21 @@ enum FcapCmd_ {
     CMD_DIRECT_BURST_START = 4, // wait and reply
     CMD_FREECOUNT_START = 5,    // keep counting pulses until stopped, read on reply
 
-    CMD_MEASURE_SINGLE_PULSE = 6,
-    CMD_FREECOUNT_CLEAR = 7,
+    CMD_MEASURE_SINGLE_PULSE = 6, // measure the first incoming pulse of the right polarity. NOTE: can glitch if the signal starts in the active level
+    CMD_FREECOUNT_CLEAR = 7, // clear the free counter, return last value
 
     // Results readout for continuous modes
     CMD_INDIRECT_CONT_READ = 10,
     CMD_DIRECT_CONT_READ = 11,
     CMD_FREECOUNT_READ = 12,
 
+    // configs
     CMD_SET_POLARITY = 20,
     CMD_SET_DIR_PRESC = 21,
     CMD_SET_INPUT_FILTER = 22,
     CMD_SET_DIR_MSEC = 23,
 
+    // go back to the configured settings
     CMD_RESTORE_DEFAULTS = 30,
 };
 

@@ -100,7 +100,7 @@ void UFCAP_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "active-level", "%d", (int)priv->conf.active_level);
 
     iw_comment(iw, "Input filtering (0-15)");
-    iw_entry(iw, "input-filter", "%d", (int)priv->conf.active_level);
+    iw_entry(iw, "input-filter", "%d", (int)priv->conf.dfilter);
 
     iw_comment(iw, "Pulse counter pre-divider (1,2,4,8)");
     iw_entry(iw, "direct-presc", "%d", (int)priv->conf.direct_presc);
