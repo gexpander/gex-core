@@ -14,10 +14,14 @@ error_t UFCAP_preInit(Unit *unit)
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
     if (priv == NULL) return E_OUT_OF_MEM;
 
-    priv->signal_pname = 'A';
-    priv->signal_pnum = 0;
+    priv->conf.signal_pname = 'A';
+    priv->conf.signal_pnum = 0;
 
-    priv->opmode = OPMODE_PWM_CONT;
+    priv->conf.active_level = 1;
+    priv->conf.direct_presc = 1;
+    priv->conf.dfilter = 0;
+    priv->conf.direct_msec = 1000;
+    priv->conf.startmode = OPMODE_IDLE;
 
     return E_SUCCESS;
 }
@@ -39,9 +43,9 @@ error_t UFCAP_init(Unit *unit)
     uint32_t ll_ch_a = 0;
     uint32_t ll_ch_b = 0;
 
-    switch (priv->signal_pname) {
+    switch (priv->conf.signal_pname) {
         case 'A':
-            switch (priv->signal_pnum) {
+            switch (priv->conf.signal_pnum) {
                 case 5:
                 case 15:
                 case 0: ll_ch_a = LL_TIM_CHANNEL_CH1; break;
@@ -52,7 +56,7 @@ error_t UFCAP_init(Unit *unit)
             }
             break;
         case 'B':
-            switch (priv->signal_pnum) {
+            switch (priv->conf.signal_pnum) {
                 case 3: ll_ch_a = LL_TIM_CHANNEL_CH2; break;
                 default:
                     dbg("Bad signal pin!");
@@ -80,7 +84,7 @@ error_t UFCAP_init(Unit *unit)
 
     // ---- CLAIM ----
 
-    TRY(rsc_claim_pin(unit, priv->signal_pname, priv->signal_pnum));
+    TRY(rsc_claim_pin(unit, priv->conf.signal_pname, priv->conf.signal_pnum));
     TRY(rsc_claim(unit, timRsc));
     TRY(rsc_claim(unit, tim2Rsc));
 
@@ -93,10 +97,17 @@ error_t UFCAP_init(Unit *unit)
     priv->ll_ch_b = ll_ch_b;
     priv->a_direct = a_direct;
 
-    TRY(hw_configure_gpio_af(priv->signal_pname, priv->signal_pnum, ll_timpin_af));
+    // Load defaults
+    priv->active_level = priv->conf.active_level;
+    priv->direct_presc = priv->conf.direct_presc;
+    priv->dfilter = priv->conf.dfilter;
+    priv->direct_msec = priv->conf.direct_msec;
+    priv->opmode = priv->conf.startmode;
 
-    GPIO_TypeDef *gpio = hw_port2periph(priv->signal_pname, &suc);
-    uint32_t ll_pin = hw_pin2ll(priv->signal_pnum, &suc);
+    TRY(hw_configure_gpio_af(priv->conf.signal_pname, priv->conf.signal_pnum, ll_timpin_af));
+
+    GPIO_TypeDef *gpio = hw_port2periph(priv->conf.signal_pname, &suc);
+    uint32_t ll_pin = hw_pin2ll(priv->conf.signal_pnum, &suc);
     LL_GPIO_SetPinPull(gpio, ll_pin, LL_GPIO_PULL_DOWN); // XXX change to pull-up if the polarity is inverted
 
     hw_periph_clock_enable(TIMx);
@@ -104,8 +115,7 @@ error_t UFCAP_init(Unit *unit)
     irqd_attach(TIMx, UFCAP_TIMxHandler, unit);
     irqd_attach(TIMy, UFCAP_TIMyHandler, unit);
 
-//    UFCAP_SwitchMode(unit, OPMODE_IDLE);
-    UFCAP_SwitchMode(unit, OPMODE_COUNTER_CONT);
+    UFCAP_SwitchMode(unit, priv->opmode); // switch to the default opmode
 
     return E_SUCCESS;
 }

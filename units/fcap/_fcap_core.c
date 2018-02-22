@@ -9,8 +9,8 @@
 #include "_fcap_internal.h"
 
 static void UFCAP_StopMeasurement(Unit *unit);
-static void UFCAP_ConfigureForPWMCapture(Unit *unit);
-static void UFCAP_ConfigureForDirectCapture(Unit *unit);
+static void UFCAP_ConfigureForIndirectCapture(Unit *unit);
+static void UFCAP_ConfigureForDirectCapture(Unit *unit, uint16_t msec);
 static void UFCAP_ConfigureForFreeCapture(Unit *unit);
 
 uint32_t UFCAP_GetFreeCounterValue(Unit *unit)
@@ -20,7 +20,22 @@ uint32_t UFCAP_GetFreeCounterValue(Unit *unit)
     return TIMx->CNT;
 }
 
-static void UFCAP_PWMBurstReportJob(Job *job)
+uint32_t UFCAP_FreeCounterClear(Unit *unit)
+{
+    struct priv * const priv = unit->data;
+    TIM_TypeDef * const TIMx = priv->TIMx;
+
+    // this isn't perfect, we can miss one clock
+    // but it's probably the best we can do here ...
+    vPortEnterCritical();
+    uint32_t val = TIMx->CNT;
+    TIMx->CNT = 0;
+    vPortExitCritical();
+
+    return val;
+}
+
+static void UFCAP_IndirectBurstReportJob(Job *job)
 {
     Unit *unit = job->unit;
     struct priv * const priv = unit->data;
@@ -29,9 +44,9 @@ static void UFCAP_PWMBurstReportJob(Job *job)
     PayloadBuilder pb = pb_start(buf, 20, NULL);
 
     pb_u16(&pb, PLAT_AHB_MHZ);
-    pb_u16(&pb, priv->pwm_burst.n_count);
-    pb_u64(&pb, priv->pwm_burst.period_acu);
-    pb_u64(&pb, priv->pwm_burst.ontime_acu);
+    pb_u16(&pb, priv->ind_burst.n_count);
+    pb_u64(&pb, priv->ind_burst.period_acu);
+    pb_u64(&pb, priv->ind_burst.ontime_acu);
 
     assert_param(pb.ok);
 
@@ -41,15 +56,38 @@ static void UFCAP_PWMBurstReportJob(Job *job)
     priv->opmode = OPMODE_IDLE;
 }
 
-static void UFCAP_CountBurstReportJob(Job *job)
+static void UFCAP_SinglePulseReportJob(Job *job)
 {
     Unit *unit = job->unit;
     struct priv * const priv = unit->data;
 
     uint8_t buf[6];
-    PayloadBuilder pb = pb_start(buf, 20, NULL);
+    PayloadBuilder pb = pb_start(buf, 6, NULL);
 
-    pb_u16(&pb, priv->cnt_burst.msec);
+    pb_u16(&pb, PLAT_AHB_MHZ);
+    pb_u32(&pb, job->data1);
+    assert_param(pb.ok);
+
+    com_respond_pb(priv->request_id, MSG_SUCCESS, &pb);
+
+    // timer is already stopped, now in OPMODE_BUSY
+    priv->opmode = OPMODE_IDLE;
+}
+
+/**
+ * Count is passed in data1
+ * @param job
+ */
+static void UFCAP_DirectBurstReportJob(Job *job)
+{
+    Unit *unit = job->unit;
+    struct priv * const priv = unit->data;
+
+    uint8_t buf[8];
+    PayloadBuilder pb = pb_start(buf, 8, NULL);
+
+    pb_u8(&pb, priv->direct_presc);
+    pb_u16(&pb, priv->dir_burst.msec);
     pb_u32(&pb, job->data1);
 
     assert_param(pb.ok);
@@ -69,40 +107,56 @@ void UFCAP_TIMxHandler(void *arg)
 
     TIM_TypeDef * const TIMx = priv->TIMx;
 
-    if (priv->opmode == OPMODE_PWM_CONT) {
+    if (priv->opmode == OPMODE_INDIRECT_CONT) {
         if (LL_TIM_IsActiveFlag_CC1(TIMx)) {
             if (priv->n_skip > 0) {
                 priv->n_skip--;
             } else {
-                priv->pwm_cont.last_period = LL_TIM_IC_GetCaptureCH1(TIMx);
-                priv->pwm_cont.last_ontime = priv->pwm_cont.ontime;
+                priv->ind_cont.last_period = LL_TIM_IC_GetCaptureCH1(TIMx);
+                priv->ind_cont.last_ontime = priv->ind_cont.ontime;
             }
             LL_TIM_ClearFlag_CC1(TIMx);
             LL_TIM_ClearFlag_CC1OVR(TIMx);
         }
 
         if (LL_TIM_IsActiveFlag_CC2(TIMx)) {
-            priv->pwm_cont.ontime = LL_TIM_IC_GetCaptureCH2(TIMx);
+            priv->ind_cont.ontime = LL_TIM_IC_GetCaptureCH2(TIMx);
             LL_TIM_ClearFlag_CC2(TIMx);
             LL_TIM_ClearFlag_CC2OVR(TIMx);
         }
     }
-    else if (priv->opmode == OPMODE_PWM_BURST) {
+    else if (priv->opmode == OPMODE_SINGLE_PULSE) {
+        if (LL_TIM_IsActiveFlag_CC2(TIMx)) {
+            // single pulse - does not wait for the second edge
+            uint32_t len = LL_TIM_IC_GetCaptureCH2(TIMx);
+
+            priv->opmode = OPMODE_BUSY;
+            UFCAP_StopMeasurement(unit);
+
+            Job j = {
+                .cb = UFCAP_SinglePulseReportJob,
+                .unit = unit,
+                .data1 = len,
+            };
+            scheduleJob(&j);
+        }
+    }
+    else if (priv->opmode == OPMODE_INDIRECT_BURST) {
         if (LL_TIM_IsActiveFlag_CC1(TIMx)) {
             const uint32_t period = LL_TIM_IC_GetCaptureCH1(TIMx);
-            const uint32_t ontime = priv->pwm_burst.ontime;
+            const uint32_t ontime = priv->ind_burst.ontime;
 
             if (priv->n_skip > 0) {
                 priv->n_skip--;
             } else {
-                priv->pwm_burst.ontime_acu += ontime;
-                priv->pwm_burst.period_acu += period;
-                if (++priv->pwm_burst.n_count == priv->pwm_burst.n_target) {
+                priv->ind_burst.ontime_acu += ontime;
+                priv->ind_burst.period_acu += period;
+                if (++priv->ind_burst.n_count == priv->ind_burst.n_target) {
                     priv->opmode = OPMODE_BUSY;
                     UFCAP_StopMeasurement(unit);
 
                     Job j = {
-                        .cb = UFCAP_PWMBurstReportJob,
+                        .cb = UFCAP_IndirectBurstReportJob,
                         .unit = unit,
                     };
                     scheduleJob(&j);
@@ -114,7 +168,7 @@ void UFCAP_TIMxHandler(void *arg)
         }
 
         if (LL_TIM_IsActiveFlag_CC2(TIMx)) {
-            priv->pwm_burst.ontime = LL_TIM_IC_GetCaptureCH2(TIMx);
+            priv->ind_burst.ontime = LL_TIM_IC_GetCaptureCH2(TIMx);
             LL_TIM_ClearFlag_CC2(TIMx);
             LL_TIM_ClearFlag_CC2OVR(TIMx);
         }
@@ -139,18 +193,23 @@ void UFCAP_TIMyHandler(void *arg)
     TIM_TypeDef * const TIMy = priv->TIMy;
     uint32_t cnt = TIMx->CNT; // TIMx should be stopped now
 
-    dbg("> TIMy Handler, TIMx cntr is %d", cnt);
-    priv->cnt_cont.last_count = cnt;
+//    dbg("> TIMy Handler, TIMx cntr is %d", cnt);
+    priv->dir_cont.last_count = cnt;
 
-    if (priv->opmode == OPMODE_COUNTER_CONT) {
+    if (priv->opmode == OPMODE_DIRECT_CONT) {
+        LL_TIM_DisableCounter(TIMx);
+        LL_TIM_DisableCounter(TIMy);
         LL_TIM_SetCounter(TIMx, 0);
+        LL_TIM_SetCounter(TIMy, 0);
         LL_TIM_EnableCounter(TIMy); // next loop
-    } else if (priv->opmode == OPMODE_COUNTER_BURST) {
+        LL_TIM_EnableCounter(TIMx);
+    }
+    else if (priv->opmode == OPMODE_DIRECT_BURST) {
         priv->opmode = OPMODE_BUSY;
         UFCAP_StopMeasurement(unit);
 
         Job j = {
-            .cb = UFCAP_CountBurstReportJob,
+            .cb = UFCAP_DirectBurstReportJob,
             .unit = unit,
             .data1 = cnt,
         };
@@ -215,35 +274,42 @@ void UFCAP_SwitchMode(Unit *unit, enum fcap_opmode opmode)
             UFCAP_StopMeasurement(unit);
             break;
 
-        case OPMODE_PWM_CONT:
-            priv->pwm_cont.last_ontime = 0;
-            priv->pwm_cont.last_period = 0;
-            priv->pwm_cont.ontime = 0;
+        case OPMODE_INDIRECT_CONT:
+            priv->ind_cont.last_ontime = 0;
+            priv->ind_cont.last_period = 0;
+            priv->ind_cont.ontime = 0;
             priv->n_skip = 1; // discard the first cycle (will be incomplete)
-            UFCAP_ConfigureForPWMCapture(unit); // is also stopped and restarted
+            UFCAP_ConfigureForIndirectCapture(unit); // is also stopped and restarted
             break;
 
-        case OPMODE_PWM_BURST:
-            priv->pwm_burst.ontime = 0;
-            priv->pwm_burst.n_count = 0;
-            priv->pwm_burst.period_acu = 0;
-            priv->pwm_burst.ontime_acu = 0;
+        case OPMODE_INDIRECT_BURST:
+            priv->ind_burst.ontime = 0;
+            priv->ind_burst.n_count = 0;
+            priv->ind_burst.period_acu = 0;
+            priv->ind_burst.ontime_acu = 0;
             priv->n_skip = 1; // discard the first cycle (will be incomplete)
-            UFCAP_ConfigureForPWMCapture(unit); // is also stopped and restarted
+            UFCAP_ConfigureForIndirectCapture(unit); // is also stopped and restarted
             break;
 
-        case OPMODE_COUNTER_CONT:
-            priv->cnt_cont.last_count = 0;
-            priv->n_skip = 1; // discard the first cycle (will be incomplete)
-            UFCAP_ConfigureForDirectCapture(unit);
+        case OPMODE_SINGLE_PULSE:
+            priv->n_skip = 0;
+            UFCAP_ConfigureForIndirectCapture(unit); // is also stopped and restarted
             break;
 
-        case OPMODE_COUNTER_BURST:
+        case OPMODE_DIRECT_CONT:
+            // msec is set by caller
+            priv->dir_cont.last_count = 0;
+            priv->n_skip = 1; // discard the first cycle (will be incomplete)
+            UFCAP_ConfigureForDirectCapture(unit, priv->direct_msec);
+            break;
+
+        case OPMODE_DIRECT_BURST:
+            // msec is set by caller
             priv->n_skip = 0; // no skip here (if there was any)
-            UFCAP_ConfigureForDirectCapture(unit);
+            UFCAP_ConfigureForDirectCapture(unit, (uint16_t) priv->dir_burst.msec);
             break;
 
-        case OPMODE_COUNTER_FREERUNNING:
+        case OPMODE_FREE_COUNTER:
             UFCAP_ConfigureForFreeCapture(unit);
             break;
 
@@ -256,7 +322,7 @@ void UFCAP_SwitchMode(Unit *unit, enum fcap_opmode opmode)
  * Configure peripherals for an indirect capture (PWM measurement) - continuous or burst
  * @param unit
  */
-static void UFCAP_ConfigureForPWMCapture(Unit *unit)
+static void UFCAP_ConfigureForIndirectCapture(Unit *unit)
 {
     struct priv * const priv = unit->data;
     TIM_TypeDef * const TIMx = priv->TIMx;
@@ -282,13 +348,25 @@ static void UFCAP_ConfigureForPWMCapture(Unit *unit)
     // It's possible to select the other channel, which we use to connect both TIx to the shame CHx.
     LL_TIM_IC_SetActiveInput(TIMx, ll_ch_a, priv->a_direct ? LL_TIM_ACTIVEINPUT_DIRECTTI   : LL_TIM_ACTIVEINPUT_INDIRECTTI);
     LL_TIM_IC_SetActiveInput(TIMx, ll_ch_b, priv->a_direct ? LL_TIM_ACTIVEINPUT_INDIRECTTI : LL_TIM_ACTIVEINPUT_DIRECTTI);
+    LL_TIM_IC_SetPolarity(TIMx, ll_ch_a, priv->active_level ? LL_TIM_IC_POLARITY_RISING : LL_TIM_IC_POLARITY_FALLING);
+    LL_TIM_IC_SetPolarity(TIMx, ll_ch_b, priv->active_level ? LL_TIM_IC_POLARITY_FALLING : LL_TIM_IC_POLARITY_RISING);
+
+    if (priv->dfilter > 15) priv->dfilter = 15;
+    uint32_t filter = LL_TIM_IC_FILTERS[priv->dfilter];
+    LL_TIM_IC_SetFilter(TIMx, ll_ch_a, filter);
+    LL_TIM_IC_SetFilter(TIMx, ll_ch_b, filter);
+
     LL_TIM_CC_EnableChannel(TIMx, ll_ch_a | ll_ch_b);
 
-    LL_TIM_IC_SetPolarity(TIMx, ll_ch_a, LL_TIM_IC_POLARITY_RISING);
-    LL_TIM_IC_SetPolarity(TIMx, ll_ch_b, LL_TIM_IC_POLARITY_FALLING);
     LL_TIM_SetSlaveMode(TIMx, LL_TIM_SLAVEMODE_RESET);
     LL_TIM_SetTriggerInput(TIMx, LL_TIM_TS_TI1FP1); // Use Filtered Input 1 (TI1)
+
     LL_TIM_EnableMasterSlaveMode(TIMx);
+
+    LL_TIM_ClearFlag_CC1(TIMx);
+    LL_TIM_ClearFlag_CC1OVR(TIMx);
+    LL_TIM_ClearFlag_CC2(TIMx);
+    LL_TIM_ClearFlag_CC2OVR(TIMx);
 
     LL_TIM_EnableIT_CC1(TIMx);
     LL_TIM_EnableIT_CC2(TIMx);
@@ -300,18 +378,19 @@ static void UFCAP_ConfigureForPWMCapture(Unit *unit)
  * Configure peripherals for an indirect capture (PWM measurement) - continuous or burst
  * @param unit
  */
-static void UFCAP_ConfigureForDirectCapture(Unit *unit)
+static void UFCAP_ConfigureForDirectCapture(Unit *unit, uint16_t msec)
 {
     struct priv * const priv = unit->data;
 
 //    dbg("Configuring Direct capture...");
 
     UFCAP_ClearTimerConfig(unit);
+
     {
         TIM_TypeDef *const TIMy = priv->TIMy;
         assert_param(PLAT_AHB_MHZ<=65);
         uint16_t presc = PLAT_AHB_MHZ*1000;
-        uint32_t count = priv->cnt_cont.msec+1; // it's one tick longer because we generate OCREF on the exact msec count - it must be at least 1 tick long
+        uint32_t count = msec+1; // it's one tick longer because we generate OCREF on the exact msec count - it must be at least 1 tick long
 
         LL_TIM_SetPrescaler(TIMy, (uint32_t) (presc - 1));
         LL_TIM_SetAutoReload(TIMy, count - 1);
@@ -327,6 +406,7 @@ static void UFCAP_ConfigureForDirectCapture(Unit *unit)
         LL_TIM_OC_SetCompareCH1(TIMy, count-1);
         LL_TIM_CC_EnableChannel(TIMy, LL_TIM_CHANNEL_CH1); // enable the output channel that produces a trigger
 
+        LL_TIM_ClearFlag_UPDATE(TIMy);
         LL_TIM_EnableIT_UPDATE(TIMy);
     }
 
@@ -336,6 +416,24 @@ static void UFCAP_ConfigureForDirectCapture(Unit *unit)
         LL_TIM_SetSlaveMode(TIMx, LL_TIM_SLAVEMODE_GATED);
         LL_TIM_SetTriggerInput(TIMx, LL_TIM_TS_ITR3); // ITR3 is TIM14 which we use as TIMy
         LL_TIM_EnableMasterSlaveMode(TIMx);
+
+        uint32_t presc = LL_TIM_ETR_PRESCALER_DIV1;
+        switch (priv->direct_presc) {
+            case 1: presc = LL_TIM_ETR_PRESCALER_DIV1; break;
+            case 2: presc = LL_TIM_ETR_PRESCALER_DIV2; break;
+            case 4: presc = LL_TIM_ETR_PRESCALER_DIV4; break;
+            case 8: presc = LL_TIM_ETR_PRESCALER_DIV8; break;
+            default:
+                priv->direct_presc = 1; // will be sent with the response
+        }
+
+        if (priv->dfilter > 15) priv->dfilter = 15;
+        uint32_t filter = LL_TIM_ETR_FILTERS[priv->dfilter];
+
+        LL_TIM_ConfigETR(TIMx,
+                         priv->active_level ? LL_TIM_ETR_POLARITY_NONINVERTED : LL_TIM_ETR_POLARITY_INVERTED,
+                         presc,
+                         filter);
 
         LL_TIM_EnableExternalClock(TIMx); // TODO must check and deny this mode if the pin is not on CH1 = external trigger input
 
@@ -354,6 +452,8 @@ static void UFCAP_ConfigureForDirectCapture(Unit *unit)
 static void UFCAP_ConfigureForFreeCapture(Unit *unit)
 {
     struct priv * const priv = unit->data;
+
+    UFCAP_ClearTimerConfig(unit);
 
     TIM_TypeDef *const TIMx = priv->TIMx;
     LL_TIM_EnableExternalClock(TIMx);

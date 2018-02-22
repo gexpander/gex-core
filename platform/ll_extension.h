@@ -13,7 +13,8 @@ extern GPIO_TypeDef * const GPIO_PERIPHS[PORTS_COUNT];
 extern const uint32_t LL_GPIO_PINS[16];
 extern const uint32_t LL_EXTI_LINES[16];
 extern const uint32_t LL_ADC_SAMPLETIMES[8];
-
+extern const uint32_t LL_TIM_IC_FILTERS[16];
+extern const uint32_t LL_TIM_ETR_FILTERS[16];
 
 static inline bool LL_DMA_IsActiveFlag_G(uint32_t isr_snapshot, uint8_t channel)
 {

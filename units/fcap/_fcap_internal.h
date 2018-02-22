@@ -14,18 +14,28 @@
 enum fcap_opmode {
     OPMODE_IDLE = 0,
     OPMODE_BUSY = 1, // used after capture is done, before it's reported
-    OPMODE_PWM_CONT = 2,
-    OPMODE_PWM_BURST = 3, // averaging
-    OPMODE_COUNTER_CONT = 4,
-    OPMODE_COUNTER_BURST = 5,
-    OPMODE_COUNTER_FREERUNNING = 6,
+    OPMODE_INDIRECT_CONT = 2,
+    OPMODE_INDIRECT_BURST = 3, // averaging
+    OPMODE_DIRECT_CONT = 4,
+    OPMODE_DIRECT_BURST = 5,
+    OPMODE_FREE_COUNTER = 6,
+    OPMODE_SINGLE_PULSE = 7,
 };
 
 /** Private data structure */
 struct priv {
     // settings
-    char signal_pname;   // the input pin - one of TIM2 channels
-    uint8_t signal_pnum;
+    struct {
+        char signal_pname;   // the input pin - one of TIM2 channels
+        uint8_t signal_pnum;
+
+        bool active_level;
+        uint8_t direct_presc;
+        uint8_t dfilter;
+        uint16_t direct_msec;
+
+        enum fcap_opmode startmode;
+    } conf;
 
     // internal state
     TIM_TypeDef *TIMx;
@@ -39,12 +49,17 @@ struct priv {
     TF_ID request_id;
     uint8_t n_skip; //!< Periods to skip before starting the real capture
 
+    bool active_level; // in PWM mode, the first part that is measured. (if 1, HHHLLL, else LLLHHH). In direct mode, clock polarity
+    uint8_t direct_presc;
+    uint16_t direct_msec;
+    uint8_t dfilter;
+
     union {
         struct {
             uint32_t ontime; // length of the captured positive pulse in the current interval
             uint32_t last_period; //!< length of the captured interval between two rising edges
             uint32_t last_ontime; //!< length of the last captured ontime
-        } pwm_cont;
+        } ind_cont;
 
         struct {
             uint32_t ontime; // length of the captured positive pulse in the current interval
@@ -52,16 +67,15 @@ struct priv {
             uint64_t ontime_acu; //!< length of the last captured ontime, sum
             uint16_t n_count; //!< Periods captured
             uint16_t n_target; //!< Periods captured - requested count
-        } pwm_burst;
+        } ind_burst;
 
         struct {
             uint32_t last_count; //!< Pulse count in the last capture window
-            uint16_t msec; //!< Configured nbr of milliseconds to count
-        } cnt_cont;
+        } dir_cont;
 
         struct {
-            uint16_t msec; //!< Configured nbr of milliseconds to count
-        } cnt_burst;
+            uint16_t msec; // capture window length (used in the report callback) - different from the cont time, which is a semi-persistent config
+        } dir_burst;
     };
 };
 
@@ -98,5 +112,6 @@ void UFCAP_TIMxHandler(void *arg);
 void UFCAP_TIMyHandler(void *arg);
 
 uint32_t UFCAP_GetFreeCounterValue(Unit *unit);
+uint32_t UFCAP_FreeCounterClear(Unit *unit);
 
 #endif //GEX_F072_FCAP_INTERNAL_H

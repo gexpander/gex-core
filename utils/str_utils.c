@@ -74,41 +74,41 @@ const char *str_4(uint32_t n,
     return a;
 }
 
-uint32_t str_parse_2(const char *tpl,
+uint32_t str_parse_2(const char *value,
                      const char *a, uint32_t na,
                      const char *b, uint32_t nb,
                      bool *suc)
 {
-    if (streq(tpl, a)) return na;
-    if (streq(tpl, b)) return nb;
+    if (streq(value, a)) return na;
+    if (streq(value, b)) return nb;
     *suc = false;
     return na;
 }
 
-uint32_t str_parse_3(const char *tpl,
+uint32_t str_parse_3(const char *value,
                      const char *a, uint32_t na,
                      const char *b, uint32_t nb,
                      const char *c, uint32_t nc,
                      bool *suc)
 {
-    if (streq(tpl, a)) return na;
-    if (streq(tpl, b)) return nb;
-    if (streq(tpl, c)) return nc;
+    if (streq(value, a)) return na;
+    if (streq(value, b)) return nb;
+    if (streq(value, c)) return nc;
     *suc = false;
     return na;
 }
 
-uint32_t str_parse_4(const char *tpl,
+uint32_t str_parse_4(const char *value,
                      const char *a, uint32_t na,
                      const char *b, uint32_t nb,
                      const char *c, uint32_t nc,
                      const char *d, uint32_t nd,
                      bool *suc)
 {
-    if (streq(tpl, a)) return na;
-    if (streq(tpl, b)) return nb;
-    if (streq(tpl, c)) return nc;
-    if (streq(tpl, d)) return nd;
+    if (streq(value, a)) return na;
+    if (streq(value, b)) return nb;
+    if (streq(value, c)) return nc;
+    if (streq(value, d)) return nd;
     *suc = false;
     return na;
 }
