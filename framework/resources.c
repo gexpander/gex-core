@@ -21,10 +21,8 @@ const char *const rsc_names[] = {
 #undef X
 };
 
-// Check that EXTI have higher values than GPIOs in the enum
-// (determines the logic in the name generation code below)
-COMPILER_ASSERT(R_EXTI0 > R_PA0);
-
+COMPILER_ASSERT(R_PF15 < R_EXTI0);
+COMPILER_ASSERT(R_PA0 == 0);
 
 const char * rsc_get_name(Resource rsc)
 {
@@ -34,21 +32,22 @@ const char * rsc_get_name(Resource rsc)
     // we assume the returned value is not stored anywhere
     // and is directly used in a sprintf call, hence a static buffer is OK to use
 
-    if (rsc >= R_EXTI0) {
+    if (rsc >= R_EXTI0 && rsc <= R_EXTI15) {
         uint8_t index = rsc - R_EXTI0;
         SNPRINTF(gpionamebuf, 8, "EXTI%d", index);
         return gpionamebuf;
     }
 
-    if (rsc >= R_PA0) {
+    // R_PA0 is 0
+    if (rsc <= R_PF15) {
         // we assume the returned value is not stored anywhere
         // and is directly used in a sprintf call.
-        uint8_t index = rsc - R_PA0;
+        uint8_t index = rsc;
         SNPRINTF(gpionamebuf, 8, "P%c%d", 'A'+(index/16), index%16);
         return gpionamebuf;
     }
 
-    return rsc_names[rsc];
+    return rsc_names[rsc - R_EXTI15 - 1];
 }
 
 
@@ -222,7 +221,7 @@ void rsc_print_all_available(IniWriter *iw)
 
     uint32_t count0 = (iw->count + iw->skip);
     bool first = true;
-    for (uint32_t rsc = 0; rsc < R_PA0; rsc++) {
+    for (uint32_t rsc = R_EXTI15+1; rsc < R_NONE; rsc++) {
         if (RSC_IS_HELD(scratchmap, (Resource)rsc)) continue;
         if (!first) iw_string(iw, ", ");
 

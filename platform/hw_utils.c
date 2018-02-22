@@ -395,6 +395,53 @@ bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
 }
 
 
+/** Parse a string representation of a pin directly to a resource constant */
+Resource parse_pin2rsc(const char *str, bool *suc)
+{
+    char pname;
+    uint8_t pnum;
+
+    if (!parse_pin(str, &pname, &pnum)) {
+        *suc = false;
+        return R_NONE;
+    }
+
+    return hw_pin2resource(pname, pnum, suc);
+}
+
+/** Convert a resource to a pin name - uses a static buffer, result must not be stored! */
+char *str_rsc2pin(Resource rsc)
+{
+    static char buf[4];
+    uint32_t index = rsc - R_PA0;
+    uint32_t portnum = (index/16);
+    uint8_t pinnum = (uint8_t) (index % 16);
+    if (portnum >= PORTS_COUNT) return "";
+    buf[0] = (char) ('A' + portnum);
+    if (pinnum>9) {
+        buf[1] = '1';
+        buf[2] = (char) ('0' + (pinnum - 10));
+        buf[3] = 0;
+    } else {
+        buf[1] = (char) ('0' + pinnum);
+        buf[2] = 0;
+    }
+    return buf;
+}
+
+/** Convert a pin resource to it's LL lib values */
+bool pinRsc2ll(Resource rsc, GPIO_TypeDef **port, uint32_t *llpin)
+{
+    uint32_t index = rsc - R_PA0;
+    uint32_t pname = (index/16);
+    uint8_t pnum = (uint8_t) (index % 16);
+    if (pname >= PORTS_COUNT) return false;
+    *port = GPIO_PERIPHS[pname];
+    *llpin = LL_GPIO_PINS[pnum];
+    return true;
+}
+
+
 void hw_periph_clock_enable(void *periph)
 {
     // GPIOs are enabled by default on start-up

@@ -59,9 +59,9 @@ typedef enum hw_resource Resource;
 /** Enum of all resources */
 enum hw_resource {
 #define X(res_name) R_##res_name,
-    XX_RESOURCES
     XX_RESOURCES_GPIO
     XX_RESOURCES_EXTI
+    XX_RESOURCES
 #undef X
     R_NONE,
     RESOURCE_COUNT = R_NONE,

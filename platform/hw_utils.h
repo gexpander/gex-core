@@ -51,6 +51,33 @@ GPIO_TypeDef *hw_port2periph(char port_name, bool *suc);
 bool parse_pin(const char *str, char *targetName, uint8_t *targetNumber);
 
 /**
+ * Parse a string representation of a pin directly to a resource constant
+ *
+ * @param[in]  str - source string - e.g. PA0 or A0
+ * @param[out] suc - written to false on failure
+ * @return the parsed resource
+ */
+Resource parse_pin2rsc(const char *str, bool *suc);
+
+/**
+ * Convert a pin resource to it's LL lib values
+ *
+ * @param[in]  rsc - resource to process
+ * @param[out] port - output port
+ * @param[out] llpin - output LL pin mask
+ * @return success
+ */
+bool pinRsc2ll(Resource rsc, GPIO_TypeDef **port, uint32_t *llpin);
+
+/**
+ * Convert a resource to a pin name - uses a static buffer, result must not be stored!
+ *
+ * @param[in] rsc - resource to print
+ * @return a pointer to a static buffer used for exporting the names
+ */
+char *str_rsc2pin(Resource rsc);
+
+/**
  * Parse a port name (one character) - validates that it's within range
  *
  * @param value - source string
