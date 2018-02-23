@@ -6,6 +6,7 @@
 #include "unit.h"
 #include "resources.h"
 #include "hw_utils.h"
+#include "cfg_utils.h"
 #include "unit_registry.h"
 
 static bool rsc_initialized = false;
@@ -50,6 +51,27 @@ const char * rsc_get_name(Resource rsc)
     return rsc_names[rsc - R_EXTI15 - 1];
 }
 
+/** Convert a pin to resource handle */
+Resource rsc_portpin2rsc(char port_name, uint8_t pin_number, bool *suc)
+{
+    assert_param(suc != NULL);
+
+    if(port_name < 'A' || port_name >= ('A'+PORTS_COUNT)) {
+        dbg("Bad port: %c", port_name); // TODO proper report
+        *suc = false;
+        return R_NONE;
+    }
+
+    if(pin_number > 15) {
+        dbg("Bad pin: %d", pin_number); // TODO proper report
+        *suc = false;
+        return R_NONE;
+    }
+
+    uint8_t num = (uint8_t) (port_name - 'A');
+
+    return R_PA0 + num*16 + pin_number;
+}
 
 const char * rsc_get_owner_name(Resource rsc)
 {
@@ -120,17 +142,11 @@ error_t rsc_claim_range(Unit *unit, Resource rsc0, Resource rsc1)
     return E_SUCCESS;
 }
 
-
 error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
 {
-    bool suc = true;
-
     for (int i = 0; i < 16; i++) {
         if (pins & (1 << i)) {
-            Resource rsc = hw_pin2resource(port_name, (uint8_t) i, &suc);
-            if (!suc) return E_BAD_CONFIG;
-
-            TRY(rsc_claim(unit, rsc));
+            TRY(rsc_claim_pin(unit, port_name, (uint8_t)i));
         }
     }
     return E_SUCCESS;
@@ -140,7 +156,7 @@ error_t rsc_claim_gpios(Unit *unit, char port_name, uint16_t pins)
 error_t rsc_claim_pin(Unit *unit, char port_name, uint8_t pin)
 {
     bool suc = true;
-    Resource rsc = hw_pin2resource(port_name, pin, &suc);
+    Resource rsc = rsc_portpin2rsc(port_name, pin, &suc);
     if (!suc) return E_BAD_CONFIG;
     TRY(rsc_claim(unit, rsc));
     return E_SUCCESS;
@@ -241,7 +257,7 @@ void rsc_print_all_available(IniWriter *iw)
         if (i%16 == 0) {
             // here we print the previous port
             if (bitmap != 0) {
-                iw_string(iw, pinmask2str(bitmap, iwbuffer));
+                iw_string(iw, cfg_pinmask_encode(bitmap, iwbuffer, 0));
                 bitmap = 0;
             }
 
@@ -256,7 +272,7 @@ void rsc_print_all_available(IniWriter *iw)
     }
     // the last one
     if (bitmap != 0) {
-        iw_string(iw, pinmask2str(bitmap, iwbuffer));
+        iw_string(iw, cfg_pinmask_encode(bitmap, iwbuffer, 0));
     }
     iw_newline(iw);
     iw_newline(iw);

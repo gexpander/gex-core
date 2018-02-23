@@ -58,31 +58,31 @@ error_t USPI_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "device")) {
-        priv->periph_num = (uint8_t) avr_atoi(value);
+        priv->periph_num = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "remap")) {
-        priv->remap = (uint8_t) avr_atoi(value);
+        priv->remap = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "prescaller")) {
-        priv->prescaller = (uint16_t ) avr_atoi(value);
+        priv->prescaller = cfg_u16_parse(value, &suc);
     }
     else if (streq(key, "cpol")) {
-        priv->cpol = (bool) avr_atoi(value);
+        priv->cpol = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "cpha")) {
-        priv->cpha = (bool) avr_atoi(value);
+        priv->cpha = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "tx-only")) {
-        priv->tx_only = str_parse_yn(value, &suc);
+        priv->tx_only = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "first-bit")) {
-        priv->lsb_first = (bool)str_parse_2(value, "MSB", 0, "LSB", 1, &suc);
+        priv->lsb_first = (bool) cfg_enum2_parse(value, "MSB", 0, "LSB", 1, &suc);
     }
     else if (streq(key, "port")) {
-        suc = parse_port_name(value, &priv->ssn_port_name);
+        suc = cfg_port_parse(value, &priv->ssn_port_name);
     }
     else if (streq(key, "pins")) {
-        priv->ssn_pins = parse_pinmask(value, &suc);
+        priv->ssn_pins = cfg_pinmask_parse(value, &suc);
     }
     else {
         return E_BAD_KEY;
@@ -130,14 +130,12 @@ void USPI_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "tx-only", str_yn(priv->tx_only));
 
     iw_comment(iw, "Bit order (LSB or MSB first)");
-    iw_entry(iw, "first-bit", str_2((uint32_t)priv->lsb_first,
-                                    0, "MSB",
-                                    1, "LSB"));
+    iw_entry(iw, "first-bit", cfg_enum2_encode((uint32_t) priv->lsb_first, 0, "MSB", 1, "LSB"));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "SS port name");
     iw_entry(iw, "port", "%c", priv->ssn_port_name);
 
     iw_comment(iw, "SS pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", "%s", pinmask2str(priv->ssn_pins, unit_tmp512));
+    iw_entry(iw, "pins", cfg_pinmask_encode(priv->ssn_pins, unit_tmp512, 0));
 }

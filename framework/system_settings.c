@@ -6,6 +6,7 @@
 #include "system_settings.h"
 #include "utils/str_utils.h"
 #include "platform/lock_jumper.h"
+#include "cfg_utils.h"
 
 struct system_settings SystemSettings;
 
@@ -77,12 +78,12 @@ bool systemsettings_load_ini(const char *restrict key, const char *restrict valu
 {
     bool suc = true;
     if (streq(key, "expose_vcom")) {
-        bool yn = str_parse_yn(value, &suc);
+        bool yn = cfg_bool_parse(value, &suc);
         if (suc) SystemSettings.visible_vcom = yn;
     }
 
     if (streq(key, "ini_comments")) {
-        bool yn = str_parse_yn(value, &suc);
+        bool yn = cfg_bool_parse(value, &suc);
         if (suc) SystemSettings.ini_comments = yn;
     }
 

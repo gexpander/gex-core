@@ -26,16 +26,11 @@ void LockJumper_Init(void)
 {
     bool suc = true;
 
-    // Resolve and claim resource
-    Resource rsc = hw_pin2resource(LOCK_JUMPER_PORT, LOCK_JUMPER_PIN, &suc);
+    Resource pinrsc = rsc_portpin2rsc(LOCK_JUMPER_PORT, LOCK_JUMPER_PIN, &suc);
     assert_param(suc);
 
-    assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, rsc));
-
-    // Resolve pin
-    lock_periph = hw_port2periph(LOCK_JUMPER_PORT, &suc);
-    lock_llpin = hw_pin2ll(LOCK_JUMPER_PIN, &suc);
-    assert_param(suc);
+    assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, pinrsc));
+    assert_param(hw_pinrsc2ll(pinrsc, &lock_periph, &lock_llpin));
 
     // Configure for input
     LL_GPIO_SetPinMode(lock_periph, lock_llpin, LL_GPIO_MODE_INPUT);

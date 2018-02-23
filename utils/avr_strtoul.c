@@ -35,18 +35,18 @@
 #include "avrlibc.h"
 
 /*
- * Convert a string to an unsigned long integer.
+ * Convert a string to an uint32_t integer.
  *
  * Ignores `locale' stuff.  Assumes that the upper and lower case
  * alphabets and digits are each contiguous.
  */
-unsigned long
-avr_strtoul(const char *nptr, char **endptr, register int base)
+uint32_t
+avr_strtoul(const char *nptr, char **endptr, register int32_t base)
 {
-	register unsigned long acc;
-	register unsigned char c;
-	register unsigned long cutoff;
-	register signed char any;
+	register uint32_t acc;
+	register char c;
+	register uint32_t cutoff;
+	register int8_t any;
 	unsigned char flag = 0;
 #define FL_NEG	0x01		/* number is negative */
 #define FL_0X	0x02		/* number has a 0x prefix */
@@ -102,10 +102,10 @@ avr_strtoul(const char *nptr, char **endptr, register int base)
 	 *
 	 */
 	switch (base) {
-		case 16:    cutoff = ULONG_MAX / 16;  break;
-		case 10:    cutoff = ULONG_MAX / 10;  break;
-		case 8:     cutoff = ULONG_MAX / 8;   break;
-		default:    cutoff = ULONG_MAX / base;
+		case 16:    cutoff = UINT32_MAX / 16;  break;
+		case 10:    cutoff = UINT32_MAX / 10;  break;
+		case 8:     cutoff = UINT32_MAX / 8;   break;
+		default:    cutoff = UINT32_MAX / base;
 	}
 
 	for (acc = 0, any = 0;; c = *nptr++) {
@@ -126,7 +126,7 @@ avr_strtoul(const char *nptr, char **endptr, register int base)
 			continue;
 		}
 		acc = acc * base + c;
-		any = (c > acc) ? -1 : 1;
+		any = (int8_t) ((c > acc) ? -1 : 1);
 	}
 
 	if (endptr) {
@@ -138,8 +138,8 @@ avr_strtoul(const char *nptr, char **endptr, register int base)
 	if (flag & FL_NEG)
 		acc = -acc;
 	if (any < 0) {
-		acc = ULONG_MAX;
-		errno = ERANGE;
+		acc = UINT32_MAX;
+		avrlibc_errno = ERANGE;
 	}
-	return (acc);
+	return (uint32_t) (acc);
 }

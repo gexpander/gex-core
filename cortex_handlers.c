@@ -34,7 +34,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, signed char *pcTaskName)
 
 // && (__CORTEX_M >= 3)
 #if VERBOSE_HARDFAULT
-void __attribute__((used)) HardFault_DumpRegisters( uint32_t *origStack, uint32_t lr_value)
+void __attribute__((used)) HardFault_DumpRegisters(const uint32_t *origStack, uint32_t lr_value)
 {
 /* These are volatile to try and prevent the compiler/linker optimising them
 away as the variables never actually get used.  If the debugger won't show the

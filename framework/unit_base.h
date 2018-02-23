@@ -8,6 +8,7 @@
 #include "platform.h"
 #include "unit.h"
 #include "hw_utils.h"
+#include "cfg_utils.h"
 #include "resources.h"
 #include "utils/str_utils.h"
 #include "utils/malloc_safe.h"

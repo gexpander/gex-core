@@ -55,27 +55,27 @@ error_t UFCAP_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "pin")) {
-        suc = parse_pin(value, &priv->conf.signal_pname, &priv->conf.signal_pnum);
+        suc = cfg_portpin_parse(value, &priv->conf.signal_pname, &priv->conf.signal_pnum);
     }
     else if (streq(key, "active-level")) {
-        priv->conf.active_level = (bool) avr_atoi(value);
+        priv->conf.active_level = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "input-filter")) {
-        priv->conf.dfilter = (uint8_t) avr_atoi(value);
+        priv->conf.dfilter = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "direct-presc")) {
-        priv->conf.direct_presc = (uint8_t) avr_atoi(value);
+        priv->conf.direct_presc = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "direct-time")) {
-        priv->conf.direct_msec = (uint16_t) avr_atoi(value);
+        priv->conf.direct_msec = cfg_u16_parse(value, &suc);
     }
     else if (streq(key, "initial-mode")) {
-        priv->conf.startmode = (enum fcap_opmode) str_parse_4(value,
-                                                              "N", OPMODE_IDLE,
-                                                              "I", OPMODE_INDIRECT_CONT,
-                                                              "D", OPMODE_DIRECT_CONT,
-                                                              "F", OPMODE_FREE_COUNTER,
-                                                              &suc);
+        priv->conf.startmode = (enum fcap_opmode) cfg_enum4_parse(value,
+                                                                  "N", OPMODE_IDLE,
+                                                                  "I", OPMODE_INDIRECT_CONT,
+                                                                  "D", OPMODE_DIRECT_CONT,
+                                                                  "F", OPMODE_FREE_COUNTER,
+                                                                  &suc);
     }
     else{
         return E_BAD_KEY;
@@ -110,10 +110,10 @@ void UFCAP_writeIni(Unit *unit, IniWriter *iw)
     iw_cmt_newline(iw);
 
     iw_comment(iw, "Mode on startup: N-none, I-indirect, D-direct, F-free count");
-    iw_entry(iw, "initial-mode", "%s", str_4(priv->conf.startmode,
-                                             OPMODE_IDLE, "N",
-                                             OPMODE_INDIRECT_CONT, "I",
-                                             OPMODE_DIRECT_CONT, "D",
-                                             OPMODE_FREE_COUNTER, "F"));
+    iw_entry(iw, "initial-mode", cfg_enum4_encode(priv->conf.startmode,
+                                                  OPMODE_IDLE, "N",
+                                                  OPMODE_INDIRECT_CONT, "I",
+                                                  OPMODE_DIRECT_CONT, "D",
+                                                  OPMODE_FREE_COUNTER, "F"));
 }
 

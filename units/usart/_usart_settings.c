@@ -81,66 +81,66 @@ error_t UUSART_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "device")) {
-        priv->periph_num = (uint8_t) avr_atoi(value);
+        priv->periph_num = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "remap")) {
-        priv->remap = (uint8_t) avr_atoi(value);
+        priv->remap = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "baud-rate")) {
-        priv->baudrate = (uint32_t ) avr_atoi(value);
+        priv->baudrate = cfg_u32_parse(value, &suc);
     }
     else if (streq(key, "parity")) {
-        priv->parity = (uint8_t) str_parse_3(value,
-                                             "NONE", 0,
-                                             "ODD", 1,
-                                             "EVEN", 2, &suc);
+        priv->parity = (uint8_t) cfg_enum3_parse(value,
+                                                 "NONE", 0,
+                                                 "ODD", 1,
+                                                 "EVEN", 2, &suc);
     }
     else if (streq(key, "stop-bits")) {
-        priv->stopbits = (uint8_t) str_parse_4(value,
-                                               "0.5", 0,
-                                               "1", 1,
-                                               "1.5", 2,
-                                               "2", 3, &suc);
+        priv->stopbits = (uint8_t) cfg_enum4_parse(value,
+                                                   "0.5", 0,
+                                                   "1", 1,
+                                                   "1.5", 2,
+                                                   "2", 3, &suc);
     }
     else if (streq(key, "direction")) {
-        priv->direction = (uint8_t) str_parse_3(value,
-                                                "RX", UUSART_DIRECTION_RX,
-                                                "TX", UUSART_DIRECTION_TX,
-                                                "RXTX", UUSART_DIRECTION_RXTX, &suc);
+        priv->direction = (uint8_t) cfg_enum3_parse(value,
+                                                    "RX", UUSART_DIRECTION_RX,
+                                                    "TX", UUSART_DIRECTION_TX,
+                                                    "RXTX", UUSART_DIRECTION_RXTX, &suc);
     }
     else if (streq(key, "hw-flow-control")) {
-        priv->hw_flow_control = (uint8_t) str_parse_4(value,
-                                                      "NONE", 0,
-                                                      "RTS", 1,
-                                                      "CTS", 2,
-                                                      "FULL", 3, &suc);
+        priv->hw_flow_control = (uint8_t) cfg_enum4_parse(value,
+                                                          "NONE", 0,
+                                                          "RTS", 1,
+                                                          "CTS", 2,
+                                                          "FULL", 3, &suc);
     }
     else if (streq(key, "word-width")) {
-        priv->width = (uint8_t ) avr_atoi(value);
+        priv->width = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "first-bit")) {
-        priv->lsb_first = (bool)str_parse_2(value, "MSB", 0, "LSB", 1, &suc);
+        priv->lsb_first = (bool) cfg_enum2_parse(value, "MSB", 0, "LSB", 1, &suc);
     }
     else if (streq(key, "clock-output")) {
-        priv->clock_output = str_parse_yn(value, &suc);
+        priv->clock_output = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "cpol")) {
-        priv->cpol = (bool) avr_atoi(value);
+        priv->cpol = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "cpha")) {
-        priv->cpha = (bool) avr_atoi(value);
+        priv->cpha = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "de-output")) {
-        priv->de_output = str_parse_yn(value, &suc);
+        priv->de_output = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "de-polarity")) {
-        priv->de_polarity = (bool) avr_atoi(value);
+        priv->de_polarity = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "de-assert-time")) {
-        priv->de_assert_time = (uint8_t) avr_atoi(value);
+        priv->de_assert_time = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "de-clear-time")) {
-        priv->de_clear_time = (uint8_t) avr_atoi(value);
+        priv->de_clear_time = cfg_u8_parse(value, &suc);
     }
     else {
         return E_BAD_KEY;
@@ -180,38 +180,38 @@ void UUSART_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "baud-rate", "%d", (int)priv->baudrate);
 
     iw_comment(iw, "Parity type (NONE, ODD, EVEN)");
-    iw_entry(iw, "parity", "%s", str_3(priv->parity,
-                                       0, "NONE",
-                                       1, "ODD",
-                                       2, "EVEN"));
+    iw_entry(iw, "parity", cfg_enum3_encode(priv->parity,
+                                                  0, "NONE",
+                                                  1, "ODD",
+                                                  2, "EVEN"));
 
     iw_comment(iw, "Number of stop bits (0.5, 1, 1.5, 2)");
-    iw_entry(iw, "stop-bits", "%s", str_4(priv->stopbits,
-                                          0, "0.5",
-                                          1, "1",
-                                          2, "1.5",
-                                          3, "2"));
+    iw_entry(iw, "stop-bits", cfg_enum4_encode(priv->stopbits,
+                                                     0, "0.5",
+                                                     1, "1",
+                                                     2, "1.5",
+                                                     3, "2"));
 
     iw_comment(iw, "Bit order (LSB or MSB first)");
-    iw_entry(iw, "first-bit", str_2((uint32_t)priv->lsb_first,
-                                    0, "MSB",
-                                    1, "LSB"));
+    iw_entry(iw, "first-bit", cfg_enum2_encode((uint32_t) priv->lsb_first,
+                                               0, "MSB",
+                                               1, "LSB"));
 
     iw_comment(iw, "Word width (7,8,9) - including parity bit if used");
     iw_entry(iw, "word-width", "%d", (int)priv->width);
 
     iw_comment(iw, "Enabled lines (RX,TX,RXTX)");
-    iw_entry(iw, "direction", str_3(priv->direction,
-                                    1, "RX",
-                                    2, "TX",
-                                    3, "RXTX"));
+    iw_entry(iw, "direction", cfg_enum3_encode(priv->direction,
+                                               1, "RX",
+                                               2, "TX",
+                                               3, "RXTX"));
 
     iw_comment(iw, "Hardware flow control (NONE, RTS, CTS, FULL)");
-    iw_entry(iw, "hw-flow-control", "%s", str_4(priv->hw_flow_control,
-                                                0, "NONE",
-                                                1, "RTS",
-                                                2, "CTS",
-                                                3, "FULL"));
+    iw_entry(iw, "hw-flow-control", cfg_enum4_encode(priv->hw_flow_control,
+                                                           0, "NONE",
+                                                           1, "RTS",
+                                                           2, "CTS",
+                                                           3, "FULL"));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Generate serial clock (Y,N)");

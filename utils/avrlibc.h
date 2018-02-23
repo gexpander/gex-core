@@ -8,21 +8,10 @@
 #ifndef GEX_AVRLIBC_H_H
 #define GEX_AVRLIBC_H_H
 
-/**
- * atoi() - parse decimal int from ASCII
- *
- * @param p - string
- * @return int, 0 on failure
- */
-int avr_atoi(const char *p);
+#include <stdint.h>
+#include <stddef.h>
 
-/**
- * atol() - parse decimal long int from ASCII
- *
- * @param p - string
- * @return int, 0 on failure
- */
-long avr_atol(const char *p);
+extern volatile int32_t avrlibc_errno;
 
 /**
  * strtol() - parse integer number form string.
@@ -35,16 +24,7 @@ long avr_atol(const char *p);
  * @param base - base 2, 10, 16.... 0 for auto
  * @return the number
  */
-long avr_strtol(const char *nptr, char **endptr, register int base);
-
-/**
- * Parse double from ASCII
- *
- * @param nptr - string to parse
- * @param endptr - NULL or pointer to string where the end will be stored (first bad char)
- * @return  the number
- */
-double avr_strtod (const char * nptr, char ** endptr);
+int32_t avr_strtol(const char *nptr, char **endptr, register int32_t base);
 
 /**
  * like strtol(), but unsigned (and hence higher max value)
@@ -54,6 +34,37 @@ double avr_strtod (const char * nptr, char ** endptr);
  * @param base - base 2, 10, 16.... 0 for auto
  * @return the number
  */
-unsigned long avr_strtoul(const char *nptr, char **endptr, register int base);
+uint32_t avr_strtoul(const char *nptr, char **endptr, register int32_t base);
+
+/**
+ * atol() - parse decimal long int from ASCII
+ *
+ * @param p - string
+ * @return int, 0 on failure
+ */
+static inline int32_t avr_atol(const char *p)
+{
+    return avr_strtol(p, (char **) NULL, 10);
+}
+
+/**
+ * atoi() - parse decimal int from ASCII
+ *
+ * @param p - string
+ * @return int, 0 on failure
+ */
+static inline int32_t avr_atoi(const char *p)
+{
+    return avr_atol(p);
+}
+
+/**
+ * Parse double from ASCII
+ *
+ * @param nptr - string to parse
+ * @param endptr - NULL or pointer to string where the end will be stored (first bad char)
+ * @return  the number
+ */
+double avr_strtod (const char * nptr, char ** endptr);
 
 #endif //GEX_AVRLIBC_H_H

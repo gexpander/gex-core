@@ -37,10 +37,10 @@
 #include <stdint.h>
 #include "avrlibc.h"
 
-/* Only GCC 4.2 calls the library function to convert an unsigned long
+/* Only GCC 4.2 calls the library function to convert an uint32_t
    to float.  Other GCC-es (including 4.3) use a signed long to float
    conversion along with a large inline code to correct the result.	*/
-extern double __floatunsisf (unsigned long);
+extern double __floatunsisf (uint32_t);
 
 static const float pwr_p10 [6] = {
     1e+1, 1e+2, 1e+4, 1e+8, 1e+16, 1e+32
@@ -84,13 +84,13 @@ double
 avr_strtod (const char * nptr, char ** endptr)
 {
     union {
-	unsigned long u32;
-	float flt;
+		uint32_t u32;
+		float flt;
     } x;
-    unsigned char c;
-    int exp;
+    char c;
+    int32_t exp;
 
-    unsigned char flag;
+    uint8_t flag;
 #define FL_MINUS    0x01	/* number is negative	*/
 #define FL_ANY	    0x02	/* any digit was readed	*/
 #define FL_OVFL	    0x04	/* overflow was		*/
@@ -178,7 +178,7 @@ avr_strtod (const char * nptr, char ** endptr)
 	    do {
 		if (i < 3200)
 		    i = (((i << 2) + i) << 1) + c;	/* i = 10*i + c	*/
-		c = *nptr++ - '0';
+		c = (char) (*nptr++ - '0');
 	    } while (c <= 9);
 	    if (flag & FL_MEXP)
 		i = -i;
@@ -189,7 +189,7 @@ avr_strtod (const char * nptr, char ** endptr)
     if ((flag & FL_ANY) && endptr)
 	*endptr = (char *)nptr - 1;
     
-    x.flt = __floatunsisf (x.u32);		/* manually	*/
+    x.flt = (float) __floatunsisf (x.u32);		/* manually	*/
     if ((flag & FL_MINUS) && (flag & FL_ANY))
 	x.flt = -x.flt;
 	
@@ -204,7 +204,7 @@ avr_strtod (const char * nptr, char ** endptr)
 	for (pwr = 32; pwr; pwr >>= 1) {
 	    for (; exp >= pwr; exp -= pwr) {
 		union {
-		    unsigned long u32;
+		    uint32_t u32;
 		    float flt;
 		} y;
 		y.u32 = (uint32_t) *((float *)nptr);
@@ -213,7 +213,7 @@ avr_strtod (const char * nptr, char ** endptr)
 	    nptr -= sizeof(float);
 	}
 	if (!isfinite(x.flt) || x.flt == 0)
-	    errno = ERANGE;
+		avrlibc_errno = ERANGE;
     }
 
     return x.flt;

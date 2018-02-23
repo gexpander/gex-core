@@ -48,20 +48,20 @@ error_t UADC_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "channels")) {
-        priv->cfg.channels = parse_pinmask(value, &suc);
+        priv->cfg.channels = cfg_pinmask_parse_32(value, &suc);
     }
     else if (streq(key, "sample_time")) {
-        priv->cfg.sample_time = (uint8_t) avr_atoi(value);
+        priv->cfg.sample_time = cfg_u8_parse(value, &suc);
         if (priv->cfg.sample_time > 7) return E_BAD_VALUE;
     }
     else if (streq(key, "frequency")) {
-        priv->cfg.frequency = (uint32_t) avr_atoi(value);
+        priv->cfg.frequency = cfg_u32_parse(value, &suc);
     }
     else if (streq(key, "buffer_size")) {
-        priv->cfg.buffer_size = (uint32_t) avr_atoi(value);
+        priv->cfg.buffer_size = cfg_u32_parse(value, &suc);
     }
     else if (streq(key, "avg_factor")) {
-        priv->cfg.averaging_factor = (uint16_t) avr_atoi(value);
+        priv->cfg.averaging_factor = cfg_u16_parse(value, &suc);
         if (priv->cfg.averaging_factor > 1000) return E_BAD_VALUE;
     }
     else {
@@ -80,7 +80,7 @@ void UADC_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Enabled channels, comma separated");
     iw_comment(iw, " 0  1  2  3  4  5  6  7    8  9   10 11 12 13 14 15   16    17");
     iw_comment(iw, "A0 A1 A2 A3 A4 A5 A6 A7   B0 B1   C0 C1 C2 C3 C4 C5   Tsens Vref");
-    iw_entry(iw, "channels", "%s", pinmask2str_up(priv->cfg.channels, unit_tmp512));
+    iw_entry(iw, "channels", cfg_pinmask_encode(priv->cfg.channels, unit_tmp512, true));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Sampling time (0-7)");

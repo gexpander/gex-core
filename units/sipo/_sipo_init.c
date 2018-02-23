@@ -41,19 +41,19 @@ error_t USIPO_init(Unit *unit)
     // --- Parse config ---
     priv->store_ll = hw_pin2ll(priv->store_pnum, &suc);
     priv->store_port = hw_port2periph(priv->store_pname, &suc);
-    Resource store_rsc = hw_pin2resource(priv->store_pname, priv->store_pnum, &suc);
+    Resource store_rsc = rsc_portpin2rsc(priv->store_pname, priv->store_pnum, &suc);
     if (!suc) return E_BAD_CONFIG;
     TRY(rsc_claim(unit, store_rsc));
 
     priv->shift_ll = hw_pin2ll(priv->shift_pnum, &suc);
     priv->shift_port = hw_port2periph(priv->shift_pname, &suc);
-    Resource shift_rsc = hw_pin2resource(priv->shift_pname, priv->shift_pnum, &suc);
+    Resource shift_rsc = rsc_portpin2rsc(priv->shift_pname, priv->shift_pnum, &suc);
     if (!suc) return E_BAD_CONFIG;
     TRY(rsc_claim(unit, shift_rsc));
 
     priv->clear_ll = hw_pin2ll(priv->clear_pnum, &suc);
     priv->clear_port = hw_port2periph(priv->clear_pname, &suc);
-    Resource clear_rsc = hw_pin2resource(priv->clear_pname, priv->clear_pnum, &suc);
+    Resource clear_rsc = rsc_portpin2rsc(priv->clear_pname, priv->clear_pnum, &suc);
     if (!suc) return E_BAD_CONFIG;
     TRY(rsc_claim(unit, clear_rsc));
 

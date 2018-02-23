@@ -49,19 +49,19 @@ error_t UI2C_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "device")) {
-        priv->periph_num = (uint8_t) avr_atoi(value);
+        priv->periph_num = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "remap")) {
-        priv->remap = (uint8_t) avr_atoi(value);
+        priv->remap = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "analog-filter")) {
-        priv->anf = str_parse_yn(value, &suc);
+        priv->anf = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "digital-filter")) {
-        priv->dnf = (uint8_t) avr_atoi(value);
+        priv->dnf = cfg_u8_parse(value, &suc);
     }
     else if (streq(key, "speed")) {
-        priv->speed = (uint8_t) avr_atoi(value);
+        priv->speed = cfg_u8_parse(value, &suc);
     }
     else {
         return E_BAD_KEY;
@@ -99,7 +99,7 @@ void UI2C_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "speed", "%d", (int)priv->speed);
 
     iw_comment(iw, "Analog noise filter enable (Y,N)");
-    iw_entry(iw, "analog-filter", "%s", str_yn(priv->anf));
+    iw_entry(iw, "analog-filter", str_yn(priv->anf));
 
     iw_comment(iw, "Digital noise filter bandwidth (0-15)");
     iw_entry(iw, "digital-filter", "%d", (int)priv->dnf);

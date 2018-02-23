@@ -50,13 +50,7 @@ static inline void led_off(void)
 /** Set up the LED */
 void Indicator_Init(void)
 {
-    bool suc = true;
-
-    // Resolve and claim resource
-    Resource rsc = hw_pin2resource(STATUS_LED_PORT, STATUS_LED_PIN, &suc);
-    assert_param(suc);
-
-    assert_param(E_SUCCESS == rsc_claim(&UNIT_SYSTEM, rsc));
+    assert_param(E_SUCCESS == rsc_claim_pin(&UNIT_SYSTEM, STATUS_LED_PORT, STATUS_LED_PIN));
 }
 
 /** Set indicator ON */

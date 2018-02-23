@@ -64,30 +64,30 @@ error_t USIPO_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "store-pin")) {
-        suc = parse_pin(value, &priv->store_pname, &priv->store_pnum);
+        suc = cfg_portpin_parse(value, &priv->store_pname, &priv->store_pnum);
     }
     else if (streq(key, "shift-pin")) {
-        suc = parse_pin(value, &priv->shift_pname, &priv->shift_pnum);
+        suc = cfg_portpin_parse(value, &priv->shift_pname, &priv->shift_pnum);
     }
     else if (streq(key, "clear-pin")) {
-        suc = parse_pin(value, &priv->clear_pname, &priv->clear_pnum);
+        suc = cfg_portpin_parse(value, &priv->clear_pname, &priv->clear_pnum);
     }
 
     else if (streq(key, "store-pol")) {
-        priv->store_pol = (bool) avr_atoi(value);
+        priv->store_pol = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "shift-pol")) {
-        priv->shift_pol = (bool) avr_atoi(value);
+        priv->shift_pol = cfg_bool_parse(value, &suc);
     }
     else if (streq(key, "clear-pol")) {
-        priv->clear_pol = (bool) avr_atoi(value);
+        priv->clear_pol = cfg_bool_parse(value, &suc);
     }
 
     else if (streq(key, "data-port")) {
-        suc = parse_port_name(value, &priv->data_pname);
+        suc = cfg_port_parse(value, &priv->data_pname);
     }
     else if (streq(key, "data-pins")) {
-        priv->data_pins = (uint16_t) parse_pinmask(value, &suc);
+        priv->data_pins = cfg_pinmask_parse(value, &suc);
     }
 
     else {
@@ -117,6 +117,6 @@ void USIPO_writeIni(Unit *unit, IniWriter *iw)
 
     iw_comment(iw, "Data port and pins");
     iw_entry(iw, "data-port", "%c", priv->data_pname);
-    iw_entry(iw, "data-pins", "%s", pinmask2str_up(priv->data_pins, unit_tmp512));
+    iw_entry(iw, "data-pins", "%s", cfg_pinmask_encode(priv->data_pins, unit_tmp512, true));
 }
 

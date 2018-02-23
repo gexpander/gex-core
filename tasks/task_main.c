@@ -12,8 +12,6 @@
 #include "usbd_msc.h"
 #include "task_main.h"
 
-extern void plat_init(void);
-
 /* TaskUsbEvent function */
 void TaskMain(void const * argument)
 {

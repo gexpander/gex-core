@@ -57,28 +57,28 @@ error_t DIn_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "port")) {
-        suc = parse_port_name(value, &priv->port_name);
+        suc = cfg_port_parse(value, &priv->port_name);
     }
     else if (streq(key, "pins")) {
-        priv->pins = parse_pinmask(value, &suc);
+        priv->pins = cfg_pinmask_parse(value, &suc);
     }
     else if (streq(key, "pull-up")) {
-        priv->pullup = parse_pinmask(value, &suc);
+        priv->pullup = cfg_pinmask_parse(value, &suc);
     }
     else if (streq(key, "pull-down")) {
-        priv->pulldown = parse_pinmask(value, &suc);
+        priv->pulldown = cfg_pinmask_parse(value, &suc);
     }
     else if (streq(key, "trig-rise")) {
-        priv->trig_rise = parse_pinmask(value, &suc);
+        priv->trig_rise = cfg_pinmask_parse(value, &suc);
     }
     else if (streq(key, "trig-fall")) {
-        priv->trig_fall = parse_pinmask(value, &suc);
+        priv->trig_fall = cfg_pinmask_parse(value, &suc);
     }
     else if (streq(key, "auto-trigger")) {
-        priv->def_auto = parse_pinmask(value, &suc);
+        priv->def_auto = cfg_pinmask_parse(value, &suc);
     }
     else if (streq(key, "hold-off")) {
-        priv->trig_holdoff = (uint16_t) avr_atoi(value);
+        priv->trig_holdoff = cfg_u16_parse(value, &suc);
     }
     else {
         return E_BAD_KEY;
@@ -97,21 +97,21 @@ void DIn_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "port", "%c", priv->port_name);
 
     iw_comment(iw, "Pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", "%s", pinmask2str(priv->pins, unit_tmp512));
+    iw_entry(iw, "pins", cfg_pinmask_encode(priv->pins, unit_tmp512, 0));
 
     iw_comment(iw, "Pins with pull-up");
-    iw_entry(iw, "pull-up", "%s", pinmask2str(priv->pullup, unit_tmp512));
+    iw_entry(iw, "pull-up", cfg_pinmask_encode(priv->pullup, unit_tmp512, 0));
 
     iw_comment(iw, "Pins with pull-down");
-    iw_entry(iw, "pull-down", "%s", pinmask2str(priv->pulldown, unit_tmp512));
+    iw_entry(iw, "pull-down", cfg_pinmask_encode(priv->pulldown, unit_tmp512, 0));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Trigger pins activated by rising/falling edge");
-    iw_entry(iw, "trig-rise", "%s", pinmask2str(priv->trig_rise, unit_tmp512));
-    iw_entry(iw, "trig-fall", "%s", pinmask2str(priv->trig_fall, unit_tmp512));
+    iw_entry(iw, "trig-rise", cfg_pinmask_encode(priv->trig_rise, unit_tmp512, 0));
+    iw_entry(iw, "trig-fall", cfg_pinmask_encode(priv->trig_fall, unit_tmp512, 0));
 
     iw_comment(iw, "Trigger pins auto-armed by default");
-    iw_entry(iw, "auto-trigger", "%s", pinmask2str(priv->def_auto, unit_tmp512));
+    iw_entry(iw, "auto-trigger", cfg_pinmask_encode(priv->def_auto, unit_tmp512, 0));
 
     iw_comment(iw, "Triggers hold-off time (ms)");
     iw_entry(iw, "hold-off", "%d", (int)priv->trig_holdoff);

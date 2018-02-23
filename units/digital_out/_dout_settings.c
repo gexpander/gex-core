@@ -44,16 +44,16 @@ error_t DOut_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "port")) {
-        suc = parse_port_name(value, &priv->port_name);
+        suc = cfg_port_parse(value, &priv->port_name);
     }
     else if (streq(key, "pins")) {
-        priv->pins = (uint16_t) parse_pinmask(value, &suc);
+        priv->pins = cfg_pinmask_parse(value, &suc);
     }
     else if (streq(key, "initial")) {
-        priv->initial = (uint16_t) parse_pinmask(value, &suc);
+        priv->initial = cfg_pinmask_parse(value, &suc);
     }
     else if (streq(key, "open-drain")) {
-        priv->open_drain = (uint16_t) parse_pinmask(value, &suc);
+        priv->open_drain = cfg_pinmask_parse(value, &suc);
     }
     else {
         return E_BAD_KEY;
@@ -72,11 +72,11 @@ void DOut_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "port", "%c", priv->port_name);
 
     iw_comment(iw, "Pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", "%s", pinmask2str(priv->pins, unit_tmp512));
+    iw_entry(iw, "pins", cfg_pinmask_encode(priv->pins, unit_tmp512, 0));
 
     iw_comment(iw, "Initially high pins");
-    iw_entry(iw, "initial", "%s", pinmask2str(priv->initial, unit_tmp512));
+    iw_entry(iw, "initial", cfg_pinmask_encode(priv->initial, unit_tmp512, 0));
 
     iw_comment(iw, "Open-drain pins");
-    iw_entry(iw, "open-drain", "%s", pinmask2str(priv->open_drain, unit_tmp512));
+    iw_entry(iw, "open-drain", cfg_pinmask_encode(priv->open_drain, unit_tmp512, 0));
 }

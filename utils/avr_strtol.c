@@ -32,6 +32,7 @@
 
 #include <limits.h>
 #include <errno.h>
+#include "avrlibc.h"
 
 /*
  * Convert a string to a long integer.
@@ -39,14 +40,14 @@
  * Ignores `locale' stuff.  Assumes that the upper and lower case
  * alphabets and digits are each contiguous.
  */
-long
-avr_strtol(const char *nptr, char **endptr, register int base)
+int32_t
+avr_strtol(const char *nptr, char **endptr, register int32_t base)
 {
-	register unsigned long acc;
-	register unsigned char c;
-	register unsigned long cutoff;
-	register signed char any;
-	unsigned char flag = 0;
+	register uint32_t acc;
+	register char c;
+	register uint32_t cutoff;
+	register int8_t any;
+	uint8_t flag = 0;
 #define FL_NEG	0x01		/* number is negative */
 #define FL_0X	0x02		/* number has a 0x prefix */
 
@@ -105,24 +106,24 @@ avr_strtol(const char *nptr, char **endptr, register int base)
 	 * Set any if any `digits' consumed; make it negative to indicate
 	 * overflow.
 	 */
-#if  LONG_MIN != -LONG_MAX - 1
+#if  INT32_MIN != -INT32_MAX - 1
 #  error "This implementation of strtol() does not work on this platform."
 #endif
 	switch (base) {
 	    case 10:
-		cutoff = ((unsigned long)LONG_MAX + 1) / 10;
+		cutoff = ((uint32_t)INT32_MAX + 1) / 10;
 		break;
 	    case 16:
-		cutoff = ((unsigned long)LONG_MAX + 1) / 16;
+		cutoff = ((uint32_t)INT32_MAX + 1) / 16;
 		break;
 	    case 8:
-		cutoff = ((unsigned long)LONG_MAX + 1) / 8;
+		cutoff = ((uint32_t)INT32_MAX + 1) / 8;
 		break;
 	    case 2:
-		cutoff = ((unsigned long)LONG_MAX + 1) / 2;
+		cutoff = ((uint32_t)INT32_MAX + 1) / 2;
 		break;
 	    default:
-		cutoff = ((unsigned long)LONG_MAX + 1) / base;
+		cutoff = ((uint32_t)INT32_MAX + 1) / base;
 	}
 
 	for (acc = 0, any = 0;; c = *nptr++) {
@@ -143,7 +144,7 @@ avr_strtol(const char *nptr, char **endptr, register int base)
 			continue;
 		}
 		acc = acc * base + c;
-		if (acc > (unsigned long)LONG_MAX + 1)
+		if (acc > (uint32_t)INT32_MAX + 1)
 			any = -1;
 		else
 			any = 1;
@@ -155,13 +156,13 @@ avr_strtol(const char *nptr, char **endptr, register int base)
 		    *endptr = (char *)nptr - 2;
 	}
 	if (any < 0) {
-		acc = (flag & FL_NEG) ? LONG_MIN : LONG_MAX;
-		errno = ERANGE;
+		acc = (flag & FL_NEG) ? INT32_MIN : INT32_MAX;
+		avrlibc_errno = ERANGE;
 	} else if (flag & FL_NEG) {
 		acc = -acc;
 	} else if ((signed long)acc < 0) {
-		acc = LONG_MAX;
-		errno = ERANGE;
+		acc = INT32_MAX;
+		avrlibc_errno = ERANGE;
 	}
 	return (acc);
 }

@@ -95,6 +95,16 @@ void rsc_free(Unit *unit, Resource rsc);
 void rsc_free_range(Unit *unit, Resource rsc0, Resource rsc1);
 
 /**
+ * Convert pin name and number to a resource enum
+ *
+ * @param port_name - char 'A'..'Z'
+ * @param pin_number - number 0..15
+ * @param suc - set to false on failure, left unchanged on success
+ * @return the resource, or R_NONE
+ */
+Resource rsc_portpin2rsc(char port_name, uint8_t pin_number, bool *suc);
+
+/**
  * Get name of a resource by the Resource enum.
  * Uses a static buffer, DO NOT store the returned pointer.
  *

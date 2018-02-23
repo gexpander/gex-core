@@ -6,7 +6,6 @@
 #include "utils/avrlibc.h"
 #include "hw_utils.h"
 
-
 /** Convert pin number to LL bitfield */
 uint32_t hw_pin2ll(uint8_t pin_number, bool *suc)
 {
@@ -36,208 +35,16 @@ GPIO_TypeDef *hw_port2periph(char port_name, bool *suc)
     return GPIO_PERIPHS[num];
 }
 
-/** Convert a pin to resource handle */
-Resource hw_pin2resource(char port_name, uint8_t pin_number, bool *suc)
+/** Convert a pin resource to it's LL lib values */
+bool hw_pinrsc2ll(Resource rsc, GPIO_TypeDef **port, uint32_t *llpin)
 {
-    assert_param(suc != NULL);
-
-    if(port_name < 'A' || port_name >= ('A'+PORTS_COUNT)) {
-        dbg("Bad port: %c", port_name); // TODO proper report
-        *suc = false;
-        return R_NONE;
-    }
-
-    if(pin_number > 15) {
-        dbg("Bad pin: %d", pin_number); // TODO proper report
-        *suc = false;
-        return R_NONE;
-    }
-
-    uint8_t num = (uint8_t) (port_name - 'A');
-
-    return R_PA0 + num*16 + pin_number;
-}
-
-/** Parse single pin */
-bool parse_pin(const char *value, char *targetName, uint8_t *targetNumber)
-{
-    // discard leading 'P'
-    if (value[0] == 'P') {
-        value++;
-    }
-
-    size_t len = strlen(value);
-    if (len<2||len>3) return false;
-
-    *targetName = (uint8_t) value[0];
-    if (!(*targetName >= 'A' && *targetName <= 'H')) return false;
-
-    // lets just hope it's OK
-    *targetNumber = (uint8_t) avr_atoi(value + 1);
+    uint32_t index = rsc - R_PA0;
+    uint32_t pname = (index/16);
+    uint8_t pnum = (uint8_t) (index % 16);
+    if (pname >= PORTS_COUNT) return false;
+    *port = GPIO_PERIPHS[pname];
+    *llpin = LL_GPIO_PINS[pnum];
     return true;
-}
-
-/** Parse port name */
-bool parse_port_name(const char *value, char *targetName)
-{
-    *targetName = (uint8_t) value[0];
-    if (!(*targetName >= 'A' && *targetName < 'A' + PORTS_COUNT)) return false;
-    return true;
-}
-
-/** Parse a list of pin numbers with ranges and commans/semicolons to a bitmask */
-uint32_t parse_pinmask(const char *value, bool *suc)
-{
-    uint32_t bits = 0;
-    uint32_t acu = 0;
-    bool inrange = false;
-    uint32_t rangestart = 0;
-
-    // shortcut if none are set
-    if (value[0] == 0) return 0;
-
-    char c;
-    do {
-        c = *value++;
-        if (c == ' ' || c == '\t') {
-            // skip
-        }
-        else if (c >= '0' && c <= '9') {
-            acu = acu*10 + (c-'0');
-        }
-        else if (c == ',' || c == ';' || c == 0) {
-            // end of number or range
-            if (!inrange) rangestart = acu;
-
-            // swap them if they're in the wrong order
-            if (acu < rangestart) {
-                uint32_t swp = acu;
-                acu = rangestart;
-                rangestart = swp;
-            }
-
-            if (rangestart > 31) rangestart = 31;
-            if (acu > 31) acu = 31;
-
-            for(uint32_t i=rangestart; i <= acu; i++) {
-                bits |= 1<<i;
-            }
-
-            inrange = false;
-            rangestart = 0;
-            acu = 0;
-        }
-        else if (c == '-' || c == ':') {
-            rangestart = acu;
-            inrange = true;
-            acu=0;
-        } else {
-            *suc = false;
-        }
-    } while (c != 0);
-
-    return bits;
-}
-
-/** Convert a pin bitmask to the ASCII format understood by str_parse_pinmask() */
-char * pinmask2str(uint32_t pins, char *buffer)
-{
-    char *b = buffer;
-    uint32_t start = 0;
-    bool on = false;
-    bool first = true;
-
-    // shortcut if none are set
-    if (pins == 0) {
-        buffer[0] = 0;
-        return buffer;
-    }
-
-    for (int32_t i = 31; i >= -1; i--) {
-        bool bit;
-
-        if (i == -1) {
-            bit = false;
-        } else {
-            bit = 0 != (pins & 0x80000000);
-            pins <<= 1;
-        }
-
-        if (bit) {
-            if (!on) {
-                start = (uint32_t) i;
-                on = true;
-            }
-        } else {
-            if (on) {
-                if (!first) {
-                    b += SPRINTF(b, ", ");
-                }
-
-                if (start == (uint32_t)(i+1)) {
-                    b += SPRINTF(b, "%"PRIu32, start);
-                }
-                else {
-                    b += SPRINTF(b, "%"PRIu32"-%"PRIu32, start, i + 1);
-                }
-
-                first = false;
-                on = false;
-            }
-        }
-    }
-
-    return buffer;
-}
-
-char * pinmask2str_up(uint32_t pins, char *buffer)
-{
-    char *b = buffer;
-    uint32_t start = 0;
-    bool on = false;
-    bool first = true;
-
-    // shortcut if none are set
-    if (pins == 0) {
-        buffer[0] = 0;
-        return buffer;
-    }
-
-    for (int32_t i = 0; i <= 32; i++) {
-        bool bit;
-
-        if (i == 32) {
-            bit = false;
-        } else {
-            bit = 0 != (pins & 1);
-            pins >>= 1;
-        }
-
-        if (bit) {
-            if (!on) {
-                start = (uint32_t) i;
-                on = true;
-            }
-        } else {
-            if (on) {
-                if (!first) {
-                    b += SPRINTF(b, ", ");
-                }
-
-                if (start == (uint32_t)(i-1)) {
-                    b += SPRINTF(b, "%"PRIu32, start);
-                }
-                else {
-                    b += SPRINTF(b, "%"PRIu32"-%"PRIu32, start, i - 1);
-                }
-
-                first = false;
-                on = false;
-            }
-        }
-    }
-
-    return buffer;
 }
 
 #pragma GCC push_options
@@ -285,25 +92,13 @@ uint32_t pinmask_pack_32(uint32_t spread, uint32_t mask)
     return result;
 }
 
-/** Convert spread port pin number to a packed index using a mask */
-uint8_t pinmask_translate(uint32_t mask, uint8_t index)
-{
-    int cnt = 0;
-    for (int i = 0; i<32; i++) {
-        if (mask & (1<<i)) {
-            if (i == index) return (uint8_t) cnt;
-            cnt++;
-        }
-    }
-    return 0;
-}
 #pragma GCC pop_options
 
 /** Configure unit pins as analog (part of unit teardown) */
 void hw_deinit_unit_pins(Unit *unit)
 {
     for (uint32_t rsc = R_PA0; rsc <= R_PF15; rsc++) {
-        if (RSC_IS_HELD(unit->resources, rsc)) {
+        if (RSC_IS_HELD(unit->resources, (Resource)rsc)) {
             rsc_dbg("Freeing pin %s", rsc_get_name((Resource)rsc));
             GPIO_TypeDef *port = GPIO_PERIPHS[(rsc-R_PA0) / 16];
             uint32_t ll_pin = LL_GPIO_PINS[(rsc-R_PA0)%16];
@@ -360,8 +155,8 @@ error_t hw_configure_sparse_pins(char port_name, uint16_t mask, GPIO_TypeDef **p
 }
 
 /** Solve a timer/counter's count and prescaller value */
-bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
-                 uint16_t *presc, uint32_t *count, float *real_freq)
+bool hw_solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
+                    uint16_t *presc, uint32_t *count, float *real_freq)
 {
     if (required_freq == 0) return false;
 
@@ -393,54 +188,6 @@ bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
 
     return true;
 }
-
-
-/** Parse a string representation of a pin directly to a resource constant */
-Resource parse_pin2rsc(const char *str, bool *suc)
-{
-    char pname;
-    uint8_t pnum;
-
-    if (!parse_pin(str, &pname, &pnum)) {
-        *suc = false;
-        return R_NONE;
-    }
-
-    return hw_pin2resource(pname, pnum, suc);
-}
-
-/** Convert a resource to a pin name - uses a static buffer, result must not be stored! */
-char *str_rsc2pin(Resource rsc)
-{
-    static char buf[4];
-    uint32_t index = rsc - R_PA0;
-    uint32_t portnum = (index/16);
-    uint8_t pinnum = (uint8_t) (index % 16);
-    if (portnum >= PORTS_COUNT) return "";
-    buf[0] = (char) ('A' + portnum);
-    if (pinnum>9) {
-        buf[1] = '1';
-        buf[2] = (char) ('0' + (pinnum - 10));
-        buf[3] = 0;
-    } else {
-        buf[1] = (char) ('0' + pinnum);
-        buf[2] = 0;
-    }
-    return buf;
-}
-
-/** Convert a pin resource to it's LL lib values */
-bool pinRsc2ll(Resource rsc, GPIO_TypeDef **port, uint32_t *llpin)
-{
-    uint32_t index = rsc - R_PA0;
-    uint32_t pname = (index/16);
-    uint8_t pnum = (uint8_t) (index % 16);
-    if (pname >= PORTS_COUNT) return false;
-    *port = GPIO_PERIPHS[pname];
-    *llpin = LL_GPIO_PINS[pnum];
-    return true;
-}
-
 
 void hw_periph_clock_enable(void *periph)
 {

@@ -35,7 +35,7 @@ error_t UADC_SetSampleRate(Unit *unit, uint32_t hertz)
 
     uint16_t presc;
     uint32_t count;
-    if (!solve_timer(PLAT_APB1_HZ, hertz, true, &presc, &count, &priv->real_frequency)) {
+    if (!hw_solve_timer(PLAT_APB1_HZ, hertz, true, &presc, &count, &priv->real_frequency)) {
         dbg("Failed to resolve timer params.");
         return E_BAD_VALUE;
     }

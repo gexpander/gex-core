@@ -22,16 +22,6 @@
 uint32_t hw_pin2ll(uint8_t pin_number, bool *suc);
 
 /**
- * Convert pin name and number to a resource enum
- *
- * @param port_name - char 'A'..'Z'
- * @param pin_number - number 0..15
- * @param suc - set to false on failure, left unchanged on success
- * @return the resource, or R_NONE
- */
-Resource hw_pin2resource(char port_name, uint8_t pin_number, bool *suc);
-
-/**
  * Convert port name to peripheral instance
  *
  * @param port_name - char 'A'..'Z'
@@ -41,25 +31,6 @@ Resource hw_pin2resource(char port_name, uint8_t pin_number, bool *suc);
 GPIO_TypeDef *hw_port2periph(char port_name, bool *suc);
 
 /**
- * Parse a pin name (e.g. PA0 or A0) to port name and pin number
- *
- * @param str - source string
- * @param targetName - output: port name (one character)
- * @param targetNumber - output: pin number 0-15
- * @return success
- */
-bool parse_pin(const char *str, char *targetName, uint8_t *targetNumber);
-
-/**
- * Parse a string representation of a pin directly to a resource constant
- *
- * @param[in]  str - source string - e.g. PA0 or A0
- * @param[out] suc - written to false on failure
- * @return the parsed resource
- */
-Resource parse_pin2rsc(const char *str, bool *suc);
-
-/**
  * Convert a pin resource to it's LL lib values
  *
  * @param[in]  rsc - resource to process
@@ -67,56 +38,7 @@ Resource parse_pin2rsc(const char *str, bool *suc);
  * @param[out] llpin - output LL pin mask
  * @return success
  */
-bool pinRsc2ll(Resource rsc, GPIO_TypeDef **port, uint32_t *llpin);
-
-/**
- * Convert a resource to a pin name - uses a static buffer, result must not be stored!
- *
- * @param[in] rsc - resource to print
- * @return a pointer to a static buffer used for exporting the names
- */
-char *str_rsc2pin(Resource rsc);
-
-/**
- * Parse a port name (one character) - validates that it's within range
- *
- * @param value - source string
- * @param targetName - output: port name (one character)
- * @return success
- */
-bool parse_port_name(const char *value, char *targetName);
-
-/**
- * Parse a list of pin numbers with ranges and commands/semicolons to a bitmask.
- * Supported syntax:
- * - comma separated numbers
- * - numbers connected by dash or colon form a range (can be in any order)
- *
- * @param value - source string
- * @param suc - set to False if parsing failed
- * @return the resulting bitmap
- */
-uint32_t parse_pinmask(const char *value, bool *suc);
-
-/**
- * Convert a pin bitmap to the ASCII format understood by str_parse_pinmask()
- * This is the downto variant (15..0)
- *
- * @param pins - sparse pin map
- * @param buffer - output string buffer
- * @return the output buffer
- */
-char * pinmask2str(uint32_t pins, char *buffer);
-
-/**
- * Convert a pin bitmap to the ASCII format understood by str_parse_pinmask()
- * This is the ascending variant (0..15)
- *
- * @param pins - sparse pin map
- * @param buffer - output string buffer
- * @return the output buffer
- */
-char * pinmask2str_up(uint32_t pins, char *buffer);
+bool hw_pinrsc2ll(Resource rsc, GPIO_TypeDef **port, uint32_t *llpin) __attribute__((warn_unused_result));
 
 /**
  * Spread packed port pins using a mask
@@ -147,13 +69,6 @@ static inline uint16_t pinmask_pack(uint32_t spread, uint32_t mask)
 {
     return (uint16_t) pinmask_pack_32(spread, mask);
 }
-
-/**
- * Convert spread port pin number to a packed index using a mask
- *
- * eg. with a mask 0b1010 and index 3, the result is 1 (bit 1 of the packed - 0bX0)
- */
-uint8_t pinmask_translate(uint32_t mask, uint8_t index);
 
 /**
  * Set all GPIO resources held by unit to analog.
@@ -219,8 +134,8 @@ void hw_periph_clock_disable(void *periph);
  * @param[out] real_freq - field for storing the computed real frequency
  * @return true on success
  */
-bool solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
-                 uint16_t *presc, uint32_t *count, float *real_freq);
+bool hw_solve_timer(uint32_t base_freq, uint32_t required_freq, bool is16bit,
+                    uint16_t *presc, uint32_t *count, float *real_freq) __attribute__((warn_unused_result));
 
 #define hw_wait_while(call, timeout) \
     do { \

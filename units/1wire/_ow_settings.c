@@ -44,10 +44,10 @@ error_t OW_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "pin")) {
-        suc = parse_pin(value, &priv->port_name, &priv->pin_number);
+        suc = cfg_portpin_parse(value, &priv->port_name, &priv->pin_number);
     }
     else if (streq(key, "parasitic")) {
-        priv->parasitic = str_parse_yn(value, &suc);
+        priv->parasitic = cfg_bool_parse(value, &suc);
     }
     else {
         return E_BAD_KEY;

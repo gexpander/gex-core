@@ -32,7 +32,7 @@ error_t Npx_init(Unit *unit)
     // --- Parse config ---
     priv->ll_pin = hw_pin2ll(priv->pin_number, &suc);
     priv->port = hw_port2periph(priv->port_name, &suc);
-    Resource rsc = hw_pin2resource(priv->port_name, priv->pin_number, &suc);
+    Resource rsc = rsc_portpin2rsc(priv->port_name, priv->pin_number, &suc);
     if (!suc) return E_BAD_CONFIG;
 
     // --- Claim resources ---

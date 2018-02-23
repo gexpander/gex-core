@@ -37,10 +37,10 @@ error_t Npx_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "pin")) {
-        suc = parse_pin(value, &priv->port_name, &priv->pin_number);
+        suc = cfg_portpin_parse(value, &priv->port_name, &priv->pin_number);
     }
     else if (streq(key, "pixels")) {
-        priv->pixels = (uint16_t) avr_atoi(value);
+        priv->pixels = cfg_u16_parse(value, &suc);
     }
     else {
         return E_BAD_KEY;

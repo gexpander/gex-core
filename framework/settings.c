@@ -2,7 +2,6 @@
 // Created by MightyPork on 2017/11/26.
 //
 
-#include "utils/avrlibc.h"
 #include "platform.h"
 #include "utils/hexdump.h"
 #include "settings.h"
@@ -10,6 +9,7 @@
 #include "system_settings.h"
 #include "utils/str_utils.h"
 #include "unit_base.h"
+#include "utils/avrlibc.h"
 
 // pre-declarations
 static void savebuf_flush(PayloadBuilder *pb, bool final);
