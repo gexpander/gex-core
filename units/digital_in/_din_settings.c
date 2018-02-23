@@ -20,15 +20,10 @@ void DIn_loadBinary(Unit *unit, PayloadParser *pp)
     priv->pins = pp_u16(pp);
     priv->pulldown = pp_u16(pp);
     priv->pullup = pp_u16(pp);
-
-    if (version >= 1) {
-        priv->trig_rise = pp_u16(pp);
-        priv->trig_fall = pp_u16(pp);
-        priv->trig_holdoff = pp_u16(pp);
-    }
-    if (version >= 2) {
-        priv->def_auto = pp_u16(pp);
-    }
+    priv->trig_rise = pp_u16(pp);
+    priv->trig_fall = pp_u16(pp);
+    priv->trig_holdoff = pp_u16(pp);
+    priv->def_auto = pp_u16(pp);
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -36,7 +31,7 @@ void DIn_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_u8(pb, 2); // version
+    pb_u8(pb, 0); // version
 
     pb_char(pb, priv->port_name);
     pb_u16(pb, priv->pins);

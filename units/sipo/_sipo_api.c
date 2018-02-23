@@ -43,7 +43,7 @@ error_t UU_SIPO_Write(Unit *unit, const uint8_t *buffer, uint16_t buflen, uint16
     // buffer contains data for the individual data pins, back to back as AAA BBB CCC (whole bytes)
     const uint8_t data_width = priv->data_width;
     const uint16_t bytelen = buflen / data_width;
-    const uint16_t mask = priv->data_pins;
+    const uint16_t mask = priv->cfg.data_pins;
 
     uint8_t offsets[16];
     for (int i=0; i<16; i++) offsets[i] = (uint8_t) (bytelen * i);
@@ -61,7 +61,7 @@ error_t UU_SIPO_Write(Unit *unit, const uint8_t *buffer, uint16_t buflen, uint16
             priv->data_port->BSRR = spread | (((~spread) & mask) << 16);
 
             // Shift clock pulse
-            send_pulse(priv->shift_pol, priv->shift_port, priv->shift_ll);
+            send_pulse(priv->cfg.shift_pol, priv->shift_port, priv->shift_ll);
         }
     }
 
@@ -70,7 +70,7 @@ error_t UU_SIPO_Write(Unit *unit, const uint8_t *buffer, uint16_t buflen, uint16
     uint16_t spread = pinmask_spread(terminal_data, mask);
     priv->data_port->BSRR = spread | (((~spread) & mask) << 16);
 
-    send_pulse(priv->store_pol, priv->store_port, priv->store_ll);
+    send_pulse(priv->cfg.store_pol, priv->store_port, priv->store_ll);
     return E_SUCCESS;
 }
 #pragma GCC pop_options
@@ -80,8 +80,8 @@ error_t UU_SIPO_DirectData(Unit *unit, uint16_t data_packed)
     CHECK_TYPE(unit, &UNIT_SIPO);
     struct priv *priv = unit->data;
 
-    uint16_t spread = pinmask_spread(data_packed, priv->data_pins);
-    priv->data_port->BSRR = spread | (((~spread) & priv->data_pins) << 16);
+    uint16_t spread = pinmask_spread(data_packed, priv->cfg.data_pins);
+    priv->data_port->BSRR = spread | (((~spread) & priv->cfg.data_pins) << 16);
     return E_SUCCESS;
 }
 
@@ -89,7 +89,7 @@ error_t UU_SIPO_DirectClear(Unit *unit)
 {
     CHECK_TYPE(unit, &UNIT_SIPO);
     struct priv *priv = unit->data;
-    send_pulse(priv->clear_pol, priv->clear_port, priv->clear_ll);
+    send_pulse(priv->cfg.clear_pol, priv->clear_port, priv->clear_ll);
     return E_SUCCESS;
 }
 
@@ -97,7 +97,7 @@ error_t UU_SIPO_DirectShift(Unit *unit)
 {
     CHECK_TYPE(unit, &UNIT_SIPO);
     struct priv *priv = unit->data;
-    send_pulse(priv->shift_pol, priv->shift_port, priv->shift_ll);
+    send_pulse(priv->cfg.shift_pol, priv->shift_port, priv->shift_ll);
     return E_SUCCESS;
 }
 
@@ -105,6 +105,6 @@ error_t UU_SIPO_DirectStore(Unit *unit)
 {
     CHECK_TYPE(unit, &UNIT_SIPO);
     struct priv *priv = unit->data;
-    send_pulse(priv->store_pol, priv->store_port, priv->store_ll);
+    send_pulse(priv->cfg.store_pol, priv->store_port, priv->store_ll);
     return E_SUCCESS;
 }

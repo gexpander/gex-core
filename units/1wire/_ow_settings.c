@@ -18,9 +18,7 @@ void OW_loadBinary(Unit *unit, PayloadParser *pp)
 
     priv->port_name = pp_char(pp);
     priv->pin_number = pp_u8(pp);
-    if (version >= 1) {
-        priv->parasitic = pp_bool(pp);
-    }
+    priv->parasitic = pp_bool(pp);
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -28,7 +26,7 @@ void OW_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_u8(pb, 1); // version
+    pb_u8(pb, 0); // version
 
     pb_char(pb, priv->port_name);
     pb_u8(pb, priv->pin_number);

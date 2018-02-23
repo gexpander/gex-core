@@ -13,21 +13,20 @@
 
 /** Private data structure */
 struct priv {
-    // settings
-    char    store_pname;
-    uint8_t store_pnum;
-    bool    store_pol;   //!< Store pulse active edge
+    struct {
+        // settings
+        Resource pin_store;
+        bool store_pol;   //!< Store pulse active edge
 
-    char    shift_pname;
-    uint8_t shift_pnum;
-    bool    shift_pol;   //!< Shift clock active edge
+        Resource pin_shift;
+        bool shift_pol;   //!< Shift clock active edge
 
-    char    clear_pname;
-    uint8_t clear_pnum;
-    bool    clear_pol;   //!< Clear signal active level
+        Resource pin_clear;
+        bool clear_pol;   //!< Clear signal active level
 
-    char     data_pname;
-    uint16_t data_pins;
+        char data_pname;
+        uint16_t data_pins;
+    } cfg;
 
     // live fields
     uint32_t store_ll;

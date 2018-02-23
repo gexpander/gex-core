@@ -16,7 +16,7 @@ error_t UU_Npx_Clear(Unit *unit)
     CHECK_TYPE(unit, &UNIT_NEOPIXEL);
 
     struct priv *priv = unit->data;
-    ws2812_clear(priv->port, priv->ll_pin, priv->pixels);
+    ws2812_clear(priv->port, priv->ll_pin, priv->cfg.pixels);
     return E_SUCCESS;
 }
 
@@ -26,8 +26,8 @@ error_t UU_Npx_Load(Unit *unit, const uint8_t *packed_rgb, uint32_t nbytes)
     CHECK_TYPE(unit, &UNIT_NEOPIXEL);
 
     struct priv *priv = unit->data;
-    if (nbytes != 3*priv->pixels) return E_BAD_COUNT;
-    ws2812_load_raw(priv->port, priv->ll_pin, packed_rgb, priv->pixels);
+    if (nbytes != 3*priv->cfg.pixels) return E_BAD_COUNT;
+    ws2812_load_raw(priv->port, priv->ll_pin, packed_rgb, priv->cfg.pixels);
     return E_SUCCESS;
 }
 
@@ -37,8 +37,8 @@ static error_t load_u32(Unit *unit, const uint8_t *bytes, uint32_t nbytes, bool 
     CHECK_TYPE(unit, &UNIT_NEOPIXEL);
 
     struct priv *priv = unit->data;
-    if (nbytes != 4*priv->pixels) return E_BAD_COUNT;
-    ws2812_load_sparse(priv->port, priv->ll_pin, bytes, priv->pixels, bige);
+    if (nbytes != 4*priv->cfg.pixels) return E_BAD_COUNT;
+    ws2812_load_sparse(priv->port, priv->ll_pin, bytes, priv->cfg.pixels, bige);
     return E_SUCCESS;
 }
 
@@ -60,6 +60,6 @@ error_t UU_Npx_GetCount(Unit *unit, uint16_t *count)
     CHECK_TYPE(unit, &UNIT_NEOPIXEL);
 
     struct priv *priv = unit->data;
-    *count = priv->pixels;
+    *count = priv->cfg.pixels;
     return E_SUCCESS;
 }

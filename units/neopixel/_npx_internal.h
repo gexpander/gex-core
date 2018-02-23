@@ -13,9 +13,10 @@
 
 /** Private data structure */
 struct priv {
-    char port_name;
-    uint8_t pin_number;
-    uint16_t pixels;
+    struct {
+        Resource pin;
+        uint16_t pixels;
+    } cfg;
 
     uint32_t ll_pin;
     GPIO_TypeDef *port;

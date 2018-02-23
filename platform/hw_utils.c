@@ -38,6 +38,7 @@ GPIO_TypeDef *hw_port2periph(char port_name, bool *suc)
 /** Convert a pin resource to it's LL lib values */
 bool hw_pinrsc2ll(Resource rsc, GPIO_TypeDef **port, uint32_t *llpin)
 {
+    if (rsc > R_PF15) return false;
     uint32_t index = rsc - R_PA0;
     uint32_t pname = (index/16);
     uint8_t pnum = (uint8_t) (index % 16);

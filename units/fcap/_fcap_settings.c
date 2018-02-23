@@ -18,14 +18,11 @@ void UFCAP_loadBinary(Unit *unit, PayloadParser *pp)
 
     priv->conf.signal_pname = pp_char(pp);
     priv->conf.signal_pnum = pp_u8(pp);
-
-    if (version >= 1) {
-        priv->conf.active_level = pp_bool(pp);
-        priv->conf.dfilter = pp_u8(pp);
-        priv->conf.direct_presc = pp_u8(pp);
-        priv->conf.direct_msec = pp_u16(pp);
-        priv->conf.startmode = (enum fcap_opmode) pp_u8(pp);
-    }
+    priv->conf.active_level = pp_bool(pp);
+    priv->conf.dfilter = pp_u8(pp);
+    priv->conf.direct_presc = pp_u8(pp);
+    priv->conf.direct_msec = pp_u16(pp);
+    priv->conf.startmode = (enum fcap_opmode) pp_u8(pp);
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -33,12 +30,10 @@ void UFCAP_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_u8(pb, 1); // version
+    pb_u8(pb, 0); // version
 
     pb_char(pb, priv->conf.signal_pname);
     pb_u8(pb, priv->conf.signal_pnum);
-
-    // V1
     pb_bool(pb, priv->conf.active_level);
     pb_u8(pb, priv->conf.dfilter);
     pb_u8(pb, priv->conf.direct_presc);

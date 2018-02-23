@@ -16,9 +16,8 @@ error_t Npx_preInit(Unit *unit)
     if (priv == NULL) return E_OUT_OF_MEM;
 
     // some defaults
-    priv->pin_number = 0;
-    priv->port_name = 'A';
-    priv->pixels = 1;
+    priv->cfg.pin = R_PA0;
+    priv->cfg.pixels = 1;
 
     return E_SUCCESS;
 }
@@ -30,13 +29,9 @@ error_t Npx_init(Unit *unit)
     struct priv *priv = unit->data;
 
     // --- Parse config ---
-    priv->ll_pin = hw_pin2ll(priv->pin_number, &suc);
-    priv->port = hw_port2periph(priv->port_name, &suc);
-    Resource rsc = rsc_portpin2rsc(priv->port_name, priv->pin_number, &suc);
+    suc = hw_pinrsc2ll(priv->cfg.pin, &priv->port, &priv->ll_pin);
     if (!suc) return E_BAD_CONFIG;
-
-    // --- Claim resources ---
-    TRY(rsc_claim(unit, rsc));
+    TRY(rsc_claim(unit, priv->cfg.pin));
 
     // --- Init hardware ---
     LL_GPIO_SetPinMode(priv->port, priv->ll_pin, LL_GPIO_MODE_OUTPUT);
@@ -45,7 +40,7 @@ error_t Npx_init(Unit *unit)
 
     // clear strip
 
-    ws2812_clear(priv->port, priv->ll_pin, priv->pixels);
+    ws2812_clear(priv->port, priv->ll_pin, priv->cfg.pixels);
 
     return E_SUCCESS;
 }

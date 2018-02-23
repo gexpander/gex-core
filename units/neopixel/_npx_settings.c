@@ -13,9 +13,8 @@ void Npx_loadBinary(Unit *unit, PayloadParser *pp)
 {
     struct priv *priv = unit->data;
 
-    priv->port_name = pp_char(pp);
-    priv->pin_number = pp_u8(pp);
-    priv->pixels = pp_u16(pp);
+    priv->cfg.pin = (Resource) pp_u8(pp);
+    priv->cfg.pixels = pp_u16(pp);
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -23,9 +22,8 @@ void Npx_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_char(pb, priv->port_name);
-    pb_u8(pb, priv->pin_number);
-    pb_u16(pb, priv->pixels);
+    pb_u8(pb, priv->cfg.pin);
+    pb_u16(pb, priv->cfg.pixels);
 }
 
 // ------------------------------------------------------------------------
@@ -37,10 +35,10 @@ error_t Npx_loadIni(Unit *unit, const char *key, const char *value)
     struct priv *priv = unit->data;
 
     if (streq(key, "pin")) {
-        suc = cfg_portpin_parse(value, &priv->port_name, &priv->pin_number);
+        priv->cfg.pin = cfg_pinrsc_parse(value, &suc);
     }
     else if (streq(key, "pixels")) {
-        priv->pixels = cfg_u16_parse(value, &suc);
+        priv->cfg.pixels = cfg_u16_parse(value, &suc);
     }
     else {
         return E_BAD_KEY;
@@ -56,8 +54,8 @@ void Npx_writeIni(Unit *unit, IniWriter *iw)
     struct priv *priv = unit->data;
 
     iw_comment(iw, "Data pin");
-    iw_entry(iw, "pin", "%c%d", priv->port_name,  priv->pin_number);
+    iw_entry(iw, "pin", cfg_pinrsc_encode(priv->cfg.pin));
 
     iw_comment(iw, "Number of pixels");
-    iw_entry(iw, "pixels", "%d", priv->pixels);
+    iw_entry(iw, "pixels", "%d", priv->cfg.pixels);
 }
