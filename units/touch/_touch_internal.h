@@ -11,6 +11,14 @@
 
 #include "unit_base.h"
 
+#define TSC_DEBUG 0
+
+#if TSC_DEBUG
+#define dbg_touch(...) dbg(...)
+#else
+#define dbg_touch(...) do{}while(0)
+#endif
+
 /** Private data structure */
 struct priv {
     // settings

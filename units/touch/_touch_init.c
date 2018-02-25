@@ -44,7 +44,7 @@ error_t UTOUCH_init(Unit *unit)
 
         if (cap == 0) {
             if (ch != 0) {
-                dbg("TSC group %d has no cap!", (int)(gi+1));
+                dbg_touch("TSC group %d has no cap!", (int)(gi+1));
                 return E_BAD_CONFIG;
             }
             continue;
@@ -53,12 +53,12 @@ error_t UTOUCH_init(Unit *unit)
         if (ch == 0) continue; // if no channels, don't bother setting up anything
 
         if (cap != 2 && cap != 4 && cap != 8 && cap != 16) {
-            dbg("TSC group %d has more than 1 cap!", (int)(gi+1));
+            dbg_touch("TSC group %d has more than 1 cap!", (int)(gi+1));
             return E_BAD_CONFIG;
         }
 
         if (cap & ch) {
-            dbg("TSC pin can't be both channel and cap! (gpr %d)", (int)(gi+1));
+            dbg_touch("TSC pin can't be both channel and cap! (gpr %d)", (int)(gi+1));
             return E_BAD_CONFIG;
         }
 
@@ -74,8 +74,8 @@ error_t UTOUCH_init(Unit *unit)
                 // 7 and 8 (1-based) use AF1, else AF3
                 TRY(hw_configure_gpiorsc_af(r, gi >= 6 ? LL_GPIO_AF_1 : LL_GPIO_AF_3));
 
-                if (iscap) dbg("TSC *cap @ %s", rsc_get_name(r));
-                else dbg("TSC -ch @ %s", rsc_get_name(r));
+                if (iscap) dbg_touch("TSC *cap @ %s", rsc_get_name(r));
+                else dbg_touch("TSC -ch @ %s", rsc_get_name(r));
             }
 
             // Sampling cap
@@ -93,9 +93,9 @@ error_t UTOUCH_init(Unit *unit)
         }
     }
 
-    dbg("TSC phases:");
+    dbg_touch("TSC phases:");
     for (int i = 0; i < 3; i++) {
-        dbg(" %d: ch %08"PRIx32", g %02"PRIx32, i+1, priv->channels_phase[i], (uint32_t)priv->pgen_phase[i]);
+        dbg_touch(" %d: ch %08"PRIx32", g %02"PRIx32, i+1, priv->channels_phase[i], (uint32_t)priv->pgen_phase[i]);
     }
 
     return E_SUCCESS;
