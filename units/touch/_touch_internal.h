@@ -11,13 +11,19 @@
 
 #include "unit_base.h"
 
-#define TSC_DEBUG 0
+#define TSC_DEBUG 1
 
 #if TSC_DEBUG
-#define dbg_touch(...) dbg(...)
+#define dbg_touch(f,...) dbg(f,##__VA_ARGS__)
 #else
-#define dbg_touch(...) do{}while(0)
+#define dbg_touch(f,...) do{}while(0)
 #endif
+
+enum utsc_status {
+    UTSC_STATUS_BUSY = 0,
+    UTSC_STATUS_READY = 1,
+    UTSC_STATUS_FAIL = 2
+};
 
 /** Private data structure */
 struct priv {
@@ -32,12 +38,18 @@ struct priv {
         // the schmitts must be disabled on all used channels, restored to 0xFFFF on deinit
         uint8_t group_scaps[8];
         uint8_t group_channels[8];
+        bool interlaced;
     } cfg;
 
     uint8_t next_phase;
+    uint8_t discharge_delay;
     uint32_t channels_phase[3];
-    uint8_t pgen_phase[3];
+    uint8_t groups_phase[3];
     uint16_t readouts[32];
+    uint32_t all_channels_mask;
+    bool ongoing;
+
+    enum utsc_status status;
 };
 
 extern const char *utouch_group_labels[8];
@@ -67,5 +79,9 @@ error_t UTOUCH_init(Unit *unit);
 
 /** Tear down the unit */
 void UTOUCH_deInit(Unit *unit);
+
+void UTOUCH_updateTick(Unit *unit);
+
+void UTOUCH_HandleIrq(void *arg);
 
 #endif //GEX_F072_TOUCH_INTERNAL_H

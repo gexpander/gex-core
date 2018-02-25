@@ -46,6 +46,10 @@ void UTOUCH_loadBinary(Unit *unit, PayloadParser *pp)
     priv->cfg.sense_timeout = pp_u8(pp);
     pp_buf(pp, priv->cfg.group_scaps, 8);
     pp_buf(pp, priv->cfg.group_channels, 8);
+
+    if (version >= 1) {
+        priv->cfg.interlaced = pp_bool(pp);
+    }
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -53,7 +57,7 @@ void UTOUCH_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_u8(pb, 0); // version
+    pb_u8(pb, 1); // version
 
     pb_u8(pb, priv->cfg.charge_time);
     pb_u8(pb, priv->cfg.drain_time);
@@ -63,6 +67,7 @@ void UTOUCH_writeBinary(Unit *unit, PayloadBuilder *pb)
     pb_u8(pb, priv->cfg.sense_timeout);
     pb_buf(pb, priv->cfg.group_scaps, 8);
     pb_buf(pb, priv->cfg.group_channels, 8);
+    pb_bool(pb, priv->cfg.interlaced);
 }
 
 // ------------------------------------------------------------------------
@@ -90,6 +95,9 @@ error_t UTOUCH_loadIni(Unit *unit, const char *key, const char *value)
     }
     else if (streq(key, "sense-timeout")) {
         priv->cfg.sense_timeout = cfg_u8_parse(value, &suc);
+    }
+    else if (streq(key, "interlaced-pads")) {
+        priv->cfg.interlaced = cfg_bool_parse(value, &suc);
     }
     else {
         volatile char namebuf[10]; // must be volatile or gcc optimizes out the second compare and fucks it up
@@ -126,17 +134,23 @@ void UTOUCH_writeIni(Unit *unit, IniWriter *iw)
     iw_cmt_newline(iw);
 
     iw_comment(iw, "Pulse generator clock prescaller (1,2,4,...,128)");
-    iw_entry(iw, "pg-clock-prediv", "%d", (int)priv->cfg.ss_presc);
+    iw_entry(iw, "pg-clock-prediv", "%d", (int)priv->cfg.pg_presc);
     iw_comment(iw, "Sense pad charging time (1-16)");
     iw_entry(iw, "charge-time", "%d", (int)priv->cfg.charge_time);
     iw_comment(iw, "Charge transfer time (1-16)");
     iw_entry(iw, "drain-time", "%d", (int)priv->cfg.drain_time);
+    iw_comment(iw, "Measurement timeout (1-7)");
+    iw_entry(iw, "sense-timeout", "%d", (int)priv->cfg.sense_timeout);
+
+    iw_cmt_newline(iw);
     iw_comment(iw, "Spread spectrum max deviation (0-128,0=off)");
     iw_entry(iw, "ss-deviation", "%d", (int)priv->cfg.spread_deviation);
     iw_comment(iw, "Spreading clock prescaller (1,2)");
     iw_entry(iw, "ss-clock-prediv", "%d", (int)priv->cfg.ss_presc);
-    iw_comment(iw, "Measurement timeout (1-7)");
-    iw_entry(iw, "sense-timeout", "%d", (int)priv->cfg.sense_timeout);
+
+    iw_cmt_newline(iw);
+    iw_comment(iw, "Optimize for interlaced pads");
+    iw_entry(iw, "interlaced-pads", str_yn(priv->cfg.interlaced));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Each used group must have 1 sampling capacitor and 1-3 channels.");
