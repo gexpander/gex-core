@@ -8,9 +8,27 @@
 #define TOUCH_INTERNAL
 #include "_touch_internal.h"
 
-// some channels are mapped to nonexistent ports, so just ignore them - clutters the config
-#define HAVE_CH7 0
-#define HAVE_CH8 0
+const char *utouch_group_labels[8] = {
+    "1:A0, 2:A1, 3:A2, 4:A3",
+    "1:A4, 2:A5, 3:A6, 4:A7",
+    "1:C5, 2:B0, 3:B1, 4:B2",
+    "1:A9, 2:A10, 3:A11, 4:A12",
+    "1:B3, 2:B4, 3:B6, 4:B7",
+    "1:B11, 2:B12, 3:B13, 4:B14",
+    "1:E2, 2:E3, 3:E4, 4:E5",
+    "1:D12, 2:D13, 3:D14, 4:D15",
+};
+
+const Resource utouch_group_rscs[8][4] = {
+    {R_PA0, R_PA1, R_PA2, R_PA3},
+    {R_PA4, R_PA5, R_PA6, R_PA7},
+    {R_PC5, R_PB0, R_PB1, R_PB2},
+    {R_PA9, R_PA10, R_PA11, R_PA12},
+    {R_PB3, R_PB4, R_PB6, R_PB7},
+    {R_PB11, R_PB12, R_PB13, R_PB14},
+    {R_PE2, R_PE3, R_PE4, R_PE5},
+    {R_PD12, R_PD13, R_PD14, R_PD15},
+};
 
 /** Load from a binary buffer stored in Flash */
 void UTOUCH_loadBinary(Unit *unit, PayloadParser *pp)
@@ -73,69 +91,27 @@ error_t UTOUCH_loadIni(Unit *unit, const char *key, const char *value)
     else if (streq(key, "sense-timeout")) {
         priv->cfg.sense_timeout = cfg_u8_parse(value, &suc);
     }
-
-    else if (streq(key, "g1_cap")) {
-        priv->cfg.group_scaps[0] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-    else if (streq(key, "g2_cap")) {
-        priv->cfg.group_scaps[1] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-    else if (streq(key, "g3_cap")) {
-        priv->cfg.group_scaps[2] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-    else if (streq(key, "g4_cap")) {
-        priv->cfg.group_scaps[3] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-    else if (streq(key, "g5_cap")) {
-        priv->cfg.group_scaps[4] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-    else if (streq(key, "g6_cap")) {
-        priv->cfg.group_scaps[5] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-#if HAVE_CH7
-    else if (streq(key, "g7_cap")) {
-        priv->cfg.group_scaps[6] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-#endif
-#if HAVE_CH8
-    else if (streq(key, "g8_cap")) {
-        priv->cfg.group_scaps[7] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-#endif
-
-    else if (streq(key, "g1_ch")) {
-        priv->cfg.group_channels[0] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-    else if (streq(key, "g2_ch")) {
-        priv->cfg.group_channels[1] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-    else if (streq(key, "g3_ch")) {
-        priv->cfg.group_channels[2] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-    else if (streq(key, "g4_ch")) {
-        priv->cfg.group_channels[3] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-    else if (streq(key, "g5_ch")) {
-        priv->cfg.group_channels[4] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-    else if (streq(key, "g6_ch")) {
-        priv->cfg.group_channels[5] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-#if HAVE_CH7
-    else if (streq(key, "g7_ch")) {
-        priv->cfg.group_channels[6] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-#endif
-#if HAVE_CH8
-    else if (streq(key, "g8_ch")) {
-        priv->cfg.group_channels[7] = (uint8_t) cfg_pinmask_parse(value, &suc);
-    }
-#endif
-
     else {
+        volatile char namebuf[10]; // must be volatile or gcc optimizes out the second compare and fucks it up
+
+        for (int i = 0; i < 6; i++) { // skip 7,8
+            SPRINTF(namebuf, "g%d_cap", i+1);
+            if (streq(key, namebuf)) {
+                priv->cfg.group_scaps[i] = (uint8_t) cfg_pinmask_parse(value, &suc);
+                goto matched;
+            }
+
+            SPRINTF(namebuf, "g%d_ch", i+1);
+            if (streq(key, namebuf)) {
+                priv->cfg.group_channels[i] = (uint8_t) cfg_pinmask_parse(value, &suc);
+                goto matched;
+            }
+        }
+
         return E_BAD_KEY;
     }
 
+matched:
     if (!suc) return E_BAD_VALUE;
     return E_SUCCESS;
 }
@@ -167,39 +143,13 @@ void UTOUCH_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Channels are numbered 1,2,3,4");
     iw_cmt_newline(iw);
 
-    iw_comment(iw, "Group 1: A0,A1,A2,A3");
-    iw_entry(iw, "g1_cap", cfg_pinmask_encode(priv->cfg.group_scaps[0], unit_tmp512, true));
-    iw_entry(iw, "g1_ch", cfg_pinmask_encode(priv->cfg.group_channels[0], unit_tmp512, true));
-
-    iw_comment(iw, "Group 2: A4,A5,A6,A7");
-    iw_entry(iw, "g2_cap", cfg_pinmask_encode(priv->cfg.group_scaps[1], unit_tmp512, true));
-    iw_entry(iw, "g2_ch", cfg_pinmask_encode(priv->cfg.group_channels[1], unit_tmp512, true));
-
-    iw_comment(iw, "Group 3: C5,B0,B1,B2");
-    iw_entry(iw, "g3_cap", cfg_pinmask_encode(priv->cfg.group_scaps[2], unit_tmp512, true));
-    iw_entry(iw, "g3_ch", cfg_pinmask_encode(priv->cfg.group_channels[2], unit_tmp512, true));
-
-    iw_comment(iw, "Group 4: A9,A10,A11,A12");
-    iw_entry(iw, "g4_cap", cfg_pinmask_encode(priv->cfg.group_scaps[3], unit_tmp512, true));
-    iw_entry(iw, "g4_ch", cfg_pinmask_encode(priv->cfg.group_channels[3], unit_tmp512, true));
-
-    iw_comment(iw, "Group 5: B3,B4,B6,B7");
-    iw_entry(iw, "g5_cap", cfg_pinmask_encode(priv->cfg.group_scaps[4], unit_tmp512, true));
-    iw_entry(iw, "g5_ch", cfg_pinmask_encode(priv->cfg.group_channels[4], unit_tmp512, true));
-
-    iw_comment(iw, "Group 6: B11,B12,B13,B14");
-    iw_entry(iw, "g6_cap", cfg_pinmask_encode(priv->cfg.group_scaps[5], unit_tmp512, true));
-    iw_entry(iw, "g6_ch", cfg_pinmask_encode(priv->cfg.group_channels[5], unit_tmp512, true));
-
-#if HAVE_CH7
-    iw_comment(iw, "E2,E3,E4,E5");
-    iw_entry(iw, "g7_cap", cfg_pinmask_encode(priv->cfg.group_scaps[6], unit_tmp512, true));
-    iw_entry(iw, "g7_ch", cfg_pinmask_encode(priv->cfg.group_channels[6], unit_tmp512, true));
-#endif
-#if HAVE_CH8
-    iw_comment(iw, "D12,D13,D14,D15");
-    iw_entry(iw, "g8_cap", cfg_pinmask_encode(priv->cfg.group_scaps[7], unit_tmp512, true));
-    iw_entry(iw, "g8_ch", cfg_pinmask_encode(priv->cfg.group_channels[7], unit_tmp512, true));
-#endif
+    char namebuf[10];
+    for (int i = 0; i < 6; i++) { // skip 7,8
+        iw_commentf(iw,  "Group%d - %s", i+1, utouch_group_labels[i]);
+        SPRINTF(namebuf, "g%d_cap", i+1);
+        iw_entry(iw, namebuf, cfg_pinmask_encode(priv->cfg.group_scaps[i], unit_tmp512, true));
+        SPRINTF(namebuf, "g%d_ch", i+1);
+        iw_entry(iw, namebuf, cfg_pinmask_encode(priv->cfg.group_channels[i], unit_tmp512, true));
+    }
 }
 

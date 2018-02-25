@@ -26,8 +26,14 @@ struct priv {
         uint8_t group_channels[8];
     } cfg;
 
-    // internal state
+    uint8_t next_phase;
+    uint32_t channels_phase[3];
+    uint8_t pgen_phase[3];
+    uint16_t readouts[32];
 };
+
+extern const char *utouch_group_labels[8];
+extern const Resource utouch_group_rscs[8][4];
 
 /** Allocate data structure and set defaults */
 error_t UTOUCH_preInit(Unit *unit);

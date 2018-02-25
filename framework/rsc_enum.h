@@ -13,6 +13,7 @@
     X(I2C1) X(I2C2) X(I2C3) \
     X(ADC1) X(ADC2) X(ADC3) X(ADC4) \
     X(DAC1) X(DAC2) \
+    X(TSC) \
     X(USART1) X(USART2) X(USART3) X(USART4) X(USART5) X(USART6) \
     X(TIM1) X(TIM2) X(TIM3) X(TIM4) X(TIM5) \
     X(TIM6) X(TIM7) X(TIM8) X(TIM9) X(TIM10) X(TIM11) X(TIM12) X(TIM13) X(TIM14) \
@@ -24,7 +25,6 @@
 // X(I2S1) X(I2S2) X(I2S3)
 // X(OPAMP1) X(OPAMP2) X(OPAMP3) X(OPAMP4)
 // X(CAN1) X(CAN2)
-// X(TSC)
 // X(DCMI)
 // X(ETH)
 // X(FSMC)
@@ -59,8 +59,12 @@ typedef enum hw_resource Resource;
 /** Enum of all resources */
 enum hw_resource {
 #define X(res_name) R_##res_name,
+    // GPIO are at the beginning, because some units use the constants in their config to represent
+    // selected pins and those must not change with adding more stuff to the main list
     XX_RESOURCES_GPIO
+    // EXTIs (same like GPIOs) have dynamically generated labels to save rom space. Must be contiguous.
     XX_RESOURCES_EXTI
+    // All the rest ...
     XX_RESOURCES
 #undef X
     R_NONE,

@@ -33,18 +33,18 @@ const char * rsc_get_name(Resource rsc)
     // we assume the returned value is not stored anywhere
     // and is directly used in a sprintf call, hence a static buffer is OK to use
 
-    if (rsc >= R_EXTI0 && rsc <= R_EXTI15) {
-        uint8_t index = rsc - R_EXTI0;
-        SNPRINTF(gpionamebuf, 8, "EXTI%d", index);
-        return gpionamebuf;
-    }
-
     // R_PA0 is 0
     if (rsc <= R_PF15) {
         // we assume the returned value is not stored anywhere
         // and is directly used in a sprintf call.
         uint8_t index = rsc;
         SNPRINTF(gpionamebuf, 8, "P%c%d", 'A'+(index/16), index%16);
+        return gpionamebuf;
+    }
+
+    if (rsc >= R_EXTI0 && rsc <= R_EXTI15) {
+        uint8_t index = rsc - R_EXTI0;
+        SNPRINTF(gpionamebuf, 8, "EXTI%d", index);
         return gpionamebuf;
     }
 
@@ -85,11 +85,12 @@ const char * rsc_get_owner_name(Resource rsc)
 
 void rsc_init_registry(void)
 {
-    for(uint32_t i = 0; i < RSCMAP_LEN; i++) {
-        UNIT_PLATFORM.resources[i] = global_rscmap[i] = 0xFF;
-    }
+    memset(UNIT_PLATFORM.resources, 0xFF, RSCMAP_LEN);
+    memset(global_rscmap, 0xFF, RSCMAP_LEN);
 
     rsc_initialized = true;
+
+    rsc_dbg("Total %d hw resources, bitmap has %d bytes.", RESOURCE_COUNT, RSCMAP_LEN);
 }
 
 
