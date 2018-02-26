@@ -11,7 +11,7 @@
 
 #include "unit_base.h"
 
-#define TSC_DEBUG 1
+#define TSC_DEBUG 0
 
 #if TSC_DEBUG
 #define dbg_touch(f,...) dbg(f,##__VA_ARGS__)

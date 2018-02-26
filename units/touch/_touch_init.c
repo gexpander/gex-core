@@ -75,6 +75,8 @@ error_t UTOUCH_init(Unit *unit)
     __HAL_RCC_TSC_FORCE_RESET();
     __HAL_RCC_TSC_RELEASE_RESET();
 
+    priv->all_channels_mask = 0;
+
     for (int gi = 0; gi < 8; gi++) {
         const uint8_t cap = priv->cfg.group_scaps[gi];
         const uint8_t ch = priv->cfg.group_channels[gi];
@@ -132,11 +134,16 @@ error_t UTOUCH_init(Unit *unit)
             else {
                 dbg_touch("TSC ch @ %s", rsc_get_name(r));
 
-                // channels are configured individually when read.
-                // we prepare bitmaps to use for the read groups (all can be read in at most 3 steps)
-                priv->channels_phase[phasenum] |= bit; // this is used for the channel selection register
-                priv->groups_phase[phasenum] |= 1 << gi; // this will be used for the group enable register, if all 0, this and any following phases are unused.
-                phasenum++;
+                if (priv->cfg.interlaced) {
+                    // interlaced - only update the mask beforehand
+                    priv->all_channels_mask |= bit;
+                } else {
+                    // channels are configured individually when read.
+                    // we prepare bitmaps to use for the read groups (all can be read in at most 3 steps)
+                    priv->channels_phase[phasenum] |= bit; // this is used for the channel selection register
+                    priv->groups_phase[phasenum] |= 1 << gi; // this will be used for the group enable register, if all 0, this and any following phases are unused.
+                    phasenum++;
+                }
             }
         }
     }
@@ -154,7 +161,9 @@ error_t UTOUCH_init(Unit *unit)
         TSC->CR |= ((priv->cfg.spread_deviation - 1) << TSC_CR_SSD_Pos) | TSC_CR_SSE;
     }
 
-    dbg_touch("CR = %08x, ht is %d, lt is %d", TSC->CR, priv->cfg.charge_time, priv->cfg.drain_time);
+    dbg_touch("CR = %08x, ht is %d, lt is %d", (int)TSC->CR,
+              (int)priv->cfg.charge_time,
+              (int)priv->cfg.drain_time);
 
     // iofloat is used for discharging
 
@@ -162,16 +171,22 @@ error_t UTOUCH_init(Unit *unit)
     TSC->IER = TSC_IER_EOAIE | TSC_IER_MCEIE;
     irqd_attach(TSC, UTOUCH_HandleIrq, unit);
 
-    dbg_touch("TSC phases:");
-    priv->all_channels_mask = 0;
-    for (int i = 0; i < 3; i++) {
-        priv->all_channels_mask |= priv->channels_phase[i];
-        dbg_touch(" %d: ch %08"PRIx32", g %02"PRIx32, i + 1, priv->channels_phase[i], (uint32_t) priv->groups_phase[i]);
+    if (!priv->cfg.interlaced) {
+        dbg_touch("TSC phases:");
+        for (int i = 0; i < 3; i++) {
+            priv->all_channels_mask |= priv->channels_phase[i];
+
+            dbg_touch(" %d: ch %08"PRIx32", g %02"PRIx32,
+                      i + 1,
+                      priv->channels_phase[i],
+                      (uint32_t) priv->groups_phase[i]);
+        }
     }
 
     priv->status = UTSC_STATUS_BUSY; // first loop ...
     priv->next_phase = 0;
-    UTOUCH_updateTick(unit);
+
+    // starts in the tick callback
 
     return E_SUCCESS;
 }

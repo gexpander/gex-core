@@ -149,7 +149,7 @@ void UTOUCH_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "ss-clock-prediv", "%d", (int)priv->cfg.ss_presc);
 
     iw_cmt_newline(iw);
-    iw_comment(iw, "Optimize for interlaced pads");
+    iw_comment(iw, "Optimize for interlaced pads (individual sampling with others floating)");
     iw_entry(iw, "interlaced-pads", str_yn(priv->cfg.interlaced));
 
     iw_cmt_newline(iw);

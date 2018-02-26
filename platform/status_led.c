@@ -61,6 +61,12 @@ void Indicator_Effect(enum GEX_StatusIndicator indicator)
         led_on();
     }
 
+    // prevent the two disk ops interfering (happens in write-reload)
+    if (indicator == STATUS_DISK_BUSY && active_effect == STATUS_DISK_BUSY_SHORT) return;
+    if (indicator == STATUS_DISK_BUSY_SHORT && active_effect == STATUS_DISK_BUSY) return;
+
+    // TODO add some better protection against effect overlap?
+
     active_effect = indicator;
     effect_time = 0;
 }
@@ -119,7 +125,15 @@ void Indicator_Tick(void)
                 active_effect = STATUS_NONE;
             }
             else if (effect_time % 100 == 0) led_on();
-            else if (effect_time % 100 == 50) led_off();
+            else if (effect_time % 100 == 20) led_off();
+        }
+        else if (active_effect == STATUS_DISK_BUSY_SHORT) {
+            if (effect_time >= 200) {
+                led_off();
+                active_effect = STATUS_NONE;
+            }
+            else if (effect_time % 100 == 0) led_on();
+            else if (effect_time % 100 == 20) led_off();
         }
         else if (active_effect == STATUS_WELCOME) {
             if (effect_time == 0) led_on();
