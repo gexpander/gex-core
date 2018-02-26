@@ -3,7 +3,6 @@
 //
 
 #include "platform.h"
-#include "utils/avrlibc.h"
 #include "hw_utils.h"
 
 /** Convert pin number to LL bitfield */
@@ -121,6 +120,30 @@ error_t hw_configure_gpio_af(char port_name, uint8_t pin_num, uint32_t ll_af)
     if (!suc) return E_BAD_CONFIG;
 
     if (pin_num < 8)
+        LL_GPIO_SetAFPin_0_7(port, ll_pin, ll_af);
+    else
+        LL_GPIO_SetAFPin_8_15(port, ll_pin, ll_af);
+
+    LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ALTERNATE);
+
+#endif
+    return E_SUCCESS;
+}
+
+/** Configure a pin to alternate function */
+error_t hw_configure_gpiorsc_af(Resource rsc, uint32_t ll_af)
+{
+#if PLAT_NO_AFNUM
+    trap("Illegal call to hw_configure_gpio_af() on this platform");
+#else
+
+    bool suc = true;
+    GPIO_TypeDef *port;
+    uint32_t ll_pin;
+    suc = hw_pinrsc2ll(rsc, &port, &ll_pin);
+    if (!suc) return E_BAD_CONFIG;
+
+    if (ll_pin & 0xFF)
         LL_GPIO_SetAFPin_0_7(port, ll_pin, ll_af);
     else
         LL_GPIO_SetAFPin_8_15(port, ll_pin, ll_af);
@@ -288,6 +311,12 @@ void hw_periph_clock_enable(void *periph)
 #ifdef DAC2
     else if (periph == DAC2) __HAL_RCC_DAC2_CLK_ENABLE();
 #endif
+
+        // --- TSC ---
+#ifdef TSC
+    else if (periph == TSC) __HAL_RCC_TSC_CLK_ENABLE();
+#endif
+
     else {
         dbg("Periph 0x%p missing in hw clock enable func", periph);
         trap("BUG");
@@ -393,6 +422,12 @@ void hw_periph_clock_disable(void *periph)
 #ifdef DAC2
         else if (periph == DAC2) __HAL_RCC_DAC2_CLK_DISABLE();
 #endif
+
+        // --- TSC ---
+#ifdef TSC
+    else if (periph == TSC) __HAL_RCC_TSC_CLK_DISABLE();
+#endif
+
     else {
         dbg("Periph 0x%p missing in hw clock disable func", periph);
         trap("BUG");

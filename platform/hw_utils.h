@@ -88,6 +88,9 @@ void hw_deinit_unit_pins(Unit *unit);
  */
 error_t hw_configure_gpio_af(char port_name, uint8_t pin_num, uint32_t ll_af) __attribute__((warn_unused_result));
 
+/** Configure a pin to alternate function via rsc */
+error_t hw_configure_gpiorsc_af(Resource rsc, uint32_t ll_af) __attribute__((warn_unused_result));
+
 /**
  * Configure multiple pins using the bitmap pattern
  *

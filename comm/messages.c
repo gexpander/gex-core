@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/21.
 //
 
+#include <platform/status_led.h>
 #include "platform.h"
 #include "framework/settings.h"
 #include "utils/ini_parser.h"
@@ -91,6 +92,7 @@ static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
     bulk->userdata = NULL;
 
     bulkread_start(tf, bulk);
+    Indicator_Effect(STATUS_DISK_BUSY_SHORT);
 
     return TF_STAY;
 }
@@ -152,6 +154,8 @@ static TF_Result lst_ini_import(TinyFrame *tf, TF_Msg *msg)
 
     bulkwrite_start(tf, bulk);
 
+    Indicator_Effect(STATUS_DISK_BUSY);
+
 done:
     return TF_STAY;
 }
@@ -161,6 +165,7 @@ done:
 /** Listener: Save settings to Flash */
 static TF_Result lst_persist_cfg(TinyFrame *tf, TF_Msg *msg)
 {
+    Indicator_Effect(STATUS_DISK_REMOVED);
     settings_save();
     return TF_STAY;
 }

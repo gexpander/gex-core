@@ -2,7 +2,6 @@
 // Created by MightyPork on 2017/11/26.
 //
 
-#include <units/fcap/unit_fcap.h>
 #include "platform.h"
 #include "usbd_core.h"
 #include "USB/usb_device.h"
@@ -19,6 +18,8 @@
 #include "units/usart/unit_usart.h"
 #include "units/spi/unit_spi.h"
 #include "units/sipo/unit_sipo.h"
+#include "units/fcap/unit_fcap.h"
+#include "units/touch/unit_touch.h"
 #include "hw_utils.h"
 
 void plat_init_resources(void)
@@ -90,6 +91,7 @@ void plat_init_resources(void)
     ureg_add_type(&UNIT_ADC);
     ureg_add_type(&UNIT_SIPO);
     ureg_add_type(&UNIT_FCAP);
+    ureg_add_type(&UNIT_TOUCH);
 
     // Free all present resources
     {
@@ -98,7 +100,7 @@ void plat_init_resources(void)
 //        rsc_free_range(NULL, R_COMP1, R_COMP2);
         rsc_free(NULL, R_DAC1);
 //        rsc_free(NULL, R_HDMI_CEC);
-//        rsc_free(NULL, R_TSC);
+        rsc_free(NULL, R_TSC);
         rsc_free_range(NULL, R_I2C1, R_I2C2);
 //        rsc_free_range(NULL, R_I2S1, R_I2S2);
         rsc_free_range(NULL, R_SPI1, R_SPI2);
@@ -154,7 +156,7 @@ void plat_init_resources(void)
         rsc_free_range(NULL, R_TIM1, R_TIM4);
         rsc_free_range(NULL, R_TIM6, R_TIM8);
         rsc_free_range(NULL, R_TIM15, R_TIM17);
-//        rsc_free(NULL, R_TSC);
+        rsc_free(NULL, R_TSC);
         rsc_free_range(NULL, R_USART1, R_USART5);
 
         rsc_free_range(NULL, R_PA0, R_PA15);

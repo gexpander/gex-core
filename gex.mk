@@ -16,6 +16,7 @@ GEX_SRC_DIR = \
     User/units/adc \
     User/units/sipo \
     User/units/fcap \
+    User/units/touch \
     User/TinyFrame \
     User/CWPack \
     User/tasks
@@ -95,7 +96,7 @@ GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DUSE_STACK_MONITOR=1 \
     -DUSE_DEBUG_UART=1 \
     -DDEBUG_MALLOC=0 \
-    -DDEBUG_RSC=1
+    -DDEBUG_RSC=0
 
 endif
 
