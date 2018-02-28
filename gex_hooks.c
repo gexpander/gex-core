@@ -43,6 +43,18 @@ void GEX_PreInit(void)
     dbg("\r\n\033[37;1m*** GEX "GEX_VERSION" on "GEX_PLATFORM" ***\033[m");
     dbg("Build "__DATE__" "__TIME__);
 
+    PRINTF("Reset cause:");
+    if (LL_RCC_IsActiveFlag_LPWRRST()) PRINTF(" LPWR");
+    if (LL_RCC_IsActiveFlag_WWDGRST()) PRINTF(" WWDG");
+    if (LL_RCC_IsActiveFlag_IWDGRST()) PRINTF(" IWDG");
+    if (LL_RCC_IsActiveFlag_SFTRST()) PRINTF(" SFT");
+    if (LL_RCC_IsActiveFlag_PORRST()) PRINTF(" POR");
+    if (LL_RCC_IsActiveFlag_PINRST()) PRINTF(" PIN");
+    if (LL_RCC_IsActiveFlag_OBLRST()) PRINTF(" OBL");
+    if (LL_RCC_IsActiveFlag_V18PWRRST()) PRINTF(" V18PWR");
+    PUTNL();
+    LL_RCC_ClearResetFlags();
+
     plat_init();
 
     MX_USB_DEVICE_Init();

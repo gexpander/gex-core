@@ -15,6 +15,7 @@
 #include "debug_uart.h"
 #include "irq_dispatcher.h"
 #include "timebase.h"
+#include "watchdog.h"
 
 void plat_init(void)
 {
@@ -39,4 +40,6 @@ void plat_init(void)
     settings_load(); // XXX maybe this should be moved to the main task
 
     comm_init();
+
+    wd_init();
 }

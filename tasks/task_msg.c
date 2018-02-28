@@ -3,6 +3,7 @@
 //
 
 #include "platform.h"
+#include "platform/watchdog.h"
 #include "comm/messages.h"
 #include "task_msg.h"
 
@@ -85,7 +86,9 @@ void TaskMsgJob(const void *argument)
             #if CDC_LOOPBACK_TEST
                 TF_WriteImpl(comm, slot.msg.data, slot.msg.len);
             #else
+                wd_suspend();
                 TF_Accept(comm, slot.msg.data, slot.msg.len);
+                wd_resume();
             #endif
         }
 
