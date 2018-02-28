@@ -68,7 +68,7 @@ static uint32_t read_file_pinout_txt(uint32_t sector_offset, uint8_t *data, uint
 
 void vfs_user_build_filesystem(void)
 {
-    dbg("Rebuilding VFS...");
+    vfs_printf("Rebuilding VFS...");
 
     // Setup the filesystem based on target parameters
     vfs_init(daplink_drive_name, 0/*unused "disk size"*/);

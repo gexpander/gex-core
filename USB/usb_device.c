@@ -66,6 +66,7 @@ PCD_HandleTypeDef hpcd_USB_FS;
 /* init function */                                        
 void MX_USB_DEVICE_Init(void)
 {
+  dbg("USB device init ...");
   /* USER CODE BEGIN USB_DEVICE_Init_PreTreatment */
   
   /* USER CODE END USB_DEVICE_Init_PreTreatment */

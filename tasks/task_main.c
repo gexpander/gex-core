@@ -4,6 +4,7 @@
 
 #include "platform.h"
 #include "platform/lock_jumper.h"
+#include "platform/watchdog.h"
 #include "status_led.h"
 #include "utils/stacksmon.h"
 #include "vfs/vfs_manager.h"
@@ -45,6 +46,8 @@ void TaskMain(void const * argument)
 
             cnt++;
             Indicator_Heartbeat();
+
+            wd_restart();
         }
 
         // if no message and it just timed out, go wait some more...
