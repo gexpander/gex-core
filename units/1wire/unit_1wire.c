@@ -38,12 +38,13 @@ static void OW_TimerRespCb(Job *job)
  *
  * @param xTimer
  */
-void OW_TimerCb(TimerHandle_t xTimer)
+void OW_tickHandler(Unit *unit)
 {
-    Unit *unit = pvTimerGetTimerID(xTimer);
-    assert_param(unit);
     struct priv *priv = unit->data;
-    assert_param(priv->busy);
+    if(!priv->busy) {
+        dbg("ow tick should be disabled now!");
+        return;
+    }
 
     if (priv->parasitic) {
         // this is the end of the 750ms measurement time
@@ -56,7 +57,8 @@ void OW_TimerCb(TimerHandle_t xTimer)
 
         uint32_t time = PTIM_GetTime();
         if (time - priv->busyStart > 1000) {
-            xTimerStop(xTimer, 100);
+            unit->tick_interval = 0;
+            unit->_tick_cnt = 0;
 
             Job j = {
                 .unit = unit,
@@ -69,7 +71,8 @@ void OW_TimerCb(TimerHandle_t xTimer)
 
     return;
 halt_ok:
-    xTimerStop(xTimer, 100);
+    unit->tick_interval = 0;
+    unit->_tick_cnt = 0;
 
     Job j = {
         .unit = unit,
@@ -78,7 +81,6 @@ halt_ok:
     };
     scheduleJob(&j);
 }
-
 
 enum PinCmd_ {
     CMD_CHECK_PRESENCE = 0, // simply tests that any devices are attached
@@ -120,13 +122,13 @@ static error_t OW_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
          */
         case CMD_POLL_FOR_1:
             // This can't be exposed via the UU API, due to being async
+            unit->_tick_cnt = 0;
+            unit->tick_interval = 750;
             if (priv->parasitic) {
-                assert_param(pdPASS == xTimerChangePeriod(priv->busyWaitTimer, 750, 100));
+                unit->tick_interval = 750;
             } else {
-                // every 10 ticks
-                assert_param(pdPASS == xTimerChangePeriod(priv->busyWaitTimer, 10, 100));
+                unit->tick_interval = 10;
             }
-            assert_param(pdPASS == xTimerStart(priv->busyWaitTimer, 100));
             priv->busy = true;
             priv->busyStart = PTIM_GetTime();
             priv->busyRequestId = frame_id;
@@ -242,4 +244,5 @@ const UnitDriver UNIT_1WIRE = {
     .deInit = OW_deInit,
     // Function
     .handleRequest = OW_handleRequest,
+    .updateTick = OW_tickHandler,
 };

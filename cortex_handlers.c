@@ -13,8 +13,10 @@
 
 void SysTick_Handler(void)
 {
-    GEX_MsTick();
+    // OS first, avoids jitter
     osSystickHandler();
+    // GEX periodic updates
+    GEX_MsTick();
 }
 
 

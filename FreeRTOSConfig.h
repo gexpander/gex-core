@@ -110,7 +110,7 @@ extern uint32_t SystemCoreClock;
 #define configCHECK_FOR_STACK_OVERFLOW           2
 #define configENABLE_BACKWARD_COMPATIBILITY      0
 
-#define configUSE_TIMERS                         1
+#define configUSE_TIMERS                         0
 #define configTIMER_TASK_PRIORITY                TSK_TIMERS_PRIO // above normal
 #define configTIMER_TASK_STACK_DEPTH             TSK_STACK_TIMERS //128
 #define configTIMER_QUEUE_LENGTH                 4

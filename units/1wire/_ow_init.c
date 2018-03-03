@@ -14,15 +14,6 @@ error_t OW_preInit(Unit *unit)
     struct priv *priv = unit->data = calloc_ck(1, sizeof(struct priv));
     if (priv == NULL) return E_OUT_OF_MEM;
 
-    // the timer is not started until needed
-    priv->busyWaitTimer = xTimerCreate("1w_tim", // name
-                                       750,      // interval (will be changed when starting it)
-                                       true,     // periodic (we use this only for the polling variant, the one-shot will stop the timer in the CB)
-                                       unit,     // user data
-                                       OW_TimerCb); // callback
-
-    if (priv->busyWaitTimer == NULL) return E_OUT_OF_MEM;
-
     // some defaults
     priv->pin_number = 0;
     priv->port_name = 'A';
@@ -62,9 +53,6 @@ void OW_deInit(Unit *unit)
 
     // Release all resources
     rsc_teardown(unit);
-
-    // Delete the software timer
-    assert_param(pdPASS == xTimerDelete(priv->busyWaitTimer, 1000));
 
     // Free memory
     free_ck(unit->data);
