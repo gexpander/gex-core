@@ -92,24 +92,24 @@ void DIn_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "port", "%c", priv->port_name);
 
     iw_comment(iw, "Pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", cfg_pinmask_encode(priv->pins, unit_tmp512, 0));
+    iw_entry_s(iw, "pins", cfg_pinmask_encode(priv->pins, unit_tmp512, 0));
 
     iw_comment(iw, "Pins with pull-up");
-    iw_entry(iw, "pull-up", cfg_pinmask_encode(priv->pullup, unit_tmp512, 0));
+    iw_entry_s(iw, "pull-up", cfg_pinmask_encode(priv->pullup, unit_tmp512, 0));
 
     iw_comment(iw, "Pins with pull-down");
-    iw_entry(iw, "pull-down", cfg_pinmask_encode(priv->pulldown, unit_tmp512, 0));
+    iw_entry_s(iw, "pull-down", cfg_pinmask_encode(priv->pulldown, unit_tmp512, 0));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Trigger pins activated by rising/falling edge");
-    iw_entry(iw, "trig-rise", cfg_pinmask_encode(priv->trig_rise, unit_tmp512, 0));
-    iw_entry(iw, "trig-fall", cfg_pinmask_encode(priv->trig_fall, unit_tmp512, 0));
+    iw_entry_s(iw, "trig-rise", cfg_pinmask_encode(priv->trig_rise, unit_tmp512, 0));
+    iw_entry_s(iw, "trig-fall", cfg_pinmask_encode(priv->trig_fall, unit_tmp512, 0));
 
     iw_comment(iw, "Trigger pins auto-armed by default");
-    iw_entry(iw, "auto-trigger", cfg_pinmask_encode(priv->def_auto, unit_tmp512, 0));
+    iw_entry_s(iw, "auto-trigger", cfg_pinmask_encode(priv->def_auto, unit_tmp512, 0));
 
     iw_comment(iw, "Triggers hold-off time (ms)");
-    iw_entry(iw, "hold-off", "%d", (int)priv->trig_holdoff);
+    iw_entry_d(iw, "hold-off", priv->trig_holdoff);
 
 #if PLAT_NO_FLOATING_INPUTS
     iw_comment(iw, "NOTE: Pins use pull-up by default.\r\n");

@@ -54,8 +54,8 @@ void Npx_writeIni(Unit *unit, IniWriter *iw)
     struct priv *priv = unit->data;
 
     iw_comment(iw, "Data pin");
-    iw_entry(iw, "pin", cfg_pinrsc_encode(priv->cfg.pin));
+    iw_entry_s(iw, "pin", cfg_pinrsc_encode(priv->cfg.pin));
 
     iw_comment(iw, "Number of pixels");
-    iw_entry(iw, "pixels", "%d", priv->cfg.pixels);
+    iw_entry_d(iw, "pixels", priv->cfg.pixels);
 }

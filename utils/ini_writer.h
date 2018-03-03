@@ -126,6 +126,9 @@ __attribute__((format(printf,2,3)));
 void iw_entry(IniWriter *iw, const char *key, const char *format, ...)
     __attribute__((format(printf,3,4)));
 
+void iw_entry_s(IniWriter *iw, const char *key, const char *value);
+void iw_entry_d(IniWriter *iw, const char *key, int32_t value);
+
 /**
  * Measure total ini writer length using a dummy write
  *

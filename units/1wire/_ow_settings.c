@@ -64,5 +64,5 @@ void OW_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "pin", "%c%d", priv->port_name,  priv->pin_number);
 
     iw_comment(iw, "Parasitic (bus-powered) mode");
-    iw_entry(iw, "parasitic", str_yn(priv->parasitic));
+    iw_entry_s(iw, "parasitic", str_yn(priv->parasitic));
 }

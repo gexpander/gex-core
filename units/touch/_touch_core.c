@@ -37,29 +37,33 @@ static void UTOUCH_EventReportJob(Job *job)
     EventReport_Send(&er);
 }
 
-static void UTOUCH_CheckForBinaryEvents(Unit *unit)
+static void UTOUCH_CheckForBinaryEvents(Unit *const unit)
 {
     struct priv *priv = unit->data;
 
-    uint32_t time_ms = PTIM_GetTime();
+    const uint32_t time_ms = PTIM_GetTime();
 
     if (priv->last_done_ms == 0) {
         // avoid bug with trigger on first capture
         priv->last_done_ms = time_ms;
     }
 
-    uint64_t ts = PTIM_GetMicrotime();
+    const uint64_t ts = PTIM_GetMicrotime();
     uint32_t eventpins = 0;
-    for (int i = 0; i < 32; i++) {
+
+    const uint16_t ms_elapsed = (uint16_t) (time_ms - priv->last_done_ms);
+
+    for (uint16_t i = 0; i < 32; i++) {
         const uint32_t poke = (uint32_t) (1 << i);
         if (0 == (priv->all_channels_mask & poke)) continue;
         if (priv->binary_thr[i] == 0) continue; // skip disabled channels
 
-        const bool can_go_up = !(priv->binary_active_bits&poke) && (priv->readouts[i] > (priv->binary_thr[i] + priv->binary_hysteresis));
-        const bool can_go_down = (priv->binary_active_bits&poke) && (priv->readouts[i] < priv->binary_thr[i]);
+        const bool isactive = (bool) (priv->binary_active_bits & poke);
+        const bool can_go_up = !isactive && (priv->readouts[i] > (priv->binary_thr[i] + priv->binary_hysteresis));
+        const bool can_go_down = isactive && (priv->readouts[i] < priv->binary_thr[i]);
 
         if (can_go_up) {
-            priv->bin_trig_cnt[i] += (time_ms - priv->last_done_ms);
+            priv->bin_trig_cnt[i] += ms_elapsed;
             if (priv->bin_trig_cnt[i] >= priv->binary_debounce_ms) {
                 priv->binary_active_bits |= poke;
                 priv->bin_trig_cnt[i] = 0; // reset for the other direction of the switch
@@ -72,7 +76,7 @@ static void UTOUCH_CheckForBinaryEvents(Unit *unit)
         }
 
         if (can_go_down) {
-            priv->bin_trig_cnt[i] -= (time_ms - priv->last_done_ms);
+            priv->bin_trig_cnt[i] -= ms_elapsed;
             if (priv->bin_trig_cnt[i] <= -priv->binary_debounce_ms) {
                 priv->binary_active_bits &= ~poke;
                 priv->bin_trig_cnt[i] = 0; // reset for the other direction of the switch

@@ -156,7 +156,7 @@ void UUSART_writeIni(Unit *unit, IniWriter *iw)
     struct priv *priv = unit->data;
 
     iw_comment(iw, "Peripheral number (UARTx 1-4)");
-    iw_entry(iw, "device", "%d", (int)priv->periph_num);
+    iw_entry_d(iw, "device", priv->periph_num);
 
     iw_comment(iw, "Pin mappings (TX,RX,CK,CTS,RTS/DE)");
 #if GEX_PLAT_F072_DISCOVERY
@@ -173,41 +173,41 @@ void UUSART_writeIni(Unit *unit, IniWriter *iw)
 #else
     #error "BAD PLATFORM!"
 #endif
-    iw_entry(iw, "remap", "%d", (int)priv->remap);
+    iw_entry_d(iw, "remap", priv->remap);
 
     iw_cmt_newline(iw);
-    iw_comment(iw, "Baud rate in bps (eg. 9600, 115200)"); // TODO examples/range
-    iw_entry(iw, "baud-rate", "%d", (int)priv->baudrate);
+    iw_comment(iw, "Baud rate in bps (eg. 9600)");
+    iw_entry_d(iw, "baud-rate", priv->baudrate);
 
     iw_comment(iw, "Parity type (NONE, ODD, EVEN)");
-    iw_entry(iw, "parity", cfg_enum3_encode(priv->parity,
+    iw_entry_s(iw, "parity", cfg_enum3_encode(priv->parity,
                                                   0, "NONE",
                                                   1, "ODD",
                                                   2, "EVEN"));
 
     iw_comment(iw, "Number of stop bits (0.5, 1, 1.5, 2)");
-    iw_entry(iw, "stop-bits", cfg_enum4_encode(priv->stopbits,
+    iw_entry_s(iw, "stop-bits", cfg_enum4_encode(priv->stopbits,
                                                      0, "0.5",
                                                      1, "1",
                                                      2, "1.5",
                                                      3, "2"));
 
     iw_comment(iw, "Bit order (LSB or MSB first)");
-    iw_entry(iw, "first-bit", cfg_enum2_encode((uint32_t) priv->lsb_first,
+    iw_entry_s(iw, "first-bit", cfg_enum2_encode((uint32_t) priv->lsb_first,
                                                0, "MSB",
                                                1, "LSB"));
 
     iw_comment(iw, "Word width (7,8,9) - including parity bit if used");
-    iw_entry(iw, "word-width", "%d", (int)priv->width);
+    iw_entry_d(iw, "word-width", (int)priv->width);
 
     iw_comment(iw, "Enabled lines (RX,TX,RXTX)");
-    iw_entry(iw, "direction", cfg_enum3_encode(priv->direction,
+    iw_entry_s(iw, "direction", cfg_enum3_encode(priv->direction,
                                                1, "RX",
                                                2, "TX",
                                                3, "RXTX"));
 
     iw_comment(iw, "Hardware flow control (NONE, RTS, CTS, FULL)");
-    iw_entry(iw, "hw-flow-control", cfg_enum4_encode(priv->hw_flow_control,
+    iw_entry_s(iw, "hw-flow-control", cfg_enum4_encode(priv->hw_flow_control,
                                                            0, "NONE",
                                                            1, "RTS",
                                                            2, "CTS",
@@ -215,19 +215,19 @@ void UUSART_writeIni(Unit *unit, IniWriter *iw)
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Generate serial clock (Y,N)");
-    iw_entry(iw, "clock-output", str_yn(priv->clock_output));
-    iw_comment(iw, "Output clock polarity: 0,1 (clock idle level)");
-    iw_entry(iw, "cpol", "%d", (int)priv->cpol);
-    iw_comment(iw, "Output clock phase: 0,1 (active edge, 0-first, 1-second)");
-    iw_entry(iw, "cpha", "%d", (int)priv->cpha);
+    iw_entry_s(iw, "clock-output", str_yn(priv->clock_output));
+    iw_comment(iw, "Clock polarity: 0,1");
+    iw_entry_d(iw, "cpol", priv->cpol);
+    iw_comment(iw, "Clock phase: 0,1");
+    iw_entry_d(iw, "cpha", priv->cpha);
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Generate RS485 Driver Enable signal (Y,N) - uses RTS pin");
-    iw_entry(iw, "de-output", str_yn(priv->de_output));
+    iw_entry_s(iw, "de-output", str_yn(priv->de_output));
     iw_comment(iw, "DE active level: 0,1");
-    iw_entry(iw, "de-polarity", "%d", (int)(priv->de_polarity));
+    iw_entry_d(iw, "de-polarity", (priv->de_polarity));
     iw_comment(iw, "DE assert time (0-31)");
-    iw_entry(iw, "de-assert-time", "%d", (int)(priv->de_assert_time));
+    iw_entry_d(iw, "de-assert-time", (priv->de_assert_time));
     iw_comment(iw, "DE clear time (0-31)");
-    iw_entry(iw, "de-clear-time", "%d", (int)(priv->de_clear_time));
+    iw_entry_d(iw, "de-clear-time", (priv->de_clear_time));
 }

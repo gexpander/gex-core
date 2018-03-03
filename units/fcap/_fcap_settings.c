@@ -92,20 +92,20 @@ void UFCAP_writeIni(Unit *unit, IniWriter *iw)
     iw_cmt_newline(iw);
 
     iw_comment(iw, "Active level or edge (0-low,falling; 1-high,rising)");
-    iw_entry(iw, "active-level", "%d", (int)priv->conf.active_level);
+    iw_entry_d(iw, "active-level", priv->conf.active_level);
 
     iw_comment(iw, "Input filtering (0-15)");
-    iw_entry(iw, "input-filter", "%d", (int)priv->conf.dfilter);
+    iw_entry_d(iw, "input-filter", priv->conf.dfilter);
 
     iw_comment(iw, "Pulse counter pre-divider (1,2,4,8)");
-    iw_entry(iw, "direct-presc", "%d", (int)priv->conf.direct_presc);
+    iw_entry_d(iw, "direct-presc", priv->conf.direct_presc);
 
     iw_comment(iw, "Pulse counting interval (ms)");
-    iw_entry(iw, "direct-time", "%d", (int)priv->conf.direct_msec);
+    iw_entry_d(iw, "direct-time", priv->conf.direct_msec);
     iw_cmt_newline(iw);
 
     iw_comment(iw, "Mode on startup: N-none, I-indirect, D-direct, F-free count");
-    iw_entry(iw, "initial-mode", cfg_enum4_encode(priv->conf.startmode,
+    iw_entry_s(iw, "initial-mode", cfg_enum4_encode(priv->conf.startmode,
                                                   OPMODE_IDLE, "N",
                                                   OPMODE_INDIRECT_CONT, "I",
                                                   OPMODE_DIRECT_CONT, "D",

@@ -74,7 +74,7 @@ void UI2C_writeIni(Unit *unit, IniWriter *iw)
     struct priv *priv = unit->data;
 
     iw_comment(iw, "Peripheral number (I2Cx)");
-    iw_entry(iw, "device", "%d", (int)priv->periph_num);
+    iw_entry_d(iw, "device", priv->periph_num);
 
     iw_comment(iw, "Pin mappings (SCL,SDA)");
 #if GEX_PLAT_F072_DISCOVERY
@@ -89,15 +89,15 @@ void UI2C_writeIni(Unit *unit, IniWriter *iw)
 #else
     #error "BAD PLATFORM!"
 #endif
-    iw_entry(iw, "remap", "%d", (int)priv->remap);
+    iw_entry_d(iw, "remap", priv->remap);
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Speed: 1-Standard, 2-Fast, 3-Fast+");
-    iw_entry(iw, "speed", "%d", (int)priv->speed);
+    iw_entry_d(iw, "speed", priv->speed);
 
     iw_comment(iw, "Analog noise filter enable (Y,N)");
-    iw_entry(iw, "analog-filter", str_yn(priv->anf));
+    iw_entry_s(iw, "analog-filter", str_yn(priv->anf));
 
     iw_comment(iw, "Digital noise filter bandwidth (0-15)");
-    iw_entry(iw, "digital-filter", "%d", (int)priv->dnf);
+    iw_entry_d(iw, "digital-filter", priv->dnf);
 }

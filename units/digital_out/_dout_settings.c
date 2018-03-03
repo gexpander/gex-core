@@ -72,11 +72,11 @@ void DOut_writeIni(Unit *unit, IniWriter *iw)
     iw_entry(iw, "port", "%c", priv->port_name);
 
     iw_comment(iw, "Pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", cfg_pinmask_encode(priv->pins, unit_tmp512, 0));
+    iw_entry_s(iw, "pins", cfg_pinmask_encode(priv->pins, unit_tmp512, 0));
 
     iw_comment(iw, "Initially high pins");
-    iw_entry(iw, "initial", cfg_pinmask_encode(priv->initial, unit_tmp512, 0));
+    iw_entry_s(iw, "initial", cfg_pinmask_encode(priv->initial, unit_tmp512, 0));
 
     iw_comment(iw, "Open-drain pins");
-    iw_entry(iw, "open-drain", cfg_pinmask_encode(priv->open_drain, unit_tmp512, 0));
+    iw_entry_s(iw, "open-drain", cfg_pinmask_encode(priv->open_drain, unit_tmp512, 0));
 }

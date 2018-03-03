@@ -98,19 +98,19 @@ void USIPO_writeIni(Unit *unit, IniWriter *iw)
     struct priv *priv = unit->data;
 
     iw_comment(iw, "Shift pin & its active edge (1-rising,0-falling)");
-    iw_entry(iw, "shift-pin", cfg_pinrsc_encode(priv->cfg.pin_shift));
-    iw_entry(iw, "shift-pol", "%d", priv->cfg.shift_pol);
+    iw_entry_s(iw, "shift-pin", cfg_pinrsc_encode(priv->cfg.pin_shift));
+    iw_entry_d(iw, "shift-pol", priv->cfg.shift_pol);
 
     iw_comment(iw, "Store pin & its active edge");
-    iw_entry(iw, "store-pin", cfg_pinrsc_encode(priv->cfg.pin_store));
-    iw_entry(iw, "store-pol", "%d", priv->cfg.store_pol);
+    iw_entry_s(iw, "store-pin", cfg_pinrsc_encode(priv->cfg.pin_store));
+    iw_entry_d(iw, "store-pol", priv->cfg.store_pol);
 
     iw_comment(iw, "Clear pin & its active level");
-    iw_entry(iw, "clear-pin", cfg_pinrsc_encode(priv->cfg.pin_clear));
-    iw_entry(iw, "clear-pol", "%d", priv->cfg.clear_pol);
+    iw_entry_s(iw, "clear-pin", cfg_pinrsc_encode(priv->cfg.pin_clear));
+    iw_entry_d(iw, "clear-pol", priv->cfg.clear_pol);
 
     iw_comment(iw, "Data port and pins");
     iw_entry(iw, "data-port", "%c", priv->cfg.data_pname);
-    iw_entry(iw, "data-pins", cfg_pinmask_encode(priv->cfg.data_pins, unit_tmp512, true));
+    iw_entry_s(iw, "data-pins", cfg_pinmask_encode(priv->cfg.data_pins, unit_tmp512, true));
 }
 

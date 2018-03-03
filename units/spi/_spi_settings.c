@@ -98,7 +98,7 @@ void USPI_writeIni(Unit *unit, IniWriter *iw)
     struct priv *priv = unit->data;
 
     iw_comment(iw, "Peripheral number (SPIx)");
-    iw_entry(iw, "device", "%d", (int)priv->periph_num);
+    iw_entry_d(iw, "device", priv->periph_num);
 
     // TODO show a legend for peripherals and remaps
     iw_comment(iw, "Pin mappings (SCK,MISO,MOSI)");
@@ -114,28 +114,28 @@ void USPI_writeIni(Unit *unit, IniWriter *iw)
 #else
     #error "BAD PLATFORM!"
 #endif
-    iw_entry(iw, "remap", "%d", (int)priv->remap);
+    iw_entry_d(iw, "remap", priv->remap);
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Prescaller: 2,4,8,...,256");
-    iw_entry(iw, "prescaller", "%d", (int)priv->prescaller);
+    iw_entry_d(iw, "prescaller", priv->prescaller);
 
     iw_comment(iw, "Clock polarity: 0,1 (clock idle level)");
-    iw_entry(iw, "cpol", "%d", (int)priv->cpol);
+    iw_entry_d(iw, "cpol", priv->cpol);
 
     iw_comment(iw, "Clock phase: 0,1 (active edge, 0-first, 1-second)");
-    iw_entry(iw, "cpha", "%d", (int)priv->cpha);
+    iw_entry_d(iw, "cpha", priv->cpha);
 
     iw_comment(iw, "Transmit only, disable MISO");
-    iw_entry(iw, "tx-only", str_yn(priv->tx_only));
+    iw_entry_s(iw, "tx-only", str_yn(priv->tx_only));
 
     iw_comment(iw, "Bit order (LSB or MSB first)");
-    iw_entry(iw, "first-bit", cfg_enum2_encode((uint32_t) priv->lsb_first, 0, "MSB", 1, "LSB"));
+    iw_entry_s(iw, "first-bit", cfg_enum2_encode((uint32_t) priv->lsb_first, 0, "MSB", 1, "LSB"));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "SS port name");
     iw_entry(iw, "port", "%c", priv->ssn_port_name);
 
     iw_comment(iw, "SS pins (comma separated, supports ranges)");
-    iw_entry(iw, "pins", cfg_pinmask_encode(priv->ssn_pins, unit_tmp512, 0));
+    iw_entry_s(iw, "pins", cfg_pinmask_encode(priv->ssn_pins, unit_tmp512, 0));
 }

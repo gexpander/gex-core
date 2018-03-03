@@ -80,14 +80,14 @@ void UADC_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "Enabled channels, comma separated");
     iw_comment(iw, " 0  1  2  3  4  5  6  7    8  9   10 11 12 13 14 15   16    17");
     iw_comment(iw, "A0 A1 A2 A3 A4 A5 A6 A7   B0 B1   C0 C1 C2 C3 C4 C5   Tsens Vref");
-    iw_entry(iw, "channels", cfg_pinmask_encode(priv->cfg.channels, unit_tmp512, true));
+    iw_entry_s(iw, "channels", cfg_pinmask_encode(priv->cfg.channels, unit_tmp512, true));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Sampling time (0-7)");
-    iw_entry(iw, "sample_time", "%d", (int)priv->cfg.sample_time);
+    iw_entry_d(iw, "sample_time", priv->cfg.sample_time);
 
     iw_comment(iw, "Sampling frequency (Hz)");
-    iw_entry(iw, "frequency", "%d", (int)priv->cfg.frequency);
+    iw_entry_d(iw, "frequency", priv->cfg.frequency);
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Sample buffer size");
@@ -95,12 +95,12 @@ void UADC_writeIni(Unit *unit, IniWriter *iw)
     iw_comment(iw, "- defines the maximum pre-trigger size (divide by # of channels)");
     iw_comment(iw, "- captured data is sent in half-buffer chunks");
     iw_comment(iw, "- buffer overrun aborts the data capture");
-    iw_entry(iw, "buffer_size", "%d", (int)priv->cfg.buffer_size);
+    iw_entry_d(iw, "buffer_size", priv->cfg.buffer_size);
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Exponential averaging coefficient (permil, range 0-1000 ~ 0.000-1.000)");
     iw_comment(iw, "- used formula: y[t]=(1-k)*y[t-1]+k*u[t]");
     iw_comment(iw, "- not available when a capture is running");
-    iw_entry(iw, "avg_factor", "%d", priv->cfg.averaging_factor);
+    iw_entry_d(iw, "avg_factor", priv->cfg.averaging_factor);
 }
 

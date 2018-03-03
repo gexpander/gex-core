@@ -147,28 +147,28 @@ void UTOUCH_writeIni(Unit *unit, IniWriter *iw)
     iw_cmt_newline(iw);
 
     iw_comment(iw, "Pulse generator clock prescaller (1,2,4,...,128)");
-    iw_entry(iw, "pg-clock-prediv", "%d", (int)priv->cfg.pg_presc);
+    iw_entry_d(iw, "pg-clock-prediv", priv->cfg.pg_presc);
     iw_comment(iw, "Sense pad charging time (1-16)");
-    iw_entry(iw, "charge-time", "%d", (int)priv->cfg.charge_time);
+    iw_entry_d(iw, "charge-time", priv->cfg.charge_time);
     iw_comment(iw, "Charge transfer time (1-16)");
-    iw_entry(iw, "drain-time", "%d", (int)priv->cfg.drain_time);
+    iw_entry_d(iw, "drain-time", priv->cfg.drain_time);
     iw_comment(iw, "Measurement timeout (1-7)");
-    iw_entry(iw, "sense-timeout", "%d", (int)priv->cfg.sense_timeout);
+    iw_entry_d(iw, "sense-timeout", priv->cfg.sense_timeout);
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Spread spectrum max deviation (0-128,0=off)");
-    iw_entry(iw, "ss-deviation", "%d", (int)priv->cfg.spread_deviation);
+    iw_entry_d(iw, "ss-deviation", priv->cfg.spread_deviation);
     iw_comment(iw, "Spreading clock prescaller (1,2)");
-    iw_entry(iw, "ss-clock-prediv", "%d", (int)priv->cfg.ss_presc);
+    iw_entry_d(iw, "ss-clock-prediv", priv->cfg.ss_presc);
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Optimize for interlaced pads (individual sampling with others floating)");
-    iw_entry(iw, "interlaced-pads", str_yn(priv->cfg.interlaced));
+    iw_entry_s(iw, "interlaced-pads", str_yn(priv->cfg.interlaced));
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Button mode debounce (ms) and release hysteresis (lsb)");
-    iw_entry(iw, "btn-debounce", "%d", (int)priv->cfg.binary_debounce_ms);
-    iw_entry(iw, "btn-hysteresis", "%d", (int)priv->cfg.binary_hysteresis);
+    iw_entry_d(iw, "btn-debounce", priv->cfg.binary_debounce_ms);
+    iw_entry_d(iw, "btn-hysteresis", priv->cfg.binary_hysteresis);
 
     iw_cmt_newline(iw);
     iw_comment(iw, "Each used group must have 1 sampling capacitor and 1-3 channels.");
@@ -179,9 +179,9 @@ void UTOUCH_writeIni(Unit *unit, IniWriter *iw)
     for (int i = 0; i < 6; i++) { // skip 7,8
         iw_commentf(iw,  "Group%d - %s", i+1, utouch_group_labels[i]);
         SPRINTF(namebuf, "g%d_cap", i+1);
-        iw_entry(iw, namebuf, cfg_pinmask_encode(priv->cfg.group_scaps[i], unit_tmp512, true));
+        iw_entry_s(iw, namebuf, cfg_pinmask_encode(priv->cfg.group_scaps[i], unit_tmp512, true));
         SPRINTF(namebuf, "g%d_ch", i+1);
-        iw_entry(iw, namebuf, cfg_pinmask_encode(priv->cfg.group_channels[i], unit_tmp512, true));
+        iw_entry_s(iw, namebuf, cfg_pinmask_encode(priv->cfg.group_channels[i], unit_tmp512, true));
     }
 }
 

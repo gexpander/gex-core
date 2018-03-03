@@ -119,6 +119,25 @@ void iw_entry(IniWriter *iw, const char *key, const char *format, ...)
     iw_newline(iw);	// one newline after entry
 }
 
+void iw_entry_s(IniWriter *iw, const char *key, const char *value)
+{
+    if (iw->count == 0) return;
+    iw_string(iw, key);
+    iw_string(iw, "=");
+    iw_string(iw, value);
+    iw_newline(iw);
+}
+
+void iw_entry_d(IniWriter *iw, const char *key, int32_t value)
+{
+    if (iw->count == 0) return;
+    iw_string(iw, key);
+    iw_string(iw, "=");
+    uint32_t len = (int)fixup_snprintf(&iwbuffer[0], IWBUFFER_LEN, "%d", value);
+    iw_buff(iw, (uint8_t *) iwbuffer, len);
+    iw_newline(iw);
+}
+
 uint32_t iw_measure_total(void (*handler)(IniWriter *), uint32_t tag)
 {
     IniWriter iw = iw_init(NULL, 0xFFFFFFFF, 1);
