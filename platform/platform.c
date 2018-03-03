@@ -20,6 +20,7 @@
 #include "units/sipo/unit_sipo.h"
 #include "units/fcap/unit_fcap.h"
 #include "units/touch/unit_touch.h"
+#include "units/simple_pwm/unit_pwmdim.h"
 #include "hw_utils.h"
 
 void plat_init_resources(void)
@@ -92,6 +93,7 @@ void plat_init_resources(void)
     ureg_add_type(&UNIT_SIPO);
     ureg_add_type(&UNIT_FCAP);
     ureg_add_type(&UNIT_TOUCH);
+    ureg_add_type(&UNIT_PWMDIM);
 
     // Free all present resources
     {
