@@ -17,6 +17,7 @@ GEX_SRC_DIR = \
     User/units/sipo \
     User/units/fcap \
     User/units/touch \
+    User/units/simple_pwm \
     User/TinyFrame \
     User/CWPack \
     User/tasks
@@ -92,7 +93,7 @@ GEX_CDEFS = $(GEX_CDEFS_BASE) \
     -DASSERT_FILENAMES=1 \
     -DDEBUG_VFS=0 \
     -DDEBUG_FLASH_WRITE=0 \
-    -DVERBOSE_HARDFAULT=0 \
+    -DVERBOSE_HARDFAULT=1 \
     -DUSE_STACK_MONITOR=1 \
     -DUSE_DEBUG_UART=1 \
     -DDEBUG_MALLOC=0 \
