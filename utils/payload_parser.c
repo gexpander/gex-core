@@ -1,3 +1,4 @@
+#include <debug.h>
 #include "payload_parser.h"
 
 #define pp_check_capacity(pp, needed) \
@@ -58,32 +59,21 @@ uint32_t pp_u32(PayloadParser *pp)
 
 uint64_t pp_u64(PayloadParser *pp)
 {
-    pp_check_capacity(pp, 4);
+    pp_check_capacity(pp, 8);
     if (!pp->ok) return 0;
 
-    uint64_t x = 0;
+    uint32_t x0, x1;
+    uint64_t x;
 
     if (pp->bigendian) {
-        x |= (uint64_t) ((uint64_t) *pp->current++ << 56);
-        x |= (uint64_t) ((uint64_t) *pp->current++ << 48);
-        x |= (uint64_t) ((uint64_t) *pp->current++ << 40);
-        x |= (uint64_t) ((uint64_t) *pp->current++ << 32);
-
-        x |= (uint64_t) (*pp->current++ << 24);
-        x |= (uint64_t) (*pp->current++ << 16);
-        x |= (uint64_t) (*pp->current++ << 8);
-        x |= *pp->current++;
+        x1 = pp_u32(pp);
+        x0 = pp_u32(pp);
     } else {
-        x |= *pp->current++;
-        x |= (uint64_t) (*pp->current++ << 8);
-        x |= (uint64_t) (*pp->current++ << 16);
-        x |= (uint64_t) (*pp->current++ << 24);
-
-        x |= (uint64_t) ((uint64_t) *pp->current++ << 32);
-        x |= (uint64_t) ((uint64_t) *pp->current++ << 40);
-        x |= (uint64_t) ((uint64_t) *pp->current++ << 48);
-        x |= (uint64_t) ((uint64_t) *pp->current++ << 56);
+        x0 = pp_u32(pp);
+        x1 = pp_u32(pp);
     }
+    x = ((uint64_t)x1)<<32 | x0;
+
     return x;
 }
 
