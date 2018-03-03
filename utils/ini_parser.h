@@ -8,12 +8,12 @@
 
 #include "platform.h"
 
-// toggleable logging func
-#ifdef DEBUG_INI
-#define ini_error(fmt, ...) dbg("! INI err: "#fmt, ##__VA_ARGS__)
-#else
-#define ini_error(fmt, ...)
-#endif
+//// toggleable logging func
+//#ifdef DEBUG_INI
+//#define ini_error(fmt, ...) dbg("! INI err: "#fmt, ##__VA_ARGS__)
+//#else
+//#define ini_error(fmt, ...)
+//#endif
 
 // buffer sizes
 //#define INI_KEY_MAX 20
