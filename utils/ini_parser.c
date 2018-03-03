@@ -105,6 +105,7 @@ void ini_parse(const char *data, size_t len)
                         if (nini.value_i < INI_VALUE_MAX - 1) {
                             nini.value[nini.value_i++] = c;
                         }
+                        nini.val_last_space = false;
                 }
         }
     }
