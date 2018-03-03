@@ -11,25 +11,61 @@
 // ------------------------------------------------------------------------
 
 enum TouchCmd_ {
-    CMD_READ=0
+    CMD_READ=0,
+    CMD_SET_BIN_THR=1,
+    CMD_DISABLE_ALL_REPORTS=2,
+    CMD_GET_CH_COUNT=10,
 };
 
 /** Handle a request message */
 static error_t UTOUCH_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
     struct priv* priv = unit->data;
+    PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
 
     switch (command) {
         case CMD_READ:
             if (priv->status == UTSC_STATUS_BUSY) return E_BUSY;
             if (priv->status == UTSC_STATUS_FAIL) return E_HW_TIMEOUT;
 
-            PayloadBuilder pb = pb_start(unit_tmp512, UNIT_TMP_LEN, NULL);
             for (int i = 0; i < 32; i++) {
                 if (priv->all_channels_mask & (1<<i)) {
                     pb_u16(&pb, priv->readouts[i]);
                 }
             }
+            com_respond_pb(frame_id, MSG_SUCCESS, &pb);
+            return E_SUCCESS;
+
+        case CMD_SET_BIN_THR:
+            for (int i = 0; i < 32; i++) {
+                if (priv->all_channels_mask & (1<<i)) {
+                    priv->bin_trig_cnt[i] = 0;
+                    priv->binary_thr[i] = pp_u16(pp);
+                    if (priv->readouts[i] >= (priv->binary_thr[i] + priv->binary_hysteresis)) {
+                        priv->binary_active_bits |= 1<<i;
+                    }
+                }
+            }
+            return E_SUCCESS;
+
+        case CMD_DISABLE_ALL_REPORTS:
+            for (int i = 0; i < 32; i++) {
+                if (priv->all_channels_mask & (1<<i)) {
+                    priv->binary_thr[i] = 0;
+                    priv->bin_trig_cnt[i] = 0;
+                }
+            }
+            priv->binary_active_bits = 0;
+            return E_SUCCESS;
+
+        case CMD_GET_CH_COUNT:;
+            uint8_t nb = 0;
+            for (int i = 0; i < 32; i++) {
+                if (priv->all_channels_mask & (1<<i)) {
+                    nb++;
+                }
+            }
+            pb_u8(&pb, nb);
             com_respond_pb(frame_id, MSG_SUCCESS, &pb);
             return E_SUCCESS;
 

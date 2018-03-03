@@ -39,6 +39,8 @@ struct priv {
         uint8_t group_scaps[8];
         uint8_t group_channels[8];
         bool interlaced;
+        uint16_t binary_debounce_ms;
+        uint16_t binary_hysteresis;
     } cfg;
 
     uint8_t next_phase;
@@ -46,11 +48,17 @@ struct priv {
     uint32_t channels_phase[3];
     uint8_t groups_phase[3];
     uint16_t readouts[32];
+    int16_t bin_trig_cnt[32];
+    uint16_t binary_debounce_ms;
+    uint16_t binary_hysteresis;
+    uint16_t binary_thr[32];
+    uint32_t binary_active_bits;
     uint32_t all_channels_mask;
+    uint32_t last_done_ms;
     bool ongoing;
 
     enum utsc_status status;
-};
+} __attribute__((packed));
 
 extern const char *utouch_group_labels[8];
 extern const Resource utouch_group_rscs[8][4];

@@ -23,6 +23,8 @@ error_t UTOUCH_preInit(Unit *unit)
     priv->cfg.sense_timeout = 7;
     memset(priv->cfg.group_scaps, 0, 8);
     memset(priv->cfg.group_channels, 0, 8);
+    priv->cfg.binary_hysteresis = 10;
+    priv->cfg.binary_debounce_ms = 20;
 
     return E_SUCCESS;
 }
@@ -34,6 +36,10 @@ error_t UTOUCH_init(Unit *unit)
     struct priv *priv = unit->data;
 
     unit->tick_interval = 1; // sample every 1 ms
+
+    // copy from conf
+    priv->binary_debounce_ms = priv->cfg.binary_debounce_ms;
+    priv->binary_hysteresis = priv->cfg.binary_hysteresis;
 
     TRY(rsc_claim(unit, R_TSC));
 

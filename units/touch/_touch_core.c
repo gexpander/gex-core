@@ -10,9 +10,95 @@
 
 #include "_touch_internal.h"
 
+// discharge time in ms
 #define DIS_TIME 1
 
-static void startNextPhase(struct priv *priv);
+static void startNextPhase(Unit *unit);
+
+static void UTOUCH_EventReportJob(Job *job)
+{
+    Unit *unit = job->unit;
+    struct priv *priv = unit->data;
+
+    uint8_t buf[8];
+    PayloadBuilder pb = pb_start(buf, 8, NULL);
+    pb_u32(&pb, pinmask_pack_32(~job->data1, priv->all_channels_mask)); // inverted and packed - all pins (pressed state)
+    pb_u32(&pb, pinmask_pack_32(job->data2, priv->all_channels_mask)); // trigger generating pins
+    assert_param(pb.ok);
+
+    EventReport er = {
+        .unit = unit,
+        .type = 0x00,
+        .length = 8,
+        .data = buf,
+        .timestamp = job->timestamp,
+    };
+
+    EventReport_Send(&er);
+}
+
+static void UTOUCH_CheckForBinaryEvents(Unit *unit)
+{
+    struct priv *priv = unit->data;
+
+    uint32_t time_ms = PTIM_GetTime();
+
+    if (priv->last_done_ms == 0) {
+        // avoid bug with trigger on first capture
+        priv->last_done_ms = time_ms;
+    }
+
+    uint64_t ts = PTIM_GetMicrotime();
+    uint32_t eventpins = 0;
+    for (int i = 0; i < 32; i++) {
+        const uint32_t poke = (uint32_t) (1 << i);
+        if (0 == (priv->all_channels_mask & poke)) continue;
+        if (priv->binary_thr[i] == 0) continue; // skip disabled channels
+
+        const bool can_go_up = !(priv->binary_active_bits&poke) && (priv->readouts[i] > (priv->binary_thr[i] + priv->binary_hysteresis));
+        const bool can_go_down = (priv->binary_active_bits&poke) && (priv->readouts[i] < priv->binary_thr[i]);
+
+        if (can_go_up) {
+            priv->bin_trig_cnt[i] += (time_ms - priv->last_done_ms);
+            if (priv->bin_trig_cnt[i] >= priv->binary_debounce_ms) {
+                priv->binary_active_bits |= poke;
+                priv->bin_trig_cnt[i] = 0; // reset for the other direction of the switch
+
+                eventpins |= poke;
+            }
+        }
+        else if (priv->bin_trig_cnt[i] > 0) {
+            priv->bin_trig_cnt[i] = 0;
+        }
+
+        if (can_go_down) {
+            priv->bin_trig_cnt[i] -= (time_ms - priv->last_done_ms);
+            if (priv->bin_trig_cnt[i] <= -priv->binary_debounce_ms) {
+                priv->binary_active_bits &= ~poke;
+                priv->bin_trig_cnt[i] = 0; // reset for the other direction of the switch
+
+                eventpins |= poke;
+            }
+        }
+        else if (priv->bin_trig_cnt[i] < 0) {
+            priv->bin_trig_cnt[i] = 0;
+        }
+    }
+
+    if (eventpins != 0) {
+        Job j = {
+            .timestamp = ts,
+            .data1 = priv->binary_active_bits,
+            .data2 = eventpins,
+            .unit = unit,
+            .cb = UTOUCH_EventReportJob,
+        };
+
+        scheduleJob(&j);
+    }
+
+    priv->last_done_ms = time_ms;
+}
 
 void UTOUCH_HandleIrq(void *arg)
 {
@@ -44,7 +130,7 @@ void UTOUCH_HandleIrq(void *arg)
             if (priv->next_phase == 3 || priv->groups_phase[priv->next_phase] == 0) {
                 priv->next_phase = 0;
                 priv->status = UTSC_STATUS_READY;
-                // we'll stay in READY after the first loop until an error occurs or it's re-inited
+                UTOUCH_CheckForBinaryEvents(unit);
             }
         }
 
@@ -74,7 +160,7 @@ void UTOUCH_updateTick(Unit *unit)
     if (priv->discharge_delay > 0) {
         priv->discharge_delay--;
     } else {
-        startNextPhase(priv);
+        startNextPhase(unit);
     }
 
 #if TSC_DEBUG
@@ -91,8 +177,10 @@ void UTOUCH_updateTick(Unit *unit)
 #endif
 }
 
-static void startNextPhase(struct priv *priv)
+static void startNextPhase(Unit *unit)
 {
+    struct priv *priv = unit->data;
+
     if (priv->all_channels_mask == 0) return;
 
     if (priv->cfg.interlaced) {
@@ -102,6 +190,7 @@ static void startNextPhase(struct priv *priv)
             if (priv->next_phase == 32) {
                 priv->next_phase = 0;
                 priv->status = UTSC_STATUS_READY;
+                UTOUCH_CheckForBinaryEvents(unit);
             }
         }
         TSC->IOGCSR = (uint32_t) (1 << (priv->next_phase >> 2)); // phase divided by 4
