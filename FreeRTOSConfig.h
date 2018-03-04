@@ -109,6 +109,7 @@ extern uint32_t SystemCoreClock;
 #define configQUEUE_REGISTRY_SIZE                0
 #define configCHECK_FOR_STACK_OVERFLOW           2
 #define configENABLE_BACKWARD_COMPATIBILITY      0
+#define configUSE_COUNTING_SEMAPHORES            0
 
 #define configUSE_TIMERS                         0
 #define configTIMER_TASK_PRIORITY                TSK_TIMERS_PRIO // above normal

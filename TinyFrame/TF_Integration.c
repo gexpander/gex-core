@@ -29,10 +29,10 @@ void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len)
         const uint16_t chunksize = (uint16_t) MIN(total, CHUNK);
 
         // this is an attempt to speed it up a little by removing a couple levels of indirection
-        assert_param(HAL_OK == HAL_PCD_EP_Transmit(hUsbDeviceFS.pData, CDC_IN_EP, (uint8_t *) buff, chunksize));
+//        assert_param(HAL_OK == HAL_PCD_EP_Transmit(hUsbDeviceFS.pData, CDC_IN_EP, (uint8_t *) buff, chunksize));
 
 //        USBD_LL_Transmit(&hUsbDeviceFS, CDC_IN_EP, (uint8_t *) buff, chunksize);
-//        assert_param(USBD_OK == CDC_Transmit_FS((uint8_t *) buff, chunksize));
+        assert_param(USBD_OK == CDC_Transmit_FS((uint8_t *) buff, chunksize));
 
         buff += chunksize;
         total -= chunksize;

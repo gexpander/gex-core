@@ -169,7 +169,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
-  xSemaphoreGive(semVcomTxReadyHandle);
+  assert_param(pdTRUE == xSemaphoreGive(semVcomTxReadyHandle));
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */

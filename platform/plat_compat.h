@@ -21,7 +21,7 @@
 #endif
 
 // 180 is normally enough if not doing extensive debug logging
-#define TSK_STACK_MSG       220 // TF message handler task stack size (all unit commands run on this thread)
+#define TSK_STACK_MSG       260 // TF message handler task stack size (all unit commands run on this thread)
 #define TSK_STACK_IDLE    64 //configMINIMAL_STACK_SIZE
 #define TSK_STACK_TIMERS  64 //configTIMER_TASK_STACK_DEPTH
 

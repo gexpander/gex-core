@@ -397,8 +397,16 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , MSC_EPOUT_ADDR , PCD_SNG_BUF, ptr += 64); // 64
 
   // CDC endpoints, EP2 two-way and EP3 in-only
-  HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , CDC_IN_EP , PCD_SNG_BUF, ptr += 64); // 64
-  HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , CDC_OUT_EP , PCD_SNG_BUF, ptr += 64); // 64
+    uint32_t buf1addr, buf2addr;
+
+    buf1addr = (ptr += 64);
+    buf2addr = (ptr += 64);
+  HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , CDC_IN_EP , PCD_DBL_BUF, buf1addr | (buf2addr << 16)); // 64
+
+    buf1addr = (ptr += 64);
+    buf2addr = (ptr += 64);
+  HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , CDC_OUT_EP , PCD_DBL_BUF, buf1addr | (buf2addr << 16)); // 64
+
   HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , CDC_CMD_EP , PCD_SNG_BUF, ptr += 16); // 16
   (void)ptr;
 #endif

@@ -313,6 +313,8 @@ void USBD_CDC_TransmitDone(USBD_HandleTypeDef *pdev)
   assert_param(semVcomTxReadyHandle != NULL);
   assert_param(inIRQ());
 
+  if (uxSemaphoreGetCount(semVcomTxReadyHandle) == 1) return;
+
   portBASE_TYPE taskWoken = pdFALSE;
   assert_param(xSemaphoreGiveFromISR(semVcomTxReadyHandle, &taskWoken) == pdTRUE);
   portYIELD_FROM_ISR(taskWoken);
