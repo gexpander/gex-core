@@ -47,12 +47,13 @@
   ******************************************************************************
 */
 /* Includes ------------------------------------------------------------------*/
-#include <utils/malloc_safe.h>
+#include <platform/hw_utils.h>
 #include "platform.h"
 #include "usbd_def.h"
 #include "usbd_core.h"
 #include "usbd_msc.h"
 #include "usbd_cdc.h"
+#include "utils/malloc_safe.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
@@ -335,6 +336,9 @@ void HAL_PCD_DisconnectCallback(PCD_HandleTypeDef *hpcd)
   * @param  pdev: Device handle
   * @retval USBD Status
   */
+
+extern void PCD_WritePMA(USB_TypeDef  *USBx, uint8_t *pbUsrBuf, uint16_t wPMABufAddr, uint16_t wNBytes);
+
 USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
 {
 #if PLAT_USB_OTGFS
@@ -397,11 +401,26 @@ USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev)
   HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , MSC_EPOUT_ADDR , PCD_SNG_BUF, ptr += 64); // 64
 
   // CDC endpoints, EP2 two-way and EP3 in-only
-  HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , CDC_IN_EP , PCD_SNG_BUF, ptr += 64); // 64
-  HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , CDC_OUT_EP , PCD_SNG_BUF, ptr += 64); // 64
+    uint32_t buf1addr, buf2addr;
+
+    buf1addr = (ptr += 64);
+    buf2addr = (ptr += 64);
+
+    uint32_t addr_begin = buf1addr;
+  HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , CDC_IN_EP , PCD_DBL_BUF, buf1addr | (buf2addr << 16)); // 64
+
+    buf1addr = (ptr += 64);
+    buf2addr = (ptr += 64);
+  HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , CDC_OUT_EP , PCD_DBL_BUF, buf1addr | (buf2addr << 16)); // 64
+
   HAL_PCDEx_PMAConfig((PCD_HandleTypeDef*)pdev->pData , CDC_CMD_EP , PCD_SNG_BUF, ptr += 16); // 16
   (void)ptr;
 #endif
+
+    const uint8_t buf[256] = {};
+    PCD_WritePMA(((PCD_HandleTypeDef*)pdev->pData)->Instance, (uint8_t *) &buf[0],  (uint16_t) addr_begin, 256);
+
+  hw_configure_sparse_pins('B', 0b111, NULL, LL_GPIO_MODE_OUTPUT, LL_GPIO_OUTPUT_PUSHPULL);
 
   return USBD_OK;
 }

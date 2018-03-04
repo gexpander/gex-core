@@ -99,7 +99,7 @@
 
 #define CDC_CUSTOM_EPS
 #define CDC_IN_EP                    0x82  /* EP1 for data IN */
-#define CDC_OUT_EP                   0x02  /* EP1 for data OUT */
+#define CDC_OUT_EP                   0x04  /* EP1 for data OUT */
 #define CDC_CMD_EP                   0x83  /* EP2 for CDC commands */
 
 /** @defgroup USBD_Exported_Macros
