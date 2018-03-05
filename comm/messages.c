@@ -65,7 +65,7 @@ static void settings_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer
     if (buffer == NULL) {
         free_ck(bulk);
         iw_end();
-        dbg("INI read complete.");
+//        dbg("INI read complete.");
         return;
     }
 
@@ -81,7 +81,7 @@ static void settings_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer
  */
 static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
 {
-    dbg("Bulk read INI file");
+//    dbg("Bulk read INI file");
 
     BulkRead *bulk = malloc_ck(sizeof(BulkRead));
     assert_param(bulk != NULL);
@@ -114,7 +114,7 @@ static void settings_bulkwrite_cb(BulkWrite *bulk, const uint8_t *chunk, uint32_
 
         if (bulk->offset > 0) {
             settings_load_ini_end();
-            dbg("INI write complete");
+//            dbg("INI write complete");
         } else {
             dbg("INI write failed");
         }
@@ -131,7 +131,7 @@ static void settings_bulkwrite_cb(BulkWrite *bulk, const uint8_t *chunk, uint32_
  */
 static TF_Result lst_ini_import(TinyFrame *tf, TF_Msg *msg)
 {
-    dbg("Bulk write INI file");
+//    dbg("Bulk write INI file");
 
     BulkWrite *bulk = malloc_ck(sizeof(BulkWrite));
     assert_param(bulk);

@@ -314,7 +314,7 @@ void USBD_CDC_TransmitDone(USBD_HandleTypeDef *pdev)
   assert_param(inIRQ());
 
   portBASE_TYPE taskWoken = pdFALSE;
-  assert_param(xSemaphoreGiveFromISR(semVcomTxReadyHandle, &taskWoken) == pdTRUE);
+  assert_param(pdTRUE == xSemaphoreGiveFromISR(semVcomTxReadyHandle, &taskWoken));
   portYIELD_FROM_ISR(taskWoken);
 }
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */

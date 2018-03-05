@@ -40,7 +40,8 @@ static void UADC_JobSendBlockChunk(Job *job)
         .len = (TF_LEN) (1 /*seq*/ + count * sizeof(uint16_t)),
         .type = type,
     };
-    TF_Respond_Multipart(comm, &msg);
+
+    assert_param(true == TF_Respond_Multipart(comm, &msg));
     TF_Multipart_Payload(comm, &priv->stream_serial, 1);
     TF_Multipart_Payload(comm, (uint8_t *) (priv->dma_buffer + start), count * sizeof(uint16_t));
     TF_Multipart_Close(comm);

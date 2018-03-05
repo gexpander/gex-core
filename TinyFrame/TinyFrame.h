@@ -369,7 +369,7 @@ bool TF_Query_Multipart(TinyFrame *tf, TF_Msg *msg, TF_Listener listener, TF_TIC
  * TF_Respond() with multipart payload.
  * msg.data is ignored and set to NULL
  */
-void TF_Respond_Multipart(TinyFrame *tf, TF_Msg *msg);
+bool TF_Respond_Multipart(TinyFrame *tf, TF_Msg *msg);
 
 /**
  * Send the payload for a started multipart frame. This can be called multiple times
