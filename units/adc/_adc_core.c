@@ -171,7 +171,7 @@ static void handle_httc(Unit *unit, bool tc)
     const bool m_fixcpt = priv->opmode == ADC_OPMODE_BLCAP;
 
     if (ht) {
-        end = (priv->buf_itemcount / 2);
+        end = (priv->buf_itemcount >> 1); // div2
     }
     else {
         end = priv->buf_itemcount;
@@ -234,7 +234,7 @@ static void handle_httc(Unit *unit, bool tc)
         priv->stream_startpos = 0;
     }
     else {
-        priv->stream_startpos = priv->buf_itemcount / 2;
+        priv->stream_startpos = priv->buf_itemcount >> 1; // div2
     }
 }
 
@@ -289,7 +289,7 @@ void UADC_DMA_Handler(void *arg)
         const bool m_stream = priv->opmode == ADC_OPMODE_STREAM;
         const bool m_fixcpt = priv->opmode == ADC_OPMODE_BLCAP;
         if (m_trigd || m_stream || m_fixcpt) {
-            const uint32_t half = (uint32_t) (priv->buf_itemcount / 2);
+            const uint32_t half = (uint32_t) (priv->buf_itemcount >> 1); // div2
             if (ht && tc) {
                 // dual event interrupt - may happen if we missed both and they were pending after
                 // interrupts became enabled again (this can happen due to the EOS or other higher prio irq's)
@@ -336,8 +336,10 @@ void UADC_ADC_EOS_Handler(void *arg)
     if (priv->opmode == ADC_OPMODE_UNINIT) return;
 
     // Wait for the DMA to complete copying the last sample
-    uint32_t dmapos;
-    hw_wait_while((dmapos = DMA_POS(priv)) % priv->nb_channels != 0, 100); // XXX this could be changed to reading it from the DR instead
+    uint32_t dmapos = DMA_POS(priv);
+    if ((DMA_POS(priv) % priv->nb_channels) != 0) {
+        hw_wait_while((dmapos = DMA_POS(priv)) % priv->nb_channels != 0, 100); // XXX this could be changed to reading it from the DR instead
+    }
 
     uint32_t sample_pos;
     if (dmapos == 0) {
