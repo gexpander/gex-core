@@ -870,7 +870,11 @@ static inline uint32_t _TF_FN TF_ComposeTail(uint8_t *outbuff, TF_CKSUM *cksum)
  */
 static bool _TF_FN TF_SendFrame_Begin(TinyFrame *tf, TF_Msg *msg, TF_Listener listener, TF_TICKS timeout)
 {
-    TF_TRY(TF_ClaimTx(tf));
+    bool suc = TF_ClaimTx(tf);
+    if (!suc) {
+        TF_Error("TF lock not free");
+        return false;
+    }
 
     tf->tx_pos = (uint32_t) TF_ComposeHead(tf, tf->sendbuf, msg); // frame ID is incremented here if it's not a response
     tf->tx_len = msg->len;
@@ -1031,10 +1035,10 @@ bool _TF_FN TF_Query_Multipart(TinyFrame *tf, TF_Msg *msg, TF_Listener listener,
     return TF_Query(tf, msg, listener, timeout);
 }
 
-void _TF_FN TF_Respond_Multipart(TinyFrame *tf, TF_Msg *msg)
+bool _TF_FN TF_Respond_Multipart(TinyFrame *tf, TF_Msg *msg)
 {
     msg->data = NULL;
-    TF_Respond(tf, msg);
+    return TF_Respond(tf, msg);
 }
 
 void _TF_FN TF_Multipart_Payload(TinyFrame *tf, const uint8_t *buff, uint32_t length)

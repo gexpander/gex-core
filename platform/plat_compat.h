@@ -30,7 +30,7 @@
 
 
 #define BULK_READ_BUF_LEN 256   // Buffer for TF bulk reads
-#define UNIT_TMP_LEN      512   // Buffer for internal unit operations
+#define UNIT_TMP_LEN      256   // Buffer for internal unit operations
 
 #define FLASH_SAVE_BUF_LEN  128 // Malloc'd buffer for saving to flash
 
@@ -38,7 +38,7 @@
 #define RX_QUE_CAPACITY    16 // TinyFrame rx queue size (64 bytes each)
 
 #define TF_MAX_PAYLOAD_RX 512 // TF max Rx payload
-#define TF_SENDBUF_LEN     64 // TF transmit buffer (can be less than a full frame)
+#define TF_SENDBUF_LEN    512 // TF transmit buffer (can be less than a full frame)
 
 #define TF_MAX_ID_LST   4 // Frame ID listener count
 #define TF_MAX_TYPE_LST 6 // Frame Type listener count
