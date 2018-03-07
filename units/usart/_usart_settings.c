@@ -159,7 +159,7 @@ void UUSART_writeIni(Unit *unit, IniWriter *iw)
     iw_entry_d(iw, "device", priv->periph_num);
 
     iw_comment(iw, "Pin mappings (TX,RX,CK,CTS,RTS/DE)");
-#if GEX_PLAT_F072_DISCOVERY
+#if STM32F072xB
     iw_comment(iw, " USART1: (0) A9,A10,A8,A11,A12   (1) B6,B7,A8,A11,A12");
     iw_comment(iw, " USART2: (0) A2,A3,A4,A0,A1      (1) A14,A15,A4,A0,A1");
     iw_comment(iw, " USART3: (0) B10,B11,B12,B13,B14");

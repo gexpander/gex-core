@@ -151,7 +151,7 @@ to exclude the API function. */
     #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 5
 
     #define configUSE_PORT_OPTIMISED_TASK_SELECTION 1
-#elif defined(GEX_PLAT_F072_DISCOVERY)
+#elif defined(STM32F072xB)
     // This is for F072
     #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY   3
     #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 1

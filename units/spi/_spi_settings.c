@@ -102,9 +102,9 @@ void USPI_writeIni(Unit *unit, IniWriter *iw)
 
     // TODO show a legend for peripherals and remaps
     iw_comment(iw, "Pin mappings (SCK,MISO,MOSI)");
-#if GEX_PLAT_F072_DISCOVERY
-    iw_comment(iw, " SPI1: (0) A5,A6,A7     (1) B3,B4,B5  (2) E13,E14,E15");
-    iw_comment(iw, " SPI2: (0) B13,B14,B15  (1) D1,D3,D4");
+#if STM32F072xB
+    iw_comment(iw, " SPI1: (0) A5,A6,A7     (1) B3,B4,B5"); //  (2) E13,E14,E15
+    iw_comment(iw, " SPI2: (0) B13,B14,B15"); //  (1) D1,D3,D4
 #elif GEX_PLAT_F103_BLUEPILL
     #error "NO IMPL"
 #elif GEX_PLAT_F303_DISCOVERY

@@ -111,7 +111,7 @@ static inline error_t UUSART_configPins(Unit *unit)
         want_rts_pin(priv)
     };
 
-#if GEX_PLAT_F072_DISCOVERY
+#if STM32F072xB
 
     const struct PinAF *mappings = NULL;
 

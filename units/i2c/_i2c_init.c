@@ -62,7 +62,7 @@ error_t UI2C_init(Unit *unit)
     uint32_t af_i2c;
     uint32_t timing; // magic constant from CubeMX
 
-#if GEX_PLAT_F072_DISCOVERY
+#if STM32F072xB
     // scl - 6 or 8 for I2C1, 10 for I2C2
     // sda - 7 or 9 for I2C1, 11 for I2C2
     if (priv->periph_num == 1) {

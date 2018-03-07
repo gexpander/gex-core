@@ -75,7 +75,7 @@ void plat_init_resources(void)
         // BOOT pin(s)
         rv |= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
     }
-#elif defined(GEX_PLAT_F072_DISCOVERY)
+#elif defined(STM32F072xB)
     // Platform STM32F073RBT
 
     // Additional GPIO ports
@@ -122,13 +122,17 @@ void plat_init_resources(void)
     // Claim resources not available due to board layout or internal usage
     {
         // HAL timebase
-        rv |= rsc_claim(&UNIT_SYSTEM, R_TIM1);
+        rv |= rsc_claim(&UNIT_SYSTEM, R_TIM17);
         // HSE crystal
         rv |= rsc_claim(&UNIT_SYSTEM, R_PF0);
-        //rv |= rsc_claim(&UNIT_SYSTEM, R_PF1); // - not used in BYPASS mode
+
+        #if PLAT_FULL_XTAL
+            rv |= rsc_claim(&UNIT_SYSTEM, R_PF1); // - not used in BYPASS mode
+        #endif
+
         // SWD
-        rv |= rsc_claim(&UNIT_SYSTEM, R_PA13);
-        rv |= rsc_claim(&UNIT_SYSTEM, R_PA14);
+//        rv |= rsc_claim(&UNIT_SYSTEM, R_PA13);
+//        rv |= rsc_claim(&UNIT_SYSTEM, R_PA14);
         // USB
         rv |= rsc_claim(&UNIT_SYSTEM, R_PA11);
         rv |= rsc_claim(&UNIT_SYSTEM, R_PA12);

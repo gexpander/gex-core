@@ -70,6 +70,7 @@
 // PLAT_LOCK_BTN - use a lock button instead of a lock jumper (push to toggle)
 // PLAT_LOCK_1CLOSED - lock jumper is active (closed / button pressed) in logical 1
 // PLAT_NO_AFNUM - legacy platform without numbered AF alternatives
+// PLAT_FULL_XTAL - use two-wire xtal attachment
 
 #if defined(GEX_PLAT_F103_BLUEPILL)
 
@@ -124,10 +125,8 @@
     #define STATUS_LED_PORT 'C'
     #define STATUS_LED_PIN  13
 
-#elif defined(GEX_PLAT_F072_DISCOVERY)
+#elif defined(STM32F072xB)
 
-    // platform name for the version string
-    #define GEX_PLATFORM "STM32F072-Discovery"
     #define PLAT_AHB_MHZ 48
     #define PLAT_APB1_MHZ 48
 
@@ -162,15 +161,37 @@
     // Number of GPIO ports A,B,C...
     #define PORTS_COUNT 6
 
-    // Lock jumper config
-    #define LOCK_JUMPER_PORT 'A'
-    #define LOCK_JUMPER_PIN  0
-    #define PLAT_LOCK_BTN 1 // toggle button instead of a jumper
-    #define PLAT_LOCK_1CLOSED 1 // toggle button active in log. 1
+    #if defined(GEX_PLAT_F072_DISCOVERY)
+        // platform name for the version string
+        #define GEX_PLATFORM "STM32F072-Discovery"
 
-    // Status LED config
-    #define STATUS_LED_PORT 'C'
-    #define STATUS_LED_PIN  6 // RED LED "UP"
+        // Lock jumper config
+        #define LOCK_JUMPER_PORT 'A'
+        #define LOCK_JUMPER_PIN  0
+        #define PLAT_LOCK_BTN 1 // toggle button instead of a jumper
+        #define PLAT_LOCK_1CLOSED 1 // toggle button active in log. 1
+
+        // Status LED config
+        #define STATUS_LED_PORT 'C'
+        #define STATUS_LED_PIN  6 // RED LED "UP"
+    #elif defined(GEX_PLAT_F072_HUB)
+        // platform name for the version string
+        #define GEX_PLATFORM "STM32F072-HUB"
+
+        #define PLAT_FULL_XTAL 1
+
+        // Lock jumper config
+        #define LOCK_JUMPER_PORT 'D'
+        #define LOCK_JUMPER_PIN  2
+        #define PLAT_LOCK_BTN 1 // toggle button instead of a jumper
+        #define PLAT_LOCK_1CLOSED 0 // toggle button active in log. 1
+
+        // Status LED config
+        #define STATUS_LED_PORT 'A'
+        #define STATUS_LED_PIN  15 // RED LED "UP"
+    #else
+        #error Bad platform
+    #endif
 
 #elif defined(GEX_PLAT_F303_DISCOVERY)
 

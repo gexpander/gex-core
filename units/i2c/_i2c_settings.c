@@ -77,7 +77,7 @@ void UI2C_writeIni(Unit *unit, IniWriter *iw)
     iw_entry_d(iw, "device", priv->periph_num);
 
     iw_comment(iw, "Pin mappings (SCL,SDA)");
-#if GEX_PLAT_F072_DISCOVERY
+#if STM32F072xB
     iw_comment(iw, " I2C1: (0) B6,B7    (1) B8,B9");
     iw_comment(iw, " I2C2: (0) B10,B11  (1) B13,B14");
 #elif GEX_PLAT_F103_BLUEPILL

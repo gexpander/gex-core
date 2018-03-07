@@ -63,7 +63,7 @@ error_t USPI_init(Unit *unit)
     uint32_t af_spi;
 
     // TODO
-#if GEX_PLAT_F072_DISCOVERY
+#if STM32F072xB
     // SPI1 - many options
     // sck, miso, mosi, af
 
@@ -83,14 +83,14 @@ error_t USPI_init(Unit *unit)
             pin_miso = 4;
             pin_mosi = 5;
         }
-        else if (priv->remap == 2) {
-            // large packages only
-            spi_portname = 'E';
-            af_spi = LL_GPIO_AF_1;
-            pin_sck = 13;
-            pin_miso = 14;
-            pin_mosi = 15;
-        }
+//        else if (priv->remap == 2) {
+//            // large packages only
+//            spi_portname = 'E';
+//            af_spi = LL_GPIO_AF_1;
+//            pin_sck = 13;
+//            pin_miso = 14;
+//            pin_mosi = 15;
+//        }
         else {
             return E_BAD_CONFIG;
         }
@@ -104,14 +104,14 @@ error_t USPI_init(Unit *unit)
             pin_miso = 14;
             pin_mosi = 15;
         }
-        else if (priv->remap == 1) {
-            // NOTE: the's also a incomplete remap in PB and PC
-            spi_portname = 'D';
-            af_spi = LL_GPIO_AF_0;
-            pin_sck = 1;
-            pin_miso = 3;
-            pin_mosi = 4;
-        }
+//        else if (priv->remap == 1) {
+//            // NOTE: there's also an incomplete remap in PB and PC
+//            spi_portname = 'D';
+//            af_spi = LL_GPIO_AF_0;
+//            pin_sck = 1;
+//            pin_miso = 3;
+//            pin_mosi = 4;
+//        }
         else {
             return E_BAD_CONFIG;
         }
