@@ -15,7 +15,7 @@
 // SPI master
 
 enum PinCmd_ {
-    CMD_TEST = 0,
+    CMD_QUERY = 0,
     CMD_MULTICAST = 1,
 };
 
@@ -33,7 +33,7 @@ static error_t USPI_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 
     switch (command) {
         /** Write and read byte(s) - slave_num:u8, req_len:u16, resp_skip:u16, resp_len:u16, byte(s)  */
-        case CMD_TEST:
+        case CMD_QUERY:
             slave = pp_u8(pp);
             resp_skip = pp_u16(pp);
             resp_len = pp_u16(pp);

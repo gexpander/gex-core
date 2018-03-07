@@ -9,10 +9,11 @@
 #include "_dout_internal.h"
 
 enum PinCmd_ {
-    CMD_TEST = 0,
+    CMD_QUERY = 0,
     CMD_SET = 1,
     CMD_CLEAR = 2,
     CMD_TOGGLE = 3,
+    CMD_PULSE = 4,
 };
 
 /** Handle a request message */
@@ -21,7 +22,7 @@ static error_t DOut_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
     uint16_t packed = pp_u16(pp);
 
     switch (command) {
-        case CMD_TEST:
+        case CMD_QUERY:
             return UU_DOut_Write(unit, packed);
 
         case CMD_SET:
@@ -32,6 +33,12 @@ static error_t DOut_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 
         case CMD_TOGGLE:
             return UU_DOut_Toggle(unit, packed);
+
+        case CMD_PULSE:;
+            bool polarity = pp_bool(pp);
+            bool is_usec = pp_bool(pp);
+            uint16_t count = pp_u16(pp);
+            return UU_DOut_Pulse(unit, packed, polarity, is_usec, count);
 
         default:
             return E_UNKNOWN_COMMAND;
@@ -55,4 +62,5 @@ const UnitDriver UNIT_DOUT = {
     .deInit = DOut_deInit,
     // Function
     .handleRequest = DOut_handleRequest,
+    .updateTick = DOut_Tick,
 };

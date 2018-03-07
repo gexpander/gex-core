@@ -56,4 +56,16 @@ error_t UU_DOut_Toggle(Unit *unit, uint16_t packed);
  */
 error_t UU_DOut_GetPinCount(Unit *unit, uint8_t *count);
 
+/**
+ * Send a pulse
+ *
+ * @param unit
+ * @param packed - pins to pulse
+ * @param polarity - pulse active level
+ * @param is_usec - use usec precision (for < 1 ms)
+ * @param count - number of units (msec or usec)
+ * @return success
+ */
+error_t UU_DOut_Pulse(Unit *unit, uint16_t packed, bool polarity, bool is_usec, uint16_t count);
+
 #endif //U_DOUT_H

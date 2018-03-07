@@ -12,7 +12,7 @@
 #include "_i2c_internal.h"
 
 enum PinCmd_ {
-    CMD_TEST = 0,
+    CMD_QUERY = 0,
     CMD_READ = 1,
     CMD_WRITE_REG = 2,
     CMD_READ_REG = 3,
@@ -30,7 +30,7 @@ static error_t UI2C_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
 
     switch (command) {
         /** Write byte(s) - addr:u16, byte(s)  */
-        case CMD_TEST:
+        case CMD_QUERY:
             addr = pp_u16(pp);
             const uint8_t *bb = pp_tail(pp, &len);
 

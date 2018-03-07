@@ -89,7 +89,7 @@ enum PinCmd_ {
     CMD_SEARCH_CONTINUE = 3, // continue the previously started scan, retrieving more devices
     CMD_READ_ADDR = 4,      // read the ROM code from a single device (for single-device bus)
 
-    CMD_WRITE = 10,    // write multiple bytes using the SKIP_ROM command
+    CMD_QUERY = 10,    // write multiple bytes using the SKIP_ROM command
     CMD_READ = 11,   // write multiple bytes using a ROM address
 
     CMD_POLL_FOR_1 = 20,
@@ -194,7 +194,7 @@ static error_t OW_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pay
          * addr:u64, rest:write_data
          * if addr is 0, use SKIP_ROM
          */
-        case CMD_WRITE:
+        case CMD_QUERY:
             addr = pp_u64(pp);
             tail = pp_tail(pp, &remain);
             TRY(UU_1WIRE_Write(unit, addr, tail, remain));

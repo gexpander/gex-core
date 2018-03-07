@@ -19,6 +19,9 @@ struct priv {
     uint16_t open_drain; // open drain pins
 
     GPIO_TypeDef *port;
+    uint16_t msec_pulse_cnt[16];
+    uint16_t msec_pulse_scheduled_1;
+    uint16_t msec_pulse_scheduled_0;
 };
 
 /** Allocate data structure and set defaults */
@@ -45,5 +48,7 @@ error_t DOut_init(Unit *unit);
 
 /** Tear down the unit */
 void DOut_deInit(Unit *unit);
+
+void DOut_Tick(Unit *unit);
 
 #endif //GEX_F072_DOUT_INTERNAL_H

@@ -7,8 +7,6 @@
 
 // ---------------------------- HAL TIMEBASE -----------------------------
 
-#define TIMEBASE_TIMER TIM17
-
 HAL_StatusTypeDef HAL_InitTick(uint32_t TickPriority)
 {
     // EDIT - used 17 instead because 14 was needed for fcap
@@ -102,21 +100,36 @@ uint64_t PTIM_GetMicrotime(void)
     return (uint64_t) uwMillis * 1000 + uwMicros;
 }
 
+
 /** microsecond delay */
-void PTIM_MicroDelay(uint16_t usec)
+void PTIM_MicroDelayAligned(uint32_t usec, register const uint32_t start)
 {
     assert_param(usec < 1000);
 
-    const uint16_t start = (uint16_t) TIMEBASE_TIMER->CNT;
-    const uint16_t remain = (uint16_t) (999 - start);
+    register const uint32_t remain = (1000 - start);
 
     if (remain > usec) {
         // timer still has enough space going forward to pass the required wait time
-        for (; TIMEBASE_TIMER->CNT < start + usec;);
+        register const uint32_t end = start + usec;
+        while (TIMEBASE_TIMER->CNT < end) {
+            __NOP();
+            __NOP();
+            __NOP();
+        }
+        return;
     }
     else {
         // timer is too close to the end
         usec -= remain;
-        for (; TIMEBASE_TIMER->CNT >= start || TIMEBASE_TIMER->CNT < usec;);
+        while (1) {
+            register const uint32_t t = TIMEBASE_TIMER->CNT;
+            if (t < start && t >= usec) return;
+        }
     }
+}
+
+/** microsecond delay */
+void PTIM_MicroDelay(const uint32_t usec)
+{
+    PTIM_MicroDelayAligned(usec, TIMEBASE_TIMER->CNT);
 }
