@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/26.
 //
 
+#include <units/dac/unit_dac.h>
 #include "platform.h"
 #include "usbd_core.h"
 #include "USB/usb_device.h"
@@ -94,6 +95,7 @@ void plat_init_resources(void)
     ureg_add_type(&UNIT_FCAP);
     ureg_add_type(&UNIT_TOUCH);
     ureg_add_type(&UNIT_PWMDIM);
+    ureg_add_type(&UNIT_DAC);
 
     // Free all present resources
     {

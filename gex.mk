@@ -18,6 +18,7 @@ GEX_SRC_DIR = \
     User/units/fcap \
     User/units/touch \
     User/units/simple_pwm \
+    User/units/dac \
     User/TinyFrame \
     User/CWPack \
     User/tasks
