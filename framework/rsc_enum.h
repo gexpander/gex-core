@@ -12,7 +12,7 @@
     X(SPI1) X(SPI2) X(SPI3) \
     X(I2C1) X(I2C2) X(I2C3) \
     X(ADC1) X(ADC2) X(ADC3) X(ADC4) \
-    X(DAC1) X(DAC2) \
+    X(DAC1) \
     X(TSC) \
     X(USART1) X(USART2) X(USART3) X(USART4) X(USART5) X(USART6) \
     X(TIM1) X(TIM2) X(TIM3) X(TIM4) X(TIM5) \

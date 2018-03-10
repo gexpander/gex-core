@@ -263,7 +263,7 @@ void hw_periph_clock_enable(void *periph)
     else if (periph == TIM5) __HAL_RCC_TIM5_CLK_ENABLE();
 #endif
 #ifdef TIM6
-    else if (periph == TIM6) __HAL_RCC_TIM7_CLK_ENABLE();
+    else if (periph == TIM6) __HAL_RCC_TIM6_CLK_ENABLE();
 #endif
 #ifdef TIM7
     else if (periph == TIM7) __HAL_RCC_TIM7_CLK_ENABLE();
@@ -374,7 +374,7 @@ void hw_periph_clock_disable(void *periph)
     else if (periph == TIM5) __HAL_RCC_TIM5_CLK_DISABLE();
 #endif
 #ifdef TIM6
-    else if (periph == TIM6) __HAL_RCC_TIM7_CLK_DISABLE();
+    else if (periph == TIM6) __HAL_RCC_TIM6_CLK_DISABLE();
 #endif
 #ifdef TIM7
     else if (periph == TIM7) __HAL_RCC_TIM7_CLK_DISABLE();
