@@ -113,7 +113,7 @@ void irqd_init(void)
 //    NVIC_EnableIRQ(TIM3_IRQn);                  /*!< TIM3 global Interrupt                                           */
 
     NVIC_EnableIRQ(TIM6_DAC_IRQn);              /*!< TIM6 global and DAC channel underrun error Interrupt            */
-    HAL_NVIC_SetPriority(TIM7_IRQn, 2, 0); // Used for DAC timing
+    HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 2, 0); // Used for DAC timing
 
     NVIC_EnableIRQ(TIM7_IRQn);                  /*!< TIM7 global Interrupt                                           */
     HAL_NVIC_SetPriority(TIM7_IRQn, 2, 0);// this will be for dac (?)

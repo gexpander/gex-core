@@ -2,7 +2,6 @@
 // Created by MightyPork on 2018/02/20.
 //
 
-#include <stm32f072xb.h>
 #include "platform.h"
 
 #define FCAP_INTERNAL
