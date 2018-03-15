@@ -300,7 +300,6 @@ void settings_load_ini_begin(void)
     SystemSettings.loading_inifile = 0;
 }
 
-
 void settings_load_ini_key(const char *restrict section, const char *restrict key, const char *restrict value)
 {
 //    dbg("[%s] %s = %s", section, key, value);
@@ -312,6 +311,7 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
     if (streq(section, "SYSTEM")) {
         if (SystemSettings.loading_inifile == 0) {
             SystemSettings.loading_inifile = 'S';
+            systemsettings_mco_teardown();
             systemsettings_loadDefaults();
         }
 
@@ -355,5 +355,9 @@ void settings_load_ini_end(void)
     if (SystemSettings.loading_inifile == 'U') {
         bool suc = ureg_finalize_all_init();
         if (!suc) dbg("Some units failed to init!!");
+    }
+
+    if (SystemSettings.loading_inifile == 'S') {
+        systemsettings_mco_init();
     }
 }

@@ -18,6 +18,8 @@
 struct system_settings {
     bool visible_vcom;
     bool ini_comments;
+    bool enable_mco;
+    uint8_t mco_prediv;
 
     // Support flags put here for scoping, but not atcually part of the persistent settings
     volatile bool editable; //!< True if we booted with the LOCK jumper removed
@@ -59,5 +61,8 @@ void systemsettings_build_ini(IniWriter *iw);
  * @return true on success
  */
 bool systemsettings_load_ini(const char *restrict key, const char *restrict value);
+
+void systemsettings_mco_teardown(void);
+void systemsettings_mco_init(void);
 
 #endif //GEX_SYSTEM_SETTINGS_H
