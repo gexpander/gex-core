@@ -25,8 +25,8 @@ __ALIGN_BEGIN uint8_t USBD_MSC_CDC_CfgFSDesc[USBD_MSC_CDC_CONFIG_DESC_SIZ]  __AL
         3,  /* bNumInterfaces - 1 MSC + 2 composite CDC ACM */
         0x01,   /* bConfigurationValue: */
         0,   /* iConfiguration: - string descriptor */
-        0xC0,   /* bmAttributes: - self powered */
-        150,   /* MaxPower 300 mA */
+        0x80,   /* bmAttributes: - bus powered */
+        250,   /* MaxPower 500 mA */
 
             /********************  Mass Storage interface ********************/
 /*9*/       0x09,   /* bLength: Interface Descriptor size */
@@ -63,7 +63,7 @@ __ALIGN_BEGIN uint8_t USBD_MSC_CDC_CfgFSDesc[USBD_MSC_CDC_CONFIG_DESC_SIZ]  __AL
             0x02, /* bInterfaceCount */
             0x02, /* bFunctionClass */  // #36
             0x02, /* bFunctionSubClass (ACM) */
-            0x01, /* bFunctionProtocol (AT-COMMANDS) */
+            0x01, /* bFunctionProtocol (AT-COMMANDS - we don't implement this but it's a good default) */
             0x05, /* iFunction: string descriptor */
 
             /********************** ACM interface **********************/
@@ -131,7 +131,7 @@ __ALIGN_BEGIN uint8_t USBD_MSC_CDC_CfgFSDesc[USBD_MSC_CDC_CONFIG_DESC_SIZ]  __AL
                 USB_DESC_TYPE_ENDPOINT,      /* bDescriptorType: Endpoint */
                 CDC_OUT_EP,                        /* bEndpointAddress */
                 0x02,                              /* bmAttributes: Bulk */
-                LOBYTE(CDC_DATA_FS_MAX_PACKET_SIZE),  /* wMaxPacketSize: TODO 8? */
+                LOBYTE(CDC_DATA_FS_MAX_PACKET_SIZE),  /* wMaxPacketSize */
                 HIBYTE(CDC_DATA_FS_MAX_PACKET_SIZE),
                 0x00,                              /* bInterval: ignore for Bulk transfer */
 
@@ -140,7 +140,7 @@ __ALIGN_BEGIN uint8_t USBD_MSC_CDC_CfgFSDesc[USBD_MSC_CDC_CONFIG_DESC_SIZ]  __AL
                 USB_DESC_TYPE_ENDPOINT,      /* bDescriptorType: Endpoint */
                 CDC_IN_EP,                         /* bEndpointAddress */
                 0x02,                              /* bmAttributes: Bulk */
-                LOBYTE(CDC_DATA_FS_MAX_PACKET_SIZE),  /* wMaxPacketSize: TODO 16? */
+                LOBYTE(CDC_DATA_FS_MAX_PACKET_SIZE),  /* wMaxPacketSize */
                 HIBYTE(CDC_DATA_FS_MAX_PACKET_SIZE),
                 0x00                               /* bInterval: ignore for Bulk transfer */
     };
