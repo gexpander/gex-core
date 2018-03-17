@@ -95,7 +95,7 @@ error_t UU_SPI_Write(Unit *unit, uint8_t slave_num,
     uint16_t mask = pinmask_spread((uint16_t) (1 << slave_num), priv->ssn_pins);
     priv->ssn_port->BRR = mask;
     {
-        TRY(xfer_do(priv, request, response, req_len, resp_len, resp_skip));
+        TRY(xfer_do(priv, request, response, req_len, resp_skip, resp_len));
     }
     priv->ssn_port->BSRR = mask;
 
