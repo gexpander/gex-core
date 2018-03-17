@@ -42,7 +42,11 @@ void LockJumper_Init(void)
         LL_GPIO_SetPinPull(lock_periph, lock_llpin, LL_GPIO_PULL_UP);
     #endif
 
-    SystemSettings.editable = PLAT_LOCK_1CLOSED == LL_GPIO_IsInputPinSet(lock_periph, lock_llpin);
+#if PLAT_LOCK_BTN
+    SystemSettings.editable = false;
+#else
+    SystemSettings.editable = (PLAT_LOCK_1CLOSED != LL_GPIO_IsInputPinSet(lock_periph, lock_llpin));
+#endif
     dbg("Settings editable? %d", SystemSettings.editable);
 }
 
