@@ -276,7 +276,7 @@ bool ureg_instantiate_by_ini(const char *restrict driver_name, const char *restr
                 char *name = NULL;
                 if (delim != NULL) {
                     // not last
-                    name = strndup_ck(p, delim - p);
+                    name = strndup_ck(p, delim - p + 1);
                     p = delim + 1;
                 } else {
                     // last name
