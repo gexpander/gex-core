@@ -138,8 +138,6 @@ void plat_init_resources(void)
         // USB
         rv |= rsc_claim(&UNIT_SYSTEM, R_PA11);
         rv |= rsc_claim(&UNIT_SYSTEM, R_PA12);
-        // BOOT pin(s)
-        rv |= rsc_claim(&UNIT_SYSTEM, R_PB2); // BOOT1
     }
 #elif defined(GEX_PLAT_F303_DISCOVERY)
     // Platform STM32F303VCT
