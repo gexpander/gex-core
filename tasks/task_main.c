@@ -12,6 +12,7 @@
 #include "usb_device.h"
 #include "usbd_msc.h"
 #include "task_main.h"
+#include "comm/interfaces.h"
 
 /* TaskUsbEvent function */
 void TaskMain(void const * argument)
@@ -25,14 +26,16 @@ void TaskMain(void const * argument)
 
     Indicator_Effect(STATUS_WELCOME);
 
-    uint32_t startTime = xTaskGetTickCount();
+    const uint32_t bootTime = HAL_GetTick();
+    uint32_t startTime = bootTime;
     uint32_t cnt = 1;
+    bool waiting_for_usb = true;
     while(1) {
         uint32_t msg;
         xTaskNotifyWait(0, UINT32_MAX, &msg, 100); // time out if nothing happened
 
         // periodic updates to the VFS driver
-        uint32_t now = xTaskGetTickCount();
+        uint32_t now = HAL_GetTick();
         uint32_t elapsed = now - startTime;
         if (elapsed >= 100) {
             // interval 100ms or more - slow periodic
@@ -48,6 +51,9 @@ void TaskMain(void const * argument)
             Indicator_Heartbeat();
 
             wd_restart();
+
+            // If USB has no signal, set up alternate communication interface
+            com_switch_transfer_if_needed();
         }
 
         // if no message and it just timed out, go wait some more...
@@ -61,35 +67,39 @@ void TaskMain(void const * argument)
             continue;
         }
 
-        // Endpoint 0 - control messages for the different classes
-        if (msg & USBEVT_FLAG_EP0_RX_RDY) {
-            USBD_CDC_EP0_RxReady(&hUsbDeviceFS);
-        }
+        if (gActiveComport == COMPORT_USB) {
+            // Endpoint 0 - control messages for the different classes
+            if (msg & USBEVT_FLAG_EP0_RX_RDY) {
+                USBD_CDC_EP0_RxReady(&hUsbDeviceFS);
+            }
 
-        if (msg & USBEVT_FLAG_EP0_TX_SENT) {
-            //
-        }
+            if (msg & USBEVT_FLAG_EP0_TX_SENT) {
+                //
+            }
 
 #ifndef DISABLE_MSC
-        // MSC - read/write etc
-        if (msg & (USBEVT_FLAG_EPx_IN(MSC_EPIN_ADDR))) {
-            USBD_MSC_DataIn(&hUsbDeviceFS, MSC_EPIN_ADDR);
-        }
+            // MSC - read/write etc
+            if (msg & (USBEVT_FLAG_EPx_IN(MSC_EPIN_ADDR))) {
+                USBD_MSC_DataIn(&hUsbDeviceFS, MSC_EPIN_ADDR);
+            }
 
-        if (msg & (USBEVT_FLAG_EPx_OUT(MSC_EPOUT_ADDR))) {
-            USBD_MSC_DataOut(&hUsbDeviceFS, MSC_EPOUT_ADDR);
-        }
+            if (msg & (USBEVT_FLAG_EPx_OUT(MSC_EPOUT_ADDR))) {
+                USBD_MSC_DataOut(&hUsbDeviceFS, MSC_EPOUT_ADDR);
+            }
 #endif
 
-        // CDC - config packets and data in/out
-//        if (msg & (USBEVT_FLAG_EPx_IN(CDC_IN_EP))) {
-//            USBD_CDC_DataIn(&hUsbDeviceFS, CDC_IN_EP);
-//        }
-        if (msg & (USBEVT_FLAG_EPx_IN(CDC_CMD_EP))) {
-            USBD_CDC_DataIn(&hUsbDeviceFS, CDC_CMD_EP);
-        }
-        if (msg & (USBEVT_FLAG_EPx_OUT(CDC_OUT_EP))) {
-            USBD_CDC_DataOut(&hUsbDeviceFS, CDC_OUT_EP);
+            // CDC - config packets and data in/out
+//          if (msg & (USBEVT_FLAG_EPx_IN(CDC_IN_EP))) {
+//              USBD_CDC_DataIn(&hUsbDeviceFS, CDC_IN_EP);
+//          }
+
+            if (msg & (USBEVT_FLAG_EPx_IN(CDC_CMD_EP))) {
+                USBD_CDC_DataIn(&hUsbDeviceFS, CDC_CMD_EP);
+            }
+
+            if (msg & (USBEVT_FLAG_EPx_OUT(CDC_OUT_EP))) {
+                USBD_CDC_DataOut(&hUsbDeviceFS, CDC_OUT_EP);
+            }
         }
     }
 }

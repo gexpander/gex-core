@@ -186,7 +186,7 @@ USBD_StorageTypeDef USBD_Storage_Interface_fops_FS =
 int8_t STORAGE_Init_FS (uint8_t lun)
 {
   /* USER CODE BEGIN 2 */
-    dbg("Plug In");
+  dbg("MSC init request");
   vfs_mngr_fs_enable(1);
   return (USBD_OK);
   /* USER CODE END 2 */ 

@@ -2,7 +2,6 @@
 // Created by MightyPork on 2017/11/21.
 //
 
-#include <platform/status_led.h>
 #include "platform.h"
 #include "framework/settings.h"
 #include "utils/ini_parser.h"
@@ -11,6 +10,7 @@
 #include "comm/messages.h"
 #include "framework/system_settings.h"
 #include "utils/malloc_safe.h"
+#include "platform/status_led.h"
 
 static TinyFrame tf_;
 TinyFrame *comm = &tf_;

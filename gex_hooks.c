@@ -10,12 +10,14 @@
 #include "platform/debug_uart.h"
 #include "gex_hooks.h"
 #include "unit_registry.h"
+#include "comm/interfaces.h"
 
 /**
  * This is a systick callback for GEX application logic
  */
 void GEX_MsTick(void)
 {
+    com_iface_flush_buffer();
     TF_Tick(comm);
     Indicator_Tick();
     ureg_tick_units();

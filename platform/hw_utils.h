@@ -40,6 +40,8 @@ GPIO_TypeDef *hw_port2periph(char port_name, bool *suc);
  */
 bool hw_pinrsc2ll(Resource rsc, GPIO_TypeDef **port, uint32_t *llpin) __attribute__((warn_unused_result));
 
+void hw_deinit_pin_rsc(Resource rsc);
+
 /**
  * Spread packed port pins using a mask
  *

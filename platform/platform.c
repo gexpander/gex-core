@@ -2,7 +2,6 @@
 // Created by MightyPork on 2017/11/26.
 //
 
-#include <units/dac/unit_dac.h>
 #include "platform.h"
 #include "usbd_core.h"
 #include "USB/usb_device.h"
@@ -22,6 +21,8 @@
 #include "units/fcap/unit_fcap.h"
 #include "units/touch/unit_touch.h"
 #include "units/simple_pwm/unit_pwmdim.h"
+#include "units/dac/unit_dac.h"
+#include "comm/interfaces.h"
 #include "hw_utils.h"
 
 void plat_init_resources(void)
@@ -258,6 +259,8 @@ void plat_init_resources(void)
  */
 void plat_usb_reconnect(void)
 {
+    if (gActiveComport != COMPORT_USB) return;
+
     // TODO add better reset methods available on different chips
 
     USBD_LL_Reset(&hUsbDeviceFS);
