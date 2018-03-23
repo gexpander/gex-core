@@ -20,6 +20,13 @@ struct system_settings {
     bool ini_comments;
     bool enable_mco;
     uint8_t mco_prediv;
+    bool enable_debug_uart;
+
+    // enable alternate communication ports if USB doesn't enumerate (e.g. running from battery / solar cell remotely)
+    bool use_comm_uart;
+    uint32_t comm_uart_baud; // baud rate for the uart transport
+    bool use_comm_lora;   // SX1276/8
+    bool use_comm_nordic; // nRF24L01+
 
     // Support flags put here for scoping, but not atcually part of the persistent settings
     volatile bool editable; //!< True if we booted with the LOCK jumper removed
@@ -62,7 +69,9 @@ void systemsettings_build_ini(IniWriter *iw);
  */
 bool systemsettings_load_ini(const char *restrict key, const char *restrict value);
 
-void systemsettings_mco_teardown(void);
-void systemsettings_mco_init(void);
+/** Release system resources before system settings init */
+void systemsettings_begin_load(void);
+/** Claim system resources and apply system settings */
+void systemsettings_finalize_load(void);
 
 #endif //GEX_SYSTEM_SETTINGS_H

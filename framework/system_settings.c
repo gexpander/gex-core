@@ -2,6 +2,8 @@
 // Created by MightyPork on 2017/12/02.
 //
 
+#include <platform/debug_uart.h>
+#include <comm/interfaces.h>
 #include "platform.h"
 #include "system_settings.h"
 #include "utils/str_utils.h"
@@ -9,6 +11,11 @@
 #include "cfg_utils.h"
 #include "resources.h"
 #include "unit_base.h"
+
+static void systemsettings_mco_teardown(void);
+static void systemsettings_mco_init(void);
+/** Init/deinit debug uart */
+static void systemsettings_debug_uart_init_deinit(void);
 
 struct system_settings SystemSettings;
 
@@ -19,6 +26,13 @@ void systemsettings_loadDefaults(void)
     SystemSettings.ini_comments = true;
     SystemSettings.enable_mco = false;
     SystemSettings.mco_prediv = 7;
+
+    SystemSettings.use_comm_uart = false; // TODO configure those based on compile flags for a particular platform
+    SystemSettings.use_comm_lora = false;
+    SystemSettings.use_comm_nordic = false;
+    SystemSettings.comm_uart_baud = 115200; // TODO
+
+    SystemSettings.enable_debug_uart = true;
 }
 
 /** Load defaults and init flags */
@@ -35,14 +49,20 @@ void systemsettings_init(void)
 void systemsettings_save(PayloadBuilder *pb)
 {
     pb_char(pb, 'S');
-    pb_u8(pb, 1); // settings format version
+    pb_u8(pb, 2); // settings format version
 
     { // system settings
         pb_bool(pb, SystemSettings.visible_vcom);
         pb_bool(pb, SystemSettings.ini_comments);
-
+        // 1
         pb_bool(pb, SystemSettings.enable_mco);
         pb_u8(pb, SystemSettings.mco_prediv);
+        // 2
+        pb_bool(pb, SystemSettings.use_comm_uart);
+        pb_bool(pb, SystemSettings.use_comm_nordic);
+        pb_bool(pb, SystemSettings.use_comm_lora);
+        pb_u32(pb, SystemSettings.comm_uart_baud);
+        pb_bool(pb, SystemSettings.enable_debug_uart);
     } // end system settings
 }
 
@@ -67,12 +87,40 @@ void systemsettings_mco_init(void)
     }
 }
 
+void systemsettings_debug_uart_init_deinit(void)
+{
+    if (SystemSettings.enable_debug_uart) {
+        DebugUart_Init();
+    } else {
+        DebugUart_Teardown();
+    }
+}
+
+/**
+ * Begin load of system settings, releasing resources etc
+ */
+void systemsettings_begin_load(void)
+{
+    systemsettings_mco_teardown();
+    com_release_resources_for_alt_transfers();
+}
+
+/**
+ * Claim resources and set up system components based on the loaded settings
+ */
+void systemsettings_finalize_load(void)
+{
+    systemsettings_mco_init();
+    systemsettings_debug_uart_init_deinit();
+    com_claim_resources_for_alt_transfers();
+}
+
 // from binary
 bool systemsettings_load(PayloadParser *pp)
 {
     if (pp_char(pp) != 'S') return false;
 
-    systemsettings_mco_teardown();
+    systemsettings_begin_load();
 
     uint8_t version = pp_u8(pp);
 
@@ -85,9 +133,16 @@ bool systemsettings_load(PayloadParser *pp)
             SystemSettings.enable_mco = pp_bool(pp);
             SystemSettings.mco_prediv = pp_u8(pp);
         }
+        if (version >= 2) {
+            SystemSettings.use_comm_uart = pp_bool(pp);
+            SystemSettings.use_comm_nordic = pp_bool(pp);
+            SystemSettings.use_comm_lora = pp_bool(pp);
+            SystemSettings.comm_uart_baud = pp_u32(pp);
+            SystemSettings.enable_debug_uart = pp_bool(pp);
+        }
     } // end system settings
 
-    systemsettings_mco_init();
+    systemsettings_finalize_load();
 
     return pp->ok;
 }
@@ -106,11 +161,31 @@ void systemsettings_build_ini(IniWriter *iw)
     iw_comment(iw, "Show comments in INI files (Y, N)");
     iw_entry_s(iw, "ini-comments", str_yn(SystemSettings.ini_comments));
 
+    iw_comment(iw, "Enable debug UART-Tx on PA9 (Y, N)"); // TODO update if moved to a different pin
+    iw_entry_s(iw, "debug-uart", str_yn(SystemSettings.enable_debug_uart));
+
     iw_cmt_newline(iw);
     iw_comment(iw, "Output core clock on PA8 (Y, N)");
     iw_entry_s(iw, "mco-enable", str_yn(SystemSettings.enable_mco));
     iw_comment(iw, "Output clock prediv (1,2,...,128)");
     iw_entry_d(iw, "mco-prediv", (1<<SystemSettings.mco_prediv));
+
+    iw_cmt_newline(iw);
+    iw_comment(iw, "Allowed fallback communication ports");
+
+    iw_comment(iw, "UART Tx:PA2, Rx:PA2");
+    iw_entry_s(iw, "com-uart", str_yn(SystemSettings.use_comm_uart));
+    iw_entry_d(iw, "com-uart-baud", SystemSettings.comm_uart_baud);
+
+    // those aren't implement yet, don't tease the user
+    // TODO show pin-out, extra settings if applicable
+#if 0
+    iw_comment(iw, "nRF24L01+");
+    iw_entry_s(iw, "com-nordic", str_yn(SystemSettings.use_comm_nrf24l01p));
+
+    iw_comment(iw, "LoRa/GFSK sx127x");
+    iw_entry_s(iw, "com-lora", str_yn(SystemSettings.use_comm_sx127x));
+#endif
 }
 
 /**
@@ -150,6 +225,33 @@ bool systemsettings_load_ini(const char *restrict key, const char *restrict valu
             }
         }
     }
+
+    if (streq(key, "debug-uart")) {
+        bool yn = cfg_bool_parse(value, &suc);
+        if (suc) SystemSettings.enable_debug_uart = yn;
+    }
+
+    if (streq(key, "com-uart")) {
+        bool yn = cfg_bool_parse(value, &suc);
+        if (suc) SystemSettings.use_comm_uart = yn;
+    }
+
+    if (streq(key, "com-uart-baud")) {
+        uint32_t baud = cfg_u32_parse(value, &suc);
+        if (suc) SystemSettings.comm_uart_baud = baud;
+    }
+
+#if 0
+    if (streq(key, "com-nordic")) {
+        bool yn = cfg_bool_parse(value, &suc);
+        if (suc) SystemSettings.use_comm_nordic = yn;
+    }
+
+    if (streq(key, "com-lora")) {
+        bool yn = cfg_bool_parse(value, &suc);
+        if (suc) SystemSettings.use_comm_lora = yn;
+    }
+#endif
 
     return suc;
 }

@@ -8,6 +8,8 @@
 #ifndef GEX_DEBUG_UART_H
 #define GEX_DEBUG_UART_H
 
+#include "platform.h"
+
 /**
  * Pre-init the debug uart
  *
@@ -17,7 +19,13 @@
 void DebugUart_PreInit(void);
 
 /**
- * Finalize the init (claim resources)
+ * Release the peripheral and deinit pin
+ */
+void DebugUart_Teardown(void);
+
+/**
+ * Finalize the init (claim resources).
+ * If not pre-inited (i.e. Teardown was called before), also pre-init.
  */
 void DebugUart_Init(void);
 

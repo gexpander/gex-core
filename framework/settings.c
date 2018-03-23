@@ -2,6 +2,7 @@
 // Created by MightyPork on 2017/11/26.
 //
 
+#include <comm/interfaces.h>
 #include "platform.h"
 #include "utils/hexdump.h"
 #include "settings.h"
@@ -9,6 +10,7 @@
 #include "system_settings.h"
 #include "utils/str_utils.h"
 #include "unit_base.h"
+#include "platform/debug_uart.h"
 #include "utils/avrlibc.h"
 
 // pre-declarations
@@ -311,7 +313,7 @@ void settings_load_ini_key(const char *restrict section, const char *restrict ke
     if (streq(section, "SYSTEM")) {
         if (SystemSettings.loading_inifile == 0) {
             SystemSettings.loading_inifile = 'S';
-            systemsettings_mco_teardown();
+            systemsettings_begin_load();
             systemsettings_loadDefaults();
         }
 
@@ -358,6 +360,6 @@ void settings_load_ini_end(void)
     }
 
     if (SystemSettings.loading_inifile == 'S') {
-        systemsettings_mco_init();
+        systemsettings_finalize_load();
     }
 }

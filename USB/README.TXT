@@ -17,3 +17,15 @@ and processed by the message queue thread. This makes it possible to query hardw
 also makes it possible to wait on a binary semaphore when sending data back to host. The
 semaphore is set from the CDC TxComplete callback and taken by the TinyFrame write
 function, serving as a form of flow control.
+
+--------------------------------------------
+
+COMM API:
+
+GEX supports alternate command interfaces.
+
+The active interface is set in the global variable gActiveComport
+Due to special init procedures, the com_switch_transfer() function must be called to change it.
+
+The TX function is defined in TF_Integration.c and any RX'd data is sent through rxQuePostMsg()
+

@@ -99,12 +99,17 @@ void hw_deinit_unit_pins(Unit *unit)
 {
     for (uint32_t rsc = R_PA0; rsc <= R_PF15; rsc++) {
         if (RSC_IS_HELD(unit->resources, (Resource)rsc)) {
-            rsc_dbg("Freeing pin %s", rsc_get_name((Resource)rsc));
-            GPIO_TypeDef *port = GPIO_PERIPHS[(rsc-R_PA0) / 16];
-            uint32_t ll_pin = LL_GPIO_PINS[(rsc-R_PA0)%16];
-            LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ANALOG);
+            hw_deinit_pin_rsc((Resource)rsc);
         }
     }
+}
+
+void hw_deinit_pin_rsc(Resource rsc)
+{
+    rsc_dbg("Freeing pin %s", rsc_get_name((Resource)rsc));
+    GPIO_TypeDef *port = GPIO_PERIPHS[(rsc-R_PA0) / 16];
+    uint32_t ll_pin = LL_GPIO_PINS[(rsc-R_PA0)%16];
+    LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ANALOG);
 }
 
 /** Configure a pin to alternate function */

@@ -56,9 +56,9 @@
 #define IWBUFFER_LEN     80 // Ini writer buffer for sprintf
 
 // -------- Timeouts ------------
-#define TF_PARSER_TIMEOUT_TICKS 300 // Timeout for receiving & parsing a frame
-#define BULK_LST_TIMEOUT_MS     500 // timeout for the bulk transaction to expire
-#define MSG_QUE_POST_TIMEOUT    100 // Time to post to the messages / jobs queue
+#define TF_PARSER_TIMEOUT_TICKS 100 // Timeout for receiving & parsing a frame
+#define BULK_LST_TIMEOUT_MS     2000 // timeout for the bulk transaction to expire
+#define MSG_QUE_POST_TIMEOUT    200 // Time to post to the messages / jobs queue
 
 // -------- Platform specific includes and defines ---------
 
