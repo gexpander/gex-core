@@ -12,7 +12,7 @@
 // ------------------------------------------------------------------------
 
 enum SipoCmd_ {
-    CMD_QUERY = 0,
+    CMD_WRITE = 0,
     CMD_DIRECT_DATA = 1,
     CMD_DIRECT_SHIFT = 2,
     CMD_DIRECT_CLEAR = 3,
@@ -23,7 +23,7 @@ enum SipoCmd_ {
 static error_t USIPO_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, PayloadParser *pp)
 {
     switch (command) {
-        case CMD_QUERY:
+        case CMD_WRITE:
             {
                 uint32_t len;
                 uint16_t terminal_packed = pp_u16(pp);

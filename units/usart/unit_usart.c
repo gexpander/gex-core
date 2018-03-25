@@ -92,7 +92,7 @@ void UUSART_Tick(Unit *unit)
 }
 
 enum PinCmd_ {
-    CMD_QUERY = 0,
+    CMD_WRITE = 0,
     CMD_WRITE_SYNC = 1,
 };
 
@@ -103,7 +103,7 @@ static error_t UUSART_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
     const uint8_t *pld;
     switch (command) {
         /** Write bytes to the USART. Payload consists of the data to send. Waits for completion. */
-        case CMD_QUERY:
+        case CMD_WRITE:
             pld = pp_tail(pp, &len);
             TRY(UU_USART_Write(unit, pld, len));
             return E_SUCCESS;

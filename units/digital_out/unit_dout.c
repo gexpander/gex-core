@@ -9,7 +9,7 @@
 #include "_dout_internal.h"
 
 enum PinCmd_ {
-    CMD_QUERY = 0,
+    CMD_WRITE = 0,
     CMD_SET = 1,
     CMD_CLEAR = 2,
     CMD_TOGGLE = 3,
@@ -22,7 +22,7 @@ static error_t DOut_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
     uint16_t packed = pp_u16(pp);
 
     switch (command) {
-        case CMD_QUERY:
+        case CMD_WRITE:
             return UU_DOut_Write(unit, packed);
 
         case CMD_SET:
