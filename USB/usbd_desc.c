@@ -72,11 +72,11 @@
 /** @defgroup USBD_DESC_Private_Defines
   * @{
   */ 
-#define USBD_VID              1155 // TODO choose a VID:PID (eg. via pid.codes - 0x1209)
-#define USBD_PID_FS          22314
+#define USBD_VID             0x1209
+#define USBD_PID_FS          0x4c60
 #define USBD_LANGID_NUM       1033
 #define USBD_MANUFACTURER_STRING     "MightyPork"
-#define USBD_PRODUCT_STRING_FS       "GEX"
+#define USBD_PRODUCT_STRING_FS       "GEX USB module"
 #define USBD_VERSION_NUM             0x0001 // 0xMMmp
 //#define USBD_SERIALNUMBER_STRING_FS  "00000000001A"
 //#define USBD_CONFIGURATION_STRING_FS "MSC Config"
