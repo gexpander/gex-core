@@ -13,6 +13,7 @@
 enum AdcCmd_ {
     CMD_READ_RAW = 0,
     CMD_READ_SMOOTHED = 1,
+    CMD_READ_CAL_CONSTANTS = 2,
 
     CMD_GET_ENABLED_CHANNELS = 10,
     CMD_GET_SAMPLE_RATE = 11,
@@ -98,6 +99,22 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                     LL_ADC_SetSamplingTimeCommonChannels(priv->ADCx, LL_ADC_SAMPLETIMES[tim]);
                 }
                 UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+            }
+            return E_SUCCESS;
+
+        /** Read ADC calibration constants */
+        case CMD_READ_CAL_CONSTANTS:
+            {
+                pb_u16(&pb, *VREFINT_CAL_ADDR); // VREFINT_CAL
+                pb_u16(&pb, VREFINT_CAL_VREF); // Vref pin voltage during calibration (usually bonded to Vdd)
+
+                pb_u16(&pb, *TEMPSENSOR_CAL1_ADDR); // TEMPSENSOR_CAL1
+                pb_u16(&pb, *TEMPSENSOR_CAL2_ADDR); // TEMPSENSOR_CAL2
+                pb_u8(&pb, TEMPSENSOR_CAL1_TEMP); // temperature for CAL1
+                pb_u8(&pb, TEMPSENSOR_CAL2_TEMP); // temperature for CAL2
+                pb_u16(&pb, TEMPSENSOR_CAL_VREFANALOG); // VREFINT_CAL_VREF - Vref pin voltage during calibration (usually bonded to Vdd)
+
+                com_respond_pb(frame_id, MSG_SUCCESS, &pb);
             }
             return E_SUCCESS;
 
