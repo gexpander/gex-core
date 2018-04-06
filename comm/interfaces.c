@@ -2,7 +2,6 @@
 // Created by MightyPork on 2018/03/23.
 //
 
-#include <stm32f072xb.h>
 #include "platform.h"
 #include "usbd_core.h"
 #include "USB/usb_device.h"
@@ -12,6 +11,10 @@
 #include "framework/resources.h"
 #include "platform/hw_utils.h"
 #include "framework/unit_base.h"
+#include "nrf_pins.h"
+#include "iface_uart.h"
+#include "iface_usb.h"
+#include "iface_nordic.h"
 
 enum ComportSelection gActiveComport = COMPORT_USB; // start with USB so the handlers work correctly initially
 
@@ -35,36 +38,31 @@ void com_switch_transfer_if_needed(void)
 
             // Check if USB is enumerated
 
-            const uint32_t uadr = (USB->DADDR & USB_DADDR_ADD);
-            if (0 == uadr) {
+            if (!iface_usb_ready()) {
                 dbg("Not enumerated, assuming USB is dead");
 
                 // Fallback to radio or bare USART
                 do {
                     if (SystemSettings.use_comm_nordic) {
-                        if (configure_interface(COMPORT_NORDIC)) {
-                            break;
-                        }
+                        if (configure_interface(COMPORT_NORDIC)) break;
                     }
 
+#if 0
                     if (SystemSettings.use_comm_lora) {
-                        if (configure_interface(COMPORT_LORA)) {
-                            break;
-                        }
+                        if (configure_interface(COMPORT_LORA)) break;
                     }
+#endif
 
                     if (SystemSettings.use_comm_uart) {
                         // after nordic/lora
-                        if (configure_interface(COMPORT_USART)) {
-                            break;
-                        }
+                        if (configure_interface(COMPORT_USART)) break;
                     }
 
                     dbg("No alternate com interface configured.");
                     gActiveComport = COMPORT_NONE;
                 } while (0);
             } else {
-                dbg("USB got address 0x%02x - OK", (int)uadr);
+                dbg("USB got address - OK");
             }
 
             xfer_verify_done = true;
@@ -76,24 +74,11 @@ void com_switch_transfer_if_needed(void)
 void com_claim_resources_for_alt_transfers(void)
 {
     if (SystemSettings.use_comm_uart) {
-        do {
-            if (E_SUCCESS != rsc_claim(&UNIT_SYSTEM, R_USART2)) {
-                SystemSettings.use_comm_uart = false;
-                break;
-            }
+        iface_uart_claim_resources();
+    }
 
-            if (E_SUCCESS != rsc_claim(&UNIT_SYSTEM, R_PA2)) {
-                SystemSettings.use_comm_uart = false;
-                rsc_free(&UNIT_SYSTEM, R_USART2);
-                break;
-            }
-            if (E_SUCCESS != rsc_claim(&UNIT_SYSTEM, R_PA3)) {
-                SystemSettings.use_comm_uart = false;
-                rsc_free(&UNIT_SYSTEM, R_USART2);
-                rsc_free(&UNIT_SYSTEM, R_PA2);
-                break;
-            }
-        } while (0);
+    if (SystemSettings.use_comm_nordic) {
+        iface_nordic_claim_resources();
     }
 }
 
@@ -101,46 +86,14 @@ void com_claim_resources_for_alt_transfers(void)
 void com_release_resources_for_alt_transfers(void)
 {
     if (SystemSettings.use_comm_uart) {
-        rsc_free(&UNIT_SYSTEM, R_USART2);
-        rsc_free(&UNIT_SYSTEM, R_PA2);
-        rsc_free(&UNIT_SYSTEM, R_PA3);
+        iface_uart_free_resources();
+    }
+
+    if (SystemSettings.use_comm_nordic) {
+        iface_nordic_free_resources();
     }
 }
 
-static uint32_t usart_rxi = 0;
-static uint8_t usart_rx_buffer[MSG_QUE_SLOT_SIZE];
-static uint32_t last_rx_time = 0;
-
-/** Handler for the USART transport */
-static void com_UsartIrqHandler(void *arg)
-{
-    (void)arg;
-    if (LL_USART_IsActiveFlag_RXNE(USART2)) {
-        vPortEnterCritical();
-        {
-            usart_rx_buffer[usart_rxi++] = LL_USART_ReceiveData8(USART2);
-            if (usart_rxi == MSG_QUE_SLOT_SIZE) {
-                rxQuePostMsg(usart_rx_buffer, MSG_QUE_SLOT_SIZE); // avoid it happening in the irq
-                usart_rxi = 0;
-            }
-            last_rx_time = HAL_GetTick();
-        }
-        vPortExitCritical();
-    }
-}
-
-/** this is called from the hal tick irq */
-void com_iface_flush_buffer(void)
-{
-    if (usart_rxi > 0 && (HAL_GetTick()-last_rx_time)>=2) {
-        vPortEnterCritical();
-        {
-            rxQuePostMsg(usart_rx_buffer, usart_rxi);
-            usart_rxi = 0;
-        }
-        vPortExitCritical();
-    }
-}
 
 static bool configure_interface(enum ComportSelection iface)
 {
@@ -151,14 +104,10 @@ static bool configure_interface(enum ComportSelection iface)
         __HAL_RCC_USB_CLK_DISABLE();
     }
     else if (gActiveComport == COMPORT_USART) {
-        // this doesn't normally happen
-        hw_deinit_pin_rsc(R_PA2);
-        hw_deinit_pin_rsc(R_PA3);
-        __HAL_RCC_USART2_CLK_DISABLE();
-        irqd_detach(USART2, com_UsartIrqHandler);
+        iface_uart_deinit();
     }
     else if (gActiveComport == COMPORT_NORDIC) {
-        // TODO
+        iface_nordic_deinit();
     }
 
 
@@ -170,45 +119,20 @@ static bool configure_interface(enum ComportSelection iface)
         return false;
     }
     else if (iface == COMPORT_USART) {
-        dbg("Setting up UART transfer");
-        assert_param(E_SUCCESS == hw_configure_gpiorsc_af(R_PA2, LL_GPIO_AF_1));
-        assert_param(E_SUCCESS == hw_configure_gpiorsc_af(R_PA3, LL_GPIO_AF_1));
-
-        __HAL_RCC_USART2_CLK_ENABLE();
-        __HAL_RCC_USART2_FORCE_RESET();
-        __HAL_RCC_USART2_RELEASE_RESET();
-
-        LL_USART_Disable(USART2);
-
-        LL_USART_SetBaudRate(USART2, PLAT_APB1_HZ, LL_USART_OVERSAMPLING_16, SystemSettings.comm_uart_baud);
-        dbg("baud = %d", (int)SystemSettings.comm_uart_baud);
-
-        irqd_attach(USART2, com_UsartIrqHandler, NULL);
-        LL_USART_EnableIT_RXNE(USART2);
-        LL_USART_SetTransferDirection(USART2, LL_USART_DIRECTION_TX_RX);
-
-        LL_USART_Enable(USART2);
-
-        return true; // always OK (TODO check voltage on Rx if it's 3V3 when idle?)
+        return iface_uart_init();
     }
     else if (iface == COMPORT_NORDIC) {
-        // Try to configure nordic
-        dbg("Setting up nRF transfer");
-
-        // TODO set up and check nRF transport
-
-
-        // On failure, try setting up LoRa
-        dbg("nRF failed to init");
-        return false;
+        return iface_nordic_init();
     }
+#if 0
     else if (iface == COMPORT_LORA) {
         // Try to configure nordic
         dbg("Setting up LoRa transfer");
         // TODO set up and check LoRa transport
-        dbg("LoRa failed to init");
+        dbg("LoRa not impl!");
         return false;
     }
+#endif
     else {
         trap("Bad iface %d", iface);
     }

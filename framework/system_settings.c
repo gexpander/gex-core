@@ -49,7 +49,7 @@ void systemsettings_init(void)
 void systemsettings_save(PayloadBuilder *pb)
 {
     pb_char(pb, 'S');
-    pb_u8(pb, 2); // settings format version
+    pb_u8(pb, 3); // settings format version
 
     { // system settings
         pb_bool(pb, SystemSettings.visible_vcom);
@@ -63,8 +63,51 @@ void systemsettings_save(PayloadBuilder *pb)
         pb_bool(pb, SystemSettings.use_comm_lora);
         pb_u32(pb, SystemSettings.comm_uart_baud);
         pb_bool(pb, SystemSettings.enable_debug_uart);
+        // 3
+        pb_u8(pb, SystemSettings.nrf_channel);
+        pb_u8(pb, SystemSettings.nrf_address);
+        pb_buf(pb, SystemSettings.nrf_network, 4);
     } // end system settings
 }
+
+
+// from binary
+bool systemsettings_load(PayloadParser *pp)
+{
+    if (pp_char(pp) != 'S') return false;
+
+    systemsettings_begin_load();
+
+    uint8_t version = pp_u8(pp);
+
+    { // system settings
+        SystemSettings.visible_vcom = pp_bool(pp);
+        SystemSettings.ini_comments = pp_bool(pp);
+
+        // conditional fields based on version
+        if (version >= 1) {
+            SystemSettings.enable_mco = pp_bool(pp);
+            SystemSettings.mco_prediv = pp_u8(pp);
+        }
+        if (version >= 2) {
+            SystemSettings.use_comm_uart = pp_bool(pp);
+            SystemSettings.use_comm_nordic = pp_bool(pp);
+            SystemSettings.use_comm_lora = pp_bool(pp);
+            SystemSettings.comm_uart_baud = pp_u32(pp);
+            SystemSettings.enable_debug_uart = pp_bool(pp);
+        }
+        if (version >= 3) {
+            SystemSettings.nrf_channel = pp_u8(pp);
+            SystemSettings.nrf_address = pp_u8(pp);
+            pp_buf(pp, SystemSettings.nrf_network, 4);
+        }
+    } // end system settings
+
+    systemsettings_finalize_load();
+
+    return pp->ok;
+}
+
 
 void systemsettings_mco_teardown(void)
 {
@@ -80,8 +123,7 @@ void systemsettings_mco_init(void)
         assert_param(rsc_claim(&UNIT_SYSTEM, R_PA8) == E_SUCCESS);
 
         assert_param(E_SUCCESS == hw_configure_gpiorsc_af(R_PA8, LL_GPIO_AF_0));
-        LL_RCC_ConfigMCO(LL_RCC_MCO1SOURCE_SYSCLK,
-                         SystemSettings.mco_prediv << RCC_CFGR_MCOPRE_Pos);
+        LL_RCC_ConfigMCO(LL_RCC_MCO1SOURCE_SYSCLK, SystemSettings.mco_prediv << RCC_CFGR_MCOPRE_Pos);
     } else {
         LL_RCC_ConfigMCO(LL_RCC_MCO1SOURCE_NOCLOCK, 0);
     }
@@ -114,39 +156,6 @@ void systemsettings_finalize_load(void)
     systemsettings_debug_uart_init_deinit();
     com_claim_resources_for_alt_transfers();
 }
-
-// from binary
-bool systemsettings_load(PayloadParser *pp)
-{
-    if (pp_char(pp) != 'S') return false;
-
-    systemsettings_begin_load();
-
-    uint8_t version = pp_u8(pp);
-
-    { // system settings
-        SystemSettings.visible_vcom = pp_bool(pp);
-        SystemSettings.ini_comments = pp_bool(pp);
-
-        // conditional fields based on version
-        if (version >= 1) {
-            SystemSettings.enable_mco = pp_bool(pp);
-            SystemSettings.mco_prediv = pp_u8(pp);
-        }
-        if (version >= 2) {
-            SystemSettings.use_comm_uart = pp_bool(pp);
-            SystemSettings.use_comm_nordic = pp_bool(pp);
-            SystemSettings.use_comm_lora = pp_bool(pp);
-            SystemSettings.comm_uart_baud = pp_u32(pp);
-            SystemSettings.enable_debug_uart = pp_bool(pp);
-        }
-    } // end system settings
-
-    systemsettings_finalize_load();
-
-    return pp->ok;
-}
-
 
 /**
  * Write system settings to INI (without section)

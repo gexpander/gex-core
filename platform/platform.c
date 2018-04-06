@@ -41,6 +41,9 @@ void plat_init_resources(void)
         ureg_add_type(&UNIT_TEST);
     #endif
 
+    // EXTI are always available
+    rsc_free_range(NULL, R_EXTI0, R_EXTI15);
+
     // --- platform specific resource releases and claims ---
 
 #if defined(GEX_PLAT_F103_BLUEPILL)
