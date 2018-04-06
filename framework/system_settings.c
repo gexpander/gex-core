@@ -2,8 +2,6 @@
 // Created by MightyPork on 2017/12/02.
 //
 
-#include <platform/debug_uart.h>
-#include <comm/interfaces.h>
 #include "platform.h"
 #include "system_settings.h"
 #include "utils/str_utils.h"
@@ -11,6 +9,8 @@
 #include "cfg_utils.h"
 #include "resources.h"
 #include "unit_base.h"
+#include "platform/debug_uart.h"
+#include "comm/interfaces.h"
 
 static void systemsettings_mco_teardown(void);
 static void systemsettings_mco_init(void);
@@ -171,18 +171,34 @@ void systemsettings_build_ini(IniWriter *iw)
     iw_entry_d(iw, "mco-prediv", (1<<SystemSettings.mco_prediv));
 
     iw_cmt_newline(iw);
-    iw_comment(iw, "Allowed fallback communication ports");
+    iw_comment(iw, "--- Allowed fallback communication ports ---");
 
-    iw_comment(iw, "UART Tx:PA2, Rx:PA2");
+    iw_cmt_newline(iw);
+    iw_comment(iw, "UART Tx:PA2, Rx:PA3");
     iw_entry_s(iw, "com-uart", str_yn(SystemSettings.use_comm_uart));
     iw_entry_d(iw, "com-uart-baud", SystemSettings.comm_uart_baud);
+
+    iw_cmt_newline(iw);
+    iw_comment(iw, "nRF24L01+ radio");
+    iw_entry_s(iw, "com-nrf", str_yn(SystemSettings.use_comm_nordic));
+
+    iw_comment(iw, "nRF channel");
+    iw_entry_d(iw, "nrf-channel", SystemSettings.nrf_channel);
+
+    iw_comment(iw, "nRF network ID (hex, 4 bytes, little-endian)");
+    iw_entry(iw, "nrf-network", "%02X.%02X.%02X.%02X",
+             SystemSettings.nrf_network[0],
+             SystemSettings.nrf_network[1],
+             SystemSettings.nrf_network[2],
+             SystemSettings.nrf_network[3]);
+
+    iw_comment(iw, "nRF node address (hex, 1 byte, > 0)");
+    iw_entry(iw, "nrf-address", "%02X",
+             SystemSettings.nrf_address);
 
     // those aren't implement yet, don't tease the user
     // TODO show pin-out, extra settings if applicable
 #if 0
-    iw_comment(iw, "nRF24L01+");
-    iw_entry_s(iw, "com-nordic", str_yn(SystemSettings.use_comm_nrf24l01p));
-
     iw_comment(iw, "LoRa/GFSK sx127x");
     iw_entry_s(iw, "com-lora", str_yn(SystemSettings.use_comm_sx127x));
 #endif
@@ -241,12 +257,24 @@ bool systemsettings_load_ini(const char *restrict key, const char *restrict valu
         if (suc) SystemSettings.comm_uart_baud = baud;
     }
 
-#if 0
-    if (streq(key, "com-nordic")) {
+    if (streq(key, "com-nrf")) {
         bool yn = cfg_bool_parse(value, &suc);
         if (suc) SystemSettings.use_comm_nordic = yn;
     }
 
+    if (streq(key, "nrf-channel")) {
+        SystemSettings.nrf_channel = cfg_u8_parse(value, &suc);
+    }
+
+    if (streq(key, "nrf-address")) {
+        cfg_hex_parse(&SystemSettings.nrf_address, 1, value, &suc);
+    }
+
+    if (streq(key, "nrf-network")) {
+        cfg_hex_parse(&SystemSettings.nrf_network[0], 4, value, &suc);
+    }
+
+#if 0
     if (streq(key, "com-lora")) {
         bool yn = cfg_bool_parse(value, &suc);
         if (suc) SystemSettings.use_comm_lora = yn;

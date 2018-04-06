@@ -18,7 +18,7 @@ enum ComportSelection gActiveComport = COMPORT_USB; // start with USB so the han
 static uint32_t last_switch_time = 0; // started with USB
 static bool xfer_verify_done = false;
 
-static void configure_interface(enum ComportSelection iface);
+static bool configure_interface(enum ComportSelection iface);
 
 /** Switch com transfer if the current one doesnt seem to work */
 void com_switch_transfer_if_needed(void)
@@ -30,8 +30,8 @@ void com_switch_transfer_if_needed(void)
 
     if (gActiveComport == COMPORT_USB) {
         if (elapsed > 1000) {
-            // USB may or may not work, depending on whether the module is plugged -
-            // in or running from a battery/external supply remotely.
+            // USB may or may not work, depending on whether the module is plugged in
+            // or running from a battery/external supply remotely.
 
             // Check if USB is enumerated
 
@@ -39,19 +39,30 @@ void com_switch_transfer_if_needed(void)
             if (0 == uadr) {
                 dbg("Not enumerated, assuming USB is dead");
 
-                // Fallback to bare USART
-                if (SystemSettings.use_comm_uart) {
-                    configure_interface(COMPORT_USART);
-                }
-                else if (SystemSettings.use_comm_nordic) {
-                    configure_interface(COMPORT_NORDIC); // this fallbacks to LoRa if LoRa enabled
-                }
-                else if (SystemSettings.use_comm_lora) {
-                    configure_interface(COMPORT_LORA);
-                }
-                else {
-                    dbg("No alternate com interface configured, leaving USB enabled.");
-                }
+                // Fallback to radio or bare USART
+                do {
+                    if (SystemSettings.use_comm_nordic) {
+                        if (configure_interface(COMPORT_NORDIC)) {
+                            break;
+                        }
+                    }
+
+                    if (SystemSettings.use_comm_lora) {
+                        if (configure_interface(COMPORT_LORA)) {
+                            break;
+                        }
+                    }
+
+                    if (SystemSettings.use_comm_uart) {
+                        // after nordic/lora
+                        if (configure_interface(COMPORT_USART)) {
+                            break;
+                        }
+                    }
+
+                    dbg("No alternate com interface configured.");
+                    gActiveComport = COMPORT_NONE;
+                } while (0);
             } else {
                 dbg("USB got address 0x%02x - OK", (int)uadr);
             }
@@ -131,7 +142,7 @@ void com_iface_flush_buffer(void)
     }
 }
 
-static void configure_interface(enum ComportSelection iface)
+static bool configure_interface(enum ComportSelection iface)
 {
     // Teardown
     if (gActiveComport == COMPORT_USB) {
@@ -146,11 +157,17 @@ static void configure_interface(enum ComportSelection iface)
         __HAL_RCC_USART2_CLK_DISABLE();
         irqd_detach(USART2, com_UsartIrqHandler);
     }
-    gActiveComport = COMPORT_NONE;
+    else if (gActiveComport == COMPORT_NORDIC) {
+        // TODO
+    }
+
+
+    gActiveComport = iface;
 
     // Init
     if (iface == COMPORT_USB) {
         trap("illegal"); // this never happens
+        return false;
     }
     else if (iface == COMPORT_USART) {
         dbg("Setting up UART transfer");
@@ -171,37 +188,28 @@ static void configure_interface(enum ComportSelection iface)
         LL_USART_SetTransferDirection(USART2, LL_USART_DIRECTION_TX_RX);
 
         LL_USART_Enable(USART2);
+
+        return true; // always OK (TODO check voltage on Rx if it's 3V3 when idle?)
+    }
+    else if (iface == COMPORT_NORDIC) {
+        // Try to configure nordic
+        dbg("Setting up nRF transfer");
+
+        // TODO set up and check nRF transport
+
+
+        // On failure, try setting up LoRa
+        dbg("nRF failed to init");
+        return false;
+    }
+    else if (iface == COMPORT_LORA) {
+        // Try to configure nordic
+        dbg("Setting up LoRa transfer");
+        // TODO set up and check LoRa transport
+        dbg("LoRa failed to init");
+        return false;
     }
     else {
-        if (iface == COMPORT_NORDIC) {
-            // Try to configure nordic
-            dbg("Setting up nRF transfer");
-
-            // TODO set up and check nRF transport
-
-            // On failure, try setting up LoRa
-            dbg("nRF failed to init");
-            if (SystemSettings.use_comm_lora) {
-                iface = COMPORT_LORA;
-            } else {
-                iface = COMPORT_NONE; // fail
-            }
-        }
-
-        if (iface == COMPORT_LORA) {
-            // Try to configure nordic
-            dbg("Setting up LoRa transfer");
-
-            // TODO set up and check LoRa transport
-
-            dbg("LoRa failed to init");
-            iface = COMPORT_NONE; // fail
-        }
+        trap("Bad iface %d", iface);
     }
-
-    if (iface == COMPORT_NONE) {
-        dbg("NO COM PORT AVAILABLE!");
-    }
-
-    gActiveComport = iface;
 }
