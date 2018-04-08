@@ -98,6 +98,7 @@ bool iface_nordic_init(void)
     NRF_SetChannel(SystemSettings.nrf_channel);
     NRF_SetBaseAddress(SystemSettings.nrf_network);
     NRF_SetRxAddress(RX_PIPE_NUM, SystemSettings.nrf_address);
+    NRF_EnablePipe(RX_PIPE_NUM);
     NRF_ModeRX();
 
     dbg("enable exti");

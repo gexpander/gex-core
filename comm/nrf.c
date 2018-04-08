@@ -166,6 +166,7 @@ static uint8_t NRF_WriteRegister(uint8_t reg, uint8_t value)
         status = spi(CMD_WRITE_REG | reg);
         spi(value);
     }
+    dbg("Wr[0x%02x] := 0x%02x", (int)reg, (int) value);
     return status;
 }
 
@@ -176,6 +177,7 @@ static uint8_t NRF_ReadRegister(uint8_t reg)
         spi(CMD_READ_REG | reg);
         reg_val = spi(0);
     }
+    dbg("Rd[0x%02x] = 0x%02x", (int)reg, (int) reg_val);
     return reg_val;
 }
 
@@ -229,10 +231,13 @@ void NRF_SetRxAddress(uint8_t pipenum, uint8_t AddrByte)
 
     nrf_pipe_addr[pipenum] = AddrByte;
 
+    dbg("Set Rx addr (pipe %d) = 0x%02x", (int)pipenum, AddrByte);
     if (pipenum == 0) {
+        dbg("W ADDR_PA0: %02X-%02X-%02X-%02X-%02X", nrf_base_address[0], nrf_base_address[1], nrf_base_address[2], nrf_base_address[3], nrf_base_address[4]);
         NRF_WriteBuffer(RG_RX_ADDR_P0, nrf_base_address, 5);
     }
     else if (pipenum == 1) {
+        dbg("W ADDR_PA1: %02X-%02X-%02X-%02X-%02X", nrf_base_address[0], nrf_base_address[1], nrf_base_address[2], nrf_base_address[3], nrf_base_address[4]);
         NRF_WriteBuffer(RG_RX_ADDR_P1, nrf_base_address, 5);
     }
     else {
@@ -289,18 +294,23 @@ void NRF_DisablePipe(uint8_t pipenum)
 static void NRF_SetTxAddress(uint8_t SendTo)
 {
     nrf_base_address[4] = SendTo;
+
+    dbg("W Tx_ADDR + Rx0: %02X-%02X-%02X-%02X-%02X", nrf_base_address[0], nrf_base_address[1], nrf_base_address[2], nrf_base_address[3], nrf_base_address[4]);
     NRF_WriteBuffer(RG_TX_ADDR, nrf_base_address, 5);
     NRF_WriteBuffer(RG_RX_ADDR_P0, nrf_base_address, 5); // the ACK will come to pipe 0
 }
 
 void NRF_PowerDown(void)
 {
+    dbg("PDn");
     CELOW;
     NRF_WriteRegister(RG_CONFIG, ModeBits);
 }
 
 void NRF_ModeTX(void)
 {
+    dbg("Tx Mode");
+
     CELOW;
     uint8_t m = NRF_ReadRegister(RG_CONFIG);
     NRF_WriteRegister(RG_CONFIG, ModeBits | RD_CONFIG_PWR_UP);
@@ -309,6 +319,7 @@ void NRF_ModeTX(void)
 
 void NRF_ModeRX(void)
 {
+    dbg("Rx Mode");
     NRF_WriteRegister(RG_CONFIG, ModeBits | RD_CONFIG_PWR_UP | RD_CONFIG_PRIM_RX);
     NRF_SetRxAddress(0, nrf_pipe_addr[0]); // set the P0 address - it was changed during Rx for ACK reception
     CEHIGH;
@@ -411,12 +422,16 @@ bool NRF_SendPacket(uint8_t PipeNum, const uint8_t *Packet, uint8_t Length)
         st = NRF_ReadStatus(); // Packet acked or timed out
     }
 
+    dbg("Send status: MAX_RT %d, SENT %d", (st&RD_STATUS_MAX_RT) != 0, (st&RD_STATUS_TX_DS) != 0);
+
     NRF_WriteRegister(RG_STATUS, st & (RD_STATUS_MAX_RT|RD_STATUS_TX_DS)); // Clear the bit
 
     if ((orig_conf & RD_CONFIG_PWR_UP) == 0) {
+        dbg("going back PwrDn");
         NRF_PowerDown();
     }
     else if ((orig_conf & RD_CONFIG_PRIM_RX) == RD_CONFIG_PRIM_RX) {
+        dbg("going back PwrUp+Rx");
         NRF_ModeRX();
     }
 
