@@ -11,6 +11,7 @@
 #include "framework/system_settings.h"
 #include "utils/malloc_safe.h"
 #include "platform/status_led.h"
+#include "interfaces.h"
 
 static TinyFrame tf_;
 TinyFrame *comm = &tf_;
@@ -23,7 +24,7 @@ TinyFrame *comm = &tf_;
 static TF_Result lst_ping(TinyFrame *tf, TF_Msg *msg)
 {
     com_respond_snprintf(msg->frame_id, MSG_SUCCESS,
-                         "GEX v%s on %s", GEX_VERSION, GEX_PLATFORM);
+                         "GEX v%s on %s (%s)", GEX_VERSION, GEX_PLATFORM, COMPORT_NAMES[gActiveComport]);
     return TF_STAY;
 }
 

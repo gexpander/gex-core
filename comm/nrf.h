@@ -23,6 +23,9 @@
 #include "resources.h"
 #include "nrf_pins.h"
 
+#define dbg_nrf(...) do{}while(0)
+//#define dbg_nrf(...) dbg(##__VA_ARGS__)
+
 // Initialize SPI and the Nordic
 
 /**
@@ -102,11 +105,6 @@ uint8_t NRF_PipeNum2Addr(uint8_t pipe_num);
  * @return
  */
 uint8_t NRF_Addr2PipeNum(uint8_t addr);
-
-/**
- * Reset as much as possible (incl. removing pipes)
- */
-void NRF_Reset(void);
 
 /**
  * Send a packet (takes care of mode switching etc)

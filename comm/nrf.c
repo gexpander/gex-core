@@ -53,13 +53,17 @@ do { \
 #define _delay_us(n) __asm_loop((n)*8)
 
 static inline void CE(bool level) {
+    __asm_loop(1);
     if (level) LL_GPIO_SetOutputPin(NRF_CE_GPIO_Port, NRF_CE_Pin);
     else LL_GPIO_ResetOutputPin(NRF_CE_GPIO_Port, NRF_CE_Pin);
+    __asm_loop(1);
 }
 
 static inline void NSS(bool level) {
+    __asm_loop(1);
     if (level) LL_GPIO_SetOutputPin(NRF_NSS_GPIO_Port, NRF_NSS_Pin);
     else LL_GPIO_ResetOutputPin(NRF_NSS_GPIO_Port, NRF_NSS_Pin);
+    __asm_loop(1);
 }
 
 static uint8_t spi(uint8_t tx) {
@@ -136,9 +140,6 @@ static uint8_t spi(uint8_t tx) {
                   RD_CONFIG_EN_CRC | \
                   RD_CONFIG_CRCO)
 
-#define CEHIGH CE(1)
-#define CELOW CE(0)
-
 static inline uint8_t CS(uint8_t hl)
 {
     if (hl == 1) {
@@ -166,7 +167,21 @@ static uint8_t NRF_WriteRegister(uint8_t reg, uint8_t value)
         status = spi(CMD_WRITE_REG | reg);
         spi(value);
     }
-    dbg("Wr[0x%02x] := 0x%02x", (int)reg, (int) value);
+    dbg_nrf("Wr[0x%02x] := 0x%02x", (int)reg, (int) value);
+
+
+    uint8_t reg_val = 0;
+    CHIPSELECT {
+        spi(CMD_READ_REG | reg);
+        reg_val = spi(0);
+    }
+    dbg_nrf("     verify 0x%02x", (int)reg_val);
+    if (reg_val != value)
+        dbg_nrf("                           !!!");
+    else
+        dbg_nrf("                           OK");
+
+
     return status;
 }
 
@@ -177,7 +192,7 @@ static uint8_t NRF_ReadRegister(uint8_t reg)
         spi(CMD_READ_REG | reg);
         reg_val = spi(0);
     }
-    dbg("Rd[0x%02x] = 0x%02x", (int)reg, (int) reg_val);
+    dbg_nrf("Rd[0x%02x]  = 0x%02x", (int)reg, (int) reg_val);
     return reg_val;
 }
 
@@ -218,12 +233,17 @@ void NRF_SetBaseAddress(const uint8_t *Bytes4)
 {
     memcpy(nrf_base_address, Bytes4, 4);
     nrf_base_address[4] = 0;
+
+    // write it to the two full-width address registers
+    NRF_WriteBuffer(RG_RX_ADDR_P0, nrf_base_address, 5);
+    nrf_base_address[4] = 1;// to be different
+    NRF_WriteBuffer(RG_RX_ADDR_P1, nrf_base_address, 5);
 }
 
 void NRF_SetRxAddress(uint8_t pipenum, uint8_t AddrByte)
 {
     if (pipenum > 5) {
-        dbg("!! bad pipe %d", pipenum);
+        dbg_nrf("!! bad pipe %d", pipenum);
         return;
     }
 
@@ -231,13 +251,13 @@ void NRF_SetRxAddress(uint8_t pipenum, uint8_t AddrByte)
 
     nrf_pipe_addr[pipenum] = AddrByte;
 
-    dbg("Set Rx addr (pipe %d) = 0x%02x", (int)pipenum, AddrByte);
+    dbg_nrf("Set Rx addr (pipe %d) = 0x%02x", (int)pipenum, AddrByte);
     if (pipenum == 0) {
-        dbg("W ADDR_PA0: %02X-%02X-%02X-%02X-%02X", nrf_base_address[0], nrf_base_address[1], nrf_base_address[2], nrf_base_address[3], nrf_base_address[4]);
+        dbg_nrf("W ADDR_PA0: %02X-%02X-%02X-%02X-%02X", nrf_base_address[0], nrf_base_address[1], nrf_base_address[2], nrf_base_address[3], nrf_base_address[4]);
         NRF_WriteBuffer(RG_RX_ADDR_P0, nrf_base_address, 5);
     }
     else if (pipenum == 1) {
-        dbg("W ADDR_PA1: %02X-%02X-%02X-%02X-%02X", nrf_base_address[0], nrf_base_address[1], nrf_base_address[2], nrf_base_address[3], nrf_base_address[4]);
+        dbg_nrf("W ADDR_PA1: %02X-%02X-%02X-%02X-%02X", nrf_base_address[0], nrf_base_address[1], nrf_base_address[2], nrf_base_address[3], nrf_base_address[4]);
         NRF_WriteBuffer(RG_RX_ADDR_P1, nrf_base_address, 5);
     }
     else {
@@ -275,6 +295,7 @@ uint8_t NRF_Addr2PipeNum(uint8_t addr)
 
 void NRF_EnablePipe(uint8_t pipenum)
 {
+    dbg_nrf("Enable pipe num %d", (int)pipenum);
     uint8_t enabled = NRF_ReadRegister(RG_EN_RXADDR);
     enabled |= 1 << pipenum;
     NRF_WriteRegister(RG_EN_RXADDR, enabled);
@@ -295,34 +316,39 @@ static void NRF_SetTxAddress(uint8_t SendTo)
 {
     nrf_base_address[4] = SendTo;
 
-    dbg("W Tx_ADDR + Rx0: %02X-%02X-%02X-%02X-%02X", nrf_base_address[0], nrf_base_address[1], nrf_base_address[2], nrf_base_address[3], nrf_base_address[4]);
+    dbg_nrf("W Tx_ADDR + Rx0: %02X-%02X-%02X-%02X-%02X",
+        nrf_base_address[0], nrf_base_address[1], nrf_base_address[2], nrf_base_address[3], nrf_base_address[4]);
+
     NRF_WriteBuffer(RG_TX_ADDR, nrf_base_address, 5);
     NRF_WriteBuffer(RG_RX_ADDR_P0, nrf_base_address, 5); // the ACK will come to pipe 0
 }
 
 void NRF_PowerDown(void)
 {
-    dbg("PDn");
-    CELOW;
+    dbg_nrf("PDn");
+    CE(0);
     NRF_WriteRegister(RG_CONFIG, ModeBits);
 }
 
 void NRF_ModeTX(void)
 {
-    dbg("Tx Mode");
+    dbg_nrf("Tx Mode");
 
-    CELOW;
+    CE(0);
     uint8_t m = NRF_ReadRegister(RG_CONFIG);
     NRF_WriteRegister(RG_CONFIG, ModeBits | RD_CONFIG_PWR_UP);
-    if ((m & RD_CONFIG_PWR_UP) == 0) LL_mDelay(5);
+    if ((m & RD_CONFIG_PWR_UP) == 0) {
+        // switching on
+        LL_mDelay(5);
+    }
 }
 
 void NRF_ModeRX(void)
 {
-    dbg("Rx Mode");
+    dbg_nrf("Rx Mode");
     NRF_WriteRegister(RG_CONFIG, ModeBits | RD_CONFIG_PWR_UP | RD_CONFIG_PRIM_RX);
     NRF_SetRxAddress(0, nrf_pipe_addr[0]); // set the P0 address - it was changed during Rx for ACK reception
-    CEHIGH;
+    CE(1);
 
     //if ((m&2)==0) LL_mDelay()(5); You don't need to wait. Just nothing will come for 5ms or more
 }
@@ -360,7 +386,9 @@ uint8_t NRF_ReceivePacket(uint8_t *Packet, uint8_t *PipeNum)
     uint8_t pw = 0, status;
     if (!NRF_IsRxPacket()) return 0;
 
-    CELOW;
+    const uint8_t orig_conf = NRF_ReadRegister(RG_CONFIG);
+    CE(0); // quit Rx mode - go idle
+
     CHIPSELECT {
         status = spi(CMD_RD_RX_PL_WIDTH);
         pw = spi(0);
@@ -370,19 +398,25 @@ uint8_t NRF_ReceivePacket(uint8_t *Packet, uint8_t *PipeNum)
         CHIPSELECT {
             spi(CMD_FLUSH_RX);
         }
-        NRF_WriteRegister(RG_STATUS, RD_STATUS_RX_DR);
-        return 0;
-    }
-
-    // Read the reception pipe number
-    *PipeNum = (status & RD_STATUS_RX_PNO) >> 1;
-
-    CHIPSELECT {
-        spi(CMD_RD_RX_PLD);
-        for (uint8_t i = 0; i < pw; i++) Packet[i] = spi(0);
+        pw = 0;
+    } else {
+        // Read the reception pipe number
+        *PipeNum = ((status & RD_STATUS_RX_PNO) >> 1);
+        CHIPSELECT {
+            spi(CMD_RD_RX_PLD);
+            for (uint8_t i = 0; i < pw; i++) Packet[i] = spi(0);
+        }
     }
     NRF_WriteRegister(RG_STATUS, RD_STATUS_RX_DR); // Clear the RX_DR interrupt
-    CEHIGH;
+
+    if ((orig_conf & RD_CONFIG_PWR_UP) == 0) {
+        dbg_nrf("going back PwrDn");
+        NRF_PowerDown();
+    }
+    else if ((orig_conf & RD_CONFIG_PRIM_RX) == RD_CONFIG_PRIM_RX) {
+        dbg_nrf("going back PwrUp+Rx");
+        NRF_ModeRX();
+    }
     return pw;
 }
 
@@ -395,14 +429,16 @@ bool NRF_IsRxPacket(void)
 bool NRF_SendPacket(uint8_t PipeNum, const uint8_t *Packet, uint8_t Length)
 {
     if (!nrf_pipe_enabled[PipeNum]) {
-        dbg("!! Pipe %d not enabled", PipeNum);
+        dbg_nrf("!! Pipe %d not enabled", PipeNum);
         return 0;
     }
 
+    dbg_nrf("Will tx to addr %02x", nrf_pipe_addr[PipeNum]);
+
     const uint8_t orig_conf = NRF_ReadRegister(RG_CONFIG);
-    CELOW;
+    CE(0);
     NRF_ModeTX();        // Make sure in TX mode
-    NRF_SetTxAddress(nrf_pipe_addr[PipeNum]);
+    NRF_SetTxAddress(nrf_pipe_addr[PipeNum]); // this sets the Tx addr and also pipe 0 addr for ACK
 
     CHIPSELECT {
         spi(CMD_FLUSH_TX);
@@ -413,58 +449,56 @@ bool NRF_SendPacket(uint8_t PipeNum, const uint8_t *Packet, uint8_t Length)
         for (uint8_t i = 0; i < Length; i++) spi(Packet[i]);
     };
 
-    CEHIGH;
-    _delay_us(15); // At least 10 us
-    CELOW;
+    // CE pulse
+    CE(1);
+    _delay_us(20); // At least 10 us
+    CE(0);
 
     uint8_t st = 0;
     while ((st & (RD_STATUS_MAX_RT|RD_STATUS_TX_DS)) == 0) {
         st = NRF_ReadStatus(); // Packet acked or timed out
     }
 
-    dbg("Send status: MAX_RT %d, SENT %d", (st&RD_STATUS_MAX_RT) != 0, (st&RD_STATUS_TX_DS) != 0);
+    dbg_nrf("Send status: 0x%02x - MAX_RT %d, SENT %d", (int)st,
+        (st&RD_STATUS_MAX_RT) != 0, (st&RD_STATUS_TX_DS) != 0);
 
     NRF_WriteRegister(RG_STATUS, st & (RD_STATUS_MAX_RT|RD_STATUS_TX_DS)); // Clear the bit
 
     if ((orig_conf & RD_CONFIG_PWR_UP) == 0) {
-        dbg("going back PwrDn");
+        dbg_nrf("going back PwrDn");
         NRF_PowerDown();
     }
     else if ((orig_conf & RD_CONFIG_PRIM_RX) == RD_CONFIG_PRIM_RX) {
-        dbg("going back PwrUp+Rx");
+        dbg_nrf("going back PwrUp+Rx");
         NRF_ModeRX();
     }
 
     return 0 != (st & RD_STATUS_TX_DS); // success
 }
 
-void NRF_Reset(void)
+void NRF_Init(uint8_t pSpeed)
 {
+    // Set the required output pins
     NSS(1);
-    CELOW;
-    NRF_PowerDown();
+    CE(0);
 
-    NRF_WriteRegister(RG_EN_RXADDR, 0); // disable all pipes
+    LL_mDelay(200);
 
     for (int i = 0; i < 6; i++) {
         nrf_pipe_addr[i] = 0;
         nrf_pipe_enabled[i] = 0;
     }
-}
 
-void NRF_Init(uint8_t pSpeed)
-{
-    // Set the required output pins
-    NSS(1);
-    CELOW;
-
-    LL_mDelay(200);
+    // clear flags etc
+    NRF_PowerDown();
+    CHIPSELECT { spi(CMD_FLUSH_RX); }
+    CHIPSELECT { spi(CMD_FLUSH_TX); }
+    NRF_WriteRegister(RG_STATUS, 0x70);
 
     NRF_WriteRegister(RG_CONFIG, ModeBits);
     NRF_WriteRegister(RG_SETUP_AW, 0b11);             // 5 byte addresses
 
-    // default
-//    NRF_EnablePipe(0);
+    NRF_WriteRegister(RG_EN_RXADDR, 0x01); // disable all, enable pipe 0 - this is required for shockburst, despite not being specified in the DS
 
     NRF_WriteRegister(RG_SETUP_RETR, 0x18);        // 8 retries
     NRF_WriteRegister(RG_RF_CH, 2);                // channel 2 NO HIGHER THAN 83 in USA!
@@ -474,9 +508,7 @@ void NRF_Init(uint8_t pSpeed)
     NRF_WriteRegister(RG_DYNPD, 0b111111);         // Dynamic packet length
     NRF_WriteRegister(RG_FEATURE, 0b100);          // Enable dynamic payload, and no payload in the ack.
 
-    for (int i = 0; i < 6; i++) {
-        NRF_WriteRegister(RG_RX_PW_P0+i, 32);      // Receive 32 byte packets - XXX this is probably not needed with dynamic length
-    }
-
-    //NRFModePowerDown();                    // Already in power down mode, dummy
+//    for (int i = 0; i < 6; i++) {
+//        NRF_WriteRegister(RG_RX_PW_P0+i, 32);      // Receive 32 byte packets - XXX this is probably not needed with dynamic length
+//    }
 }

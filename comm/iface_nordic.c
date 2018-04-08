@@ -9,10 +9,11 @@
 #include "nrf.h"
 #include "unit_base.h"
 #include "system_settings.h"
+#include "utils/hexdump.h"
 
 extern osSemaphoreId semVcomTxReadyHandle;
 
-#define RX_PIPE_NUM 1
+#define RX_PIPE_NUM 0
 
 void iface_nordic_claim_resources(void)
 {
@@ -45,16 +46,18 @@ static uint8_t rx_buffer[32];
 static void NrfIrqHandler(void *arg)
 {
     LL_EXTI_ClearFlag_0_31(LL_EXTI_LINES[NRF_EXTI_LINENUM]);
+    dbg_nrf("[EXTI] ---");
 
     uint8_t  pipenum;
     uint8_t count = NRF_ReceivePacket(rx_buffer, &pipenum);
 
     if (count > 0) {
-        dbg("NRF RX %d bytes", (int)count);
+        dbg_nrf("NRF RX %d bytes", (int)count);
         rxQuePostMsg(rx_buffer, count);
     } else {
         dbg("IRQ but no Rx");
     }
+    dbg_nrf("--- end [EXTI]");
 }
 
 bool iface_nordic_init(void)
@@ -75,10 +78,11 @@ bool iface_nordic_init(void)
 
     LL_SPI_Disable(NRF_SPI);
     {
-        LL_SPI_SetBaudRatePrescaler(NRF_SPI, LL_SPI_BAUDRATEPRESCALER_DIV8);
+        LL_SPI_SetBaudRatePrescaler(NRF_SPI, LL_SPI_BAUDRATEPRESCALER_DIV32);
+        //LL_SPI_BAUDRATEPRESCALER_DIV8
 
         LL_SPI_SetClockPolarity(NRF_SPI,     LL_SPI_POLARITY_LOW);
-        LL_SPI_SetClockPhase(NRF_SPI,        LL_SPI_PHASE_2EDGE);
+        LL_SPI_SetClockPhase(NRF_SPI,        LL_SPI_PHASE_1EDGE);
         LL_SPI_SetTransferDirection(NRF_SPI, LL_SPI_FULL_DUPLEX);
         LL_SPI_SetTransferBitOrder(NRF_SPI,  LL_SPI_MSB_FIRST);
 
@@ -128,7 +132,8 @@ void iface_nordic_deinit(void)
     hw_deinit_pin_rsc(NRF_R_IRQ);
 }
 
-#define MAX_RETRY 8
+// FIXME
+#define MAX_RETRY 5
 
 void iface_nordic_transmit(const uint8_t *buff, uint32_t len)
 {
@@ -137,11 +142,12 @@ void iface_nordic_transmit(const uint8_t *buff, uint32_t len)
         uint8_t chunk = (uint8_t) MIN(32, len);
 
         uint16_t delay = 1;
+        //hexDump("Tx chunk", buff, chunk);
         for (int i = 0; i < MAX_RETRY; i++) {
             suc = NRF_SendPacket(RX_PIPE_NUM, buff, chunk); // use the pipe to retrieve the address
             if (!suc) {
                 vTaskDelay(delay);
-                delay += 5; // longer delay next time
+                delay *= 2; // longer delay next time
             } else {
                 break;
             }
@@ -156,7 +162,7 @@ void iface_nordic_transmit(const uint8_t *buff, uint32_t len)
     }
 
     if (suc) {
-        dbg("+ NRF Tx OK!");
+        dbg_nrf("+ NRF Tx OK!");
     } else {
         dbg("- NRF sending failed");
     }

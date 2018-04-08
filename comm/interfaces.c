@@ -16,6 +16,15 @@
 #include "iface_usb.h"
 #include "iface_nordic.h"
 
+const char * COMPORT_NAMES[] = {
+    "NONE",
+    "USB",
+    "UART",
+    "NRF",
+    "LORA",
+};
+
+
 enum ComportSelection gActiveComport = COMPORT_USB; // start with USB so the handlers work correctly initially
 
 static uint32_t last_switch_time = 0; // started with USB

@@ -15,6 +15,8 @@ enum ComportSelection {
     COMPORT_LORA = 4,
 };
 
+extern const char * COMPORT_NAMES[];
+
 /**
  * The currently active communication port
  */
