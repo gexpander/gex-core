@@ -32,6 +32,15 @@ void systemsettings_loadDefaults(void)
     SystemSettings.use_comm_nordic = false;
     SystemSettings.comm_uart_baud = 115200; // TODO
 
+    // just a demo, user must change this
+    SystemSettings.nrf_network[0] = 0x12;
+    SystemSettings.nrf_network[2] = 0x09;
+    SystemSettings.nrf_network[3] = 0x4c;
+    SystemSettings.nrf_network[4] = 0x61;
+
+    SystemSettings.nrf_address = 1;
+    SystemSettings.nrf_channel = 76;
+
     SystemSettings.enable_debug_uart = true;
 }
 
@@ -195,14 +204,14 @@ void systemsettings_build_ini(IniWriter *iw)
     iw_entry_d(iw, "nrf-channel", SystemSettings.nrf_channel);
 
     iw_comment(iw, "nRF network ID (hex, 4 bytes, little-endian)");
-    iw_entry(iw, "nrf-network", "%02X.%02X.%02X.%02X",
+    iw_entry(iw, "nrf-network", "%02X-%02X-%02X-%02X",
              SystemSettings.nrf_network[0],
              SystemSettings.nrf_network[1],
              SystemSettings.nrf_network[2],
              SystemSettings.nrf_network[3]);
 
     iw_comment(iw, "nRF node address (hex, 1 byte, > 0)");
-    iw_entry(iw, "nrf-address", "%02X",
+    iw_entry(iw, "nrf-address", "0x%02X",
              SystemSettings.nrf_address);
 
     // those aren't implement yet, don't tease the user
