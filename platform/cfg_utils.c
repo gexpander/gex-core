@@ -311,7 +311,7 @@ void cfg_hex_parse(uint8_t *dest, uint32_t count, const char *value, bool *suc)
         if (v != 0) value++;
 
         uint8_t nibble = 0;
-        if (v == ' ' || v == '.' || v == '-' || v == ':') {
+        if (v == ' ' || v == '.' || v == ',' || v == '-' || v == ':') {
             continue; // junk
         }
         else if (v >= '0' && v <= '9') {

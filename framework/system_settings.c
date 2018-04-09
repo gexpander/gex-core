@@ -200,19 +200,18 @@ void systemsettings_build_ini(IniWriter *iw)
     iw_comment(iw, "nRF24L01+ radio");
     iw_entry_s(iw, "com-nrf", str_yn(SystemSettings.use_comm_nordic));
 
-    iw_comment(iw, "nRF channel");
+    iw_comment(iw, "Radio channel (0-125)");
     iw_entry_d(iw, "nrf-channel", SystemSettings.nrf_channel);
 
-    iw_comment(iw, "nRF network ID (hex, 4 bytes, little-endian)");
-    iw_entry(iw, "nrf-network", "%02X-%02X-%02X-%02X",
+    iw_comment(iw, "Network prefix (hex, 4 bytes)");
+    iw_entry(iw, "nrf-network", "%02X:%02X:%02X:%02X",
              SystemSettings.nrf_network[0],
              SystemSettings.nrf_network[1],
              SystemSettings.nrf_network[2],
              SystemSettings.nrf_network[3]);
 
-    iw_comment(iw, "nRF node address (hex, 1 byte, > 0)");
-    iw_entry(iw, "nrf-address", "0x%02X",
-             SystemSettings.nrf_address);
+    iw_comment(iw, "Node address (1-255)");
+    iw_entry(iw, "nrf-address", "%d", (int)SystemSettings.nrf_address);
 
     // those aren't implement yet, don't tease the user
     // TODO show pin-out, extra settings if applicable
@@ -285,7 +284,7 @@ bool systemsettings_load_ini(const char *restrict key, const char *restrict valu
     }
 
     if (streq(key, "nrf-address")) {
-        cfg_hex_parse(&SystemSettings.nrf_address, 1, value, &suc);
+        SystemSettings.nrf_address = cfg_u8_parse(value, &suc);
     }
 
     if (streq(key, "nrf-network")) {
