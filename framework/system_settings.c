@@ -2,8 +2,6 @@
 // Created by MightyPork on 2017/12/02.
 //
 
-#include <platform/debug_uart.h>
-#include <comm/interfaces.h>
 #include "platform.h"
 #include "system_settings.h"
 #include "utils/str_utils.h"
@@ -11,6 +9,8 @@
 #include "cfg_utils.h"
 #include "resources.h"
 #include "unit_base.h"
+#include "platform/debug_uart.h"
+#include "comm/interfaces.h"
 
 static void systemsettings_mco_teardown(void);
 static void systemsettings_mco_init(void);
@@ -32,6 +32,15 @@ void systemsettings_loadDefaults(void)
     SystemSettings.use_comm_nordic = false;
     SystemSettings.comm_uart_baud = 115200; // TODO
 
+    // just a demo, user must change this
+    SystemSettings.nrf_network[0] = 0x12;
+    SystemSettings.nrf_network[2] = 0x09;
+    SystemSettings.nrf_network[3] = 0x4c;
+    SystemSettings.nrf_network[4] = 0x61;
+
+    SystemSettings.nrf_address = 1;
+    SystemSettings.nrf_channel = 76;
+
     SystemSettings.enable_debug_uart = true;
 }
 
@@ -49,7 +58,7 @@ void systemsettings_init(void)
 void systemsettings_save(PayloadBuilder *pb)
 {
     pb_char(pb, 'S');
-    pb_u8(pb, 2); // settings format version
+    pb_u8(pb, 3); // settings format version
 
     { // system settings
         pb_bool(pb, SystemSettings.visible_vcom);
@@ -63,8 +72,51 @@ void systemsettings_save(PayloadBuilder *pb)
         pb_bool(pb, SystemSettings.use_comm_lora);
         pb_u32(pb, SystemSettings.comm_uart_baud);
         pb_bool(pb, SystemSettings.enable_debug_uart);
+        // 3
+        pb_u8(pb, SystemSettings.nrf_channel);
+        pb_u8(pb, SystemSettings.nrf_address);
+        pb_buf(pb, SystemSettings.nrf_network, 4);
     } // end system settings
 }
+
+
+// from binary
+bool systemsettings_load(PayloadParser *pp)
+{
+    if (pp_char(pp) != 'S') return false;
+
+    systemsettings_begin_load();
+
+    uint8_t version = pp_u8(pp);
+
+    { // system settings
+        SystemSettings.visible_vcom = pp_bool(pp);
+        SystemSettings.ini_comments = pp_bool(pp);
+
+        // conditional fields based on version
+        if (version >= 1) {
+            SystemSettings.enable_mco = pp_bool(pp);
+            SystemSettings.mco_prediv = pp_u8(pp);
+        }
+        if (version >= 2) {
+            SystemSettings.use_comm_uart = pp_bool(pp);
+            SystemSettings.use_comm_nordic = pp_bool(pp);
+            SystemSettings.use_comm_lora = pp_bool(pp);
+            SystemSettings.comm_uart_baud = pp_u32(pp);
+            SystemSettings.enable_debug_uart = pp_bool(pp);
+        }
+        if (version >= 3) {
+            SystemSettings.nrf_channel = pp_u8(pp);
+            SystemSettings.nrf_address = pp_u8(pp);
+            pp_buf(pp, SystemSettings.nrf_network, 4);
+        }
+    } // end system settings
+
+    systemsettings_finalize_load();
+
+    return pp->ok;
+}
+
 
 void systemsettings_mco_teardown(void)
 {
@@ -80,8 +132,7 @@ void systemsettings_mco_init(void)
         assert_param(rsc_claim(&UNIT_SYSTEM, R_PA8) == E_SUCCESS);
 
         assert_param(E_SUCCESS == hw_configure_gpiorsc_af(R_PA8, LL_GPIO_AF_0));
-        LL_RCC_ConfigMCO(LL_RCC_MCO1SOURCE_SYSCLK,
-                         SystemSettings.mco_prediv << RCC_CFGR_MCOPRE_Pos);
+        LL_RCC_ConfigMCO(LL_RCC_MCO1SOURCE_SYSCLK, SystemSettings.mco_prediv << RCC_CFGR_MCOPRE_Pos);
     } else {
         LL_RCC_ConfigMCO(LL_RCC_MCO1SOURCE_NOCLOCK, 0);
     }
@@ -115,39 +166,6 @@ void systemsettings_finalize_load(void)
     com_claim_resources_for_alt_transfers();
 }
 
-// from binary
-bool systemsettings_load(PayloadParser *pp)
-{
-    if (pp_char(pp) != 'S') return false;
-
-    systemsettings_begin_load();
-
-    uint8_t version = pp_u8(pp);
-
-    { // system settings
-        SystemSettings.visible_vcom = pp_bool(pp);
-        SystemSettings.ini_comments = pp_bool(pp);
-
-        // conditional fields based on version
-        if (version >= 1) {
-            SystemSettings.enable_mco = pp_bool(pp);
-            SystemSettings.mco_prediv = pp_u8(pp);
-        }
-        if (version >= 2) {
-            SystemSettings.use_comm_uart = pp_bool(pp);
-            SystemSettings.use_comm_nordic = pp_bool(pp);
-            SystemSettings.use_comm_lora = pp_bool(pp);
-            SystemSettings.comm_uart_baud = pp_u32(pp);
-            SystemSettings.enable_debug_uart = pp_bool(pp);
-        }
-    } // end system settings
-
-    systemsettings_finalize_load();
-
-    return pp->ok;
-}
-
-
 /**
  * Write system settings to INI (without section)
  */
@@ -171,18 +189,33 @@ void systemsettings_build_ini(IniWriter *iw)
     iw_entry_d(iw, "mco-prediv", (1<<SystemSettings.mco_prediv));
 
     iw_cmt_newline(iw);
-    iw_comment(iw, "Allowed fallback communication ports");
+    iw_comment(iw, "--- Allowed fallback communication ports ---");
 
-    iw_comment(iw, "UART Tx:PA2, Rx:PA2");
+    iw_cmt_newline(iw);
+    iw_comment(iw, "UART Tx:PA2, Rx:PA3");
     iw_entry_s(iw, "com-uart", str_yn(SystemSettings.use_comm_uart));
     iw_entry_d(iw, "com-uart-baud", SystemSettings.comm_uart_baud);
+
+    iw_cmt_newline(iw);
+    iw_comment(iw, "nRF24L01+ radio");
+    iw_entry_s(iw, "com-nrf", str_yn(SystemSettings.use_comm_nordic));
+
+    iw_comment(iw, "Radio channel (0-125)");
+    iw_entry_d(iw, "nrf-channel", SystemSettings.nrf_channel);
+
+    iw_comment(iw, "Network prefix (hex, 4 bytes)");
+    iw_entry(iw, "nrf-network", "%02X:%02X:%02X:%02X",
+             SystemSettings.nrf_network[0],
+             SystemSettings.nrf_network[1],
+             SystemSettings.nrf_network[2],
+             SystemSettings.nrf_network[3]);
+
+    iw_comment(iw, "Node address (1-255)");
+    iw_entry(iw, "nrf-address", "%d", (int)SystemSettings.nrf_address);
 
     // those aren't implement yet, don't tease the user
     // TODO show pin-out, extra settings if applicable
 #if 0
-    iw_comment(iw, "nRF24L01+");
-    iw_entry_s(iw, "com-nordic", str_yn(SystemSettings.use_comm_nrf24l01p));
-
     iw_comment(iw, "LoRa/GFSK sx127x");
     iw_entry_s(iw, "com-lora", str_yn(SystemSettings.use_comm_sx127x));
 #endif
@@ -241,12 +274,24 @@ bool systemsettings_load_ini(const char *restrict key, const char *restrict valu
         if (suc) SystemSettings.comm_uart_baud = baud;
     }
 
-#if 0
-    if (streq(key, "com-nordic")) {
+    if (streq(key, "com-nrf")) {
         bool yn = cfg_bool_parse(value, &suc);
         if (suc) SystemSettings.use_comm_nordic = yn;
     }
 
+    if (streq(key, "nrf-channel")) {
+        SystemSettings.nrf_channel = cfg_u8_parse(value, &suc);
+    }
+
+    if (streq(key, "nrf-address")) {
+        SystemSettings.nrf_address = cfg_u8_parse(value, &suc);
+    }
+
+    if (streq(key, "nrf-network")) {
+        cfg_hex_parse(&SystemSettings.nrf_network[0], 4, value, &suc);
+    }
+
+#if 0
     if (streq(key, "com-lora")) {
         bool yn = cfg_bool_parse(value, &suc);
         if (suc) SystemSettings.use_comm_lora = yn;

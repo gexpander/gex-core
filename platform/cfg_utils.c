@@ -297,3 +297,46 @@ uint32_t cfg_enum4_parse(const char *value,
     *suc = false;
     return na;
 }
+
+void cfg_hex_parse(uint8_t *dest, uint32_t count, const char *value, bool *suc)
+{
+    // discard possible leading 0x
+    if (value[0] == '0' && value[1] == 'x') {
+        value += 2;
+    }
+
+    uint8_t bytebuf = 0;
+    for (uint32_t digit = 0; digit < count * 2;) {
+        char v = *value;
+        if (v != 0) value++;
+
+        uint8_t nibble = 0;
+        if (v == ' ' || v == '.' || v == ',' || v == '-' || v == ':') {
+            continue; // junk
+        }
+        else if (v >= '0' && v <= '9') {
+            nibble = (uint8_t) (v - '0');
+        }
+        else if (v >= 'a' && v <= 'f') {
+            nibble = (uint8_t) (10 + (v - 'a'));
+        }
+        else if (v >= 'A' && v <= 'F') {
+            nibble = (uint8_t) (10 + (v - 'A'));
+        }
+        else if (v == 0) {
+            nibble = 0; // pad with zeros
+        }
+        else {
+            *suc = false;
+            return;
+        }
+
+        digit++;
+        bytebuf <<= 4;
+        bytebuf |= nibble;
+        if ((digit % 2 == 0) && digit > 0) { // whole byte
+            *dest++ = bytebuf;
+            bytebuf = 0;
+        }
+    }
+}

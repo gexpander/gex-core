@@ -11,13 +11,17 @@
 #include "gex_hooks.h"
 #include "unit_registry.h"
 #include "comm/interfaces.h"
+#include "system_settings.h"
 
 /**
  * This is a systick callback for GEX application logic
  */
 void GEX_MsTick(void)
 {
-    com_iface_flush_buffer();
+    if (gActiveComport == COMPORT_USART) {
+        com_iface_flush_buffer();
+    }
+
     TF_Tick(comm);
     Indicator_Tick();
     ureg_tick_units();
@@ -28,6 +32,11 @@ void GEX_MsTick(void)
  */
 void GEX_PreInit(void)
 {
+    // this is a hack to make logging of the initial messages work
+    // it's problematic because we shouldn't even enable the debug uart if it's disabled in the system settings
+    // TODO move system settings load earlier and check the uart flag in advance
+    SystemSettings.enable_debug_uart = true;
+
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();

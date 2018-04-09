@@ -54,7 +54,19 @@ error_t DIn_init(Unit *unit)
     // Claim all needed pins
     TRY(rsc_claim_gpios(unit, priv->port_name, priv->pins));
 
-    uint16_t mask = 1;
+    uint16_t mask;
+
+    // claim the needed EXTIs
+    mask = 1;
+    for (int i = 0; i < 16; i++, mask <<= 1) {
+        if (priv->pins & mask) {
+            if ((priv->trig_rise|priv->trig_fall) & mask) {
+                TRY(rsc_claim(unit, R_EXTI0+i));
+            }
+        }
+    }
+
+    mask = 1;
     for (int i = 0; i < 16; i++, mask <<= 1) {
         if (priv->pins & mask) {
             uint32_t ll_pin = hw_pin2ll((uint8_t) i, &suc);

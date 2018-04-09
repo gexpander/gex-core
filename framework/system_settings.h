@@ -27,6 +27,9 @@ struct system_settings {
     uint32_t comm_uart_baud; // baud rate for the uart transport
     bool use_comm_lora;   // SX1276/8
     bool use_comm_nordic; // nRF24L01+
+    uint8_t nrf_channel;
+    uint8_t nrf_network[4];
+    uint8_t nrf_address;
 
     // Support flags put here for scoping, but not atcually part of the persistent settings
     volatile bool editable; //!< True if we booted with the LOCK jumper removed

@@ -11,6 +11,7 @@
 #include "framework/system_settings.h"
 #include "utils/malloc_safe.h"
 #include "platform/status_led.h"
+#include "interfaces.h"
 
 static TinyFrame tf_;
 TinyFrame *comm = &tf_;
@@ -23,7 +24,7 @@ TinyFrame *comm = &tf_;
 static TF_Result lst_ping(TinyFrame *tf, TF_Msg *msg)
 {
     com_respond_snprintf(msg->frame_id, MSG_SUCCESS,
-                         "GEX v%s on %s", GEX_VERSION, GEX_PLATFORM);
+                         "GEX v%s on %s (%s)", GEX_VERSION, GEX_PLATFORM, COMPORT_NAMES[gActiveComport]);
     return TF_STAY;
 }
 
@@ -58,26 +59,33 @@ static TF_Result lst_list_units(TinyFrame *tf, TF_Msg *msg)
 
 // ---------------------------------------------------------------------------
 
-/** Callback for bulk read of the settings file */
-static void settings_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer)
+/** Callback for bulk read of a settings file */
+static void ini_bulkread_cb(BulkRead *bulk, uint32_t chunk, uint8_t *buffer)
 {
     // clean-up request
     if (buffer == NULL) {
         free_ck(bulk);
         iw_end();
-//        dbg("INI read complete.");
         return;
     }
 
     if (bulk->offset == 0) iw_begin();
 
     IniWriter iw = iw_init((char *)buffer, bulk->offset, chunk);
-    iw.tag = 1;
-    settings_build_units_ini(&iw);
+    iw.tag = 1; // indicates this is read via the API (affects some comments)
+
+    uint8_t filenum = (uint8_t) (int) bulk->userdata;
+    
+    if (filenum == 0) {
+        settings_build_units_ini(&iw);
+    }
+    else if (filenum == 1) {
+        settings_build_system_ini(&iw);
+    }
 }
 
 /**
- * Listener: Export INI file via TF
+ * Listener: Export a file via TF
  */
 static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
 {
@@ -86,14 +94,29 @@ static TF_Result lst_ini_export(TinyFrame *tf, TF_Msg *msg)
     BulkRead *bulk = malloc_ck(sizeof(BulkRead));
     assert_param(bulk != NULL);
 
+    uint8_t filenum = 0;
+
+    // if any payload, the first byte defines the file to read
+    // 0 - units
+    // 1 - system
+    // (this is optional for backwards compatibility)
+    if (msg->len > 0) {
+        filenum = msg->data[0];
+    }
+
     bulk->frame_id = msg->frame_id;
-    bulk->len = iw_measure_total(settings_build_units_ini, 1);
-    bulk->read = settings_bulkread_cb;
-    bulk->userdata = NULL;
+    bulk->read = ini_bulkread_cb;
+    bulk->userdata = (void *) (int)filenum;
+
+    if (filenum == 0) {
+        bulk->len = iw_measure_total(settings_build_units_ini, 1);
+    }
+    else if (filenum == 1) {
+        bulk->len = iw_measure_total(settings_build_system_ini, 1);
+    }
 
     bulkread_start(tf, bulk);
     Indicator_Effect(STATUS_DISK_BUSY_SHORT);
-
     return TF_STAY;
 }
 
@@ -142,7 +165,7 @@ static TF_Result lst_ini_import(TinyFrame *tf, TF_Msg *msg)
     PayloadParser pp = pp_start(msg->data, msg->len, NULL);
     uint32_t len = pp_u32(&pp);
     if (!pp.ok) {
-        com_respond_error(msg->frame_id, E_PROTOCOL_BREACH);
+        com_respond_error(msg->frame_id, E_MALFORMED_COMMAND);
         goto done;
     }
 
@@ -151,11 +174,8 @@ static TF_Result lst_ini_import(TinyFrame *tf, TF_Msg *msg)
 
     settings_load_ini_begin();
     ini_parse_begin(iniparser_cb, NULL);
-
     bulkwrite_start(tf, bulk);
-
     Indicator_Effect(STATUS_DISK_BUSY);
-
 done:
     return TF_STAY;
 }

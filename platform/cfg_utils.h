@@ -116,6 +116,18 @@ uint32_t cfg_enum4_parse(const char *tpl,
                          const char *d, uint32_t nd,
                          bool *suc);
 
+/**
+ * Parse a hexa string to a byte array.
+ * Skips 0x prefix, '.', '-', ':', ' '.
+ *
+ * @param[out] dest - storage array
+ * @param[in] count - expected number of bytes
+ * @param[in] value - parsed string
+ * @param[out] suc - success flag
+ */
+void cfg_hex_parse(uint8_t *dest, uint32_t count,
+                   const char *value, bool *suc);
+
 /** Convert bool to a Y or N constant string */
 #define str_yn(cond) ((cond) ? ("Y") : ("N"))
 
