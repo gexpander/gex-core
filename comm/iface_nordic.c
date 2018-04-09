@@ -48,15 +48,18 @@ static void NrfIrqHandler(void *arg)
     LL_EXTI_ClearFlag_0_31(LL_EXTI_LINES[NRF_EXTI_LINENUM]);
     dbg_nrf("[EXTI] ---");
 
-    uint8_t  pipenum;
-    uint8_t count = NRF_ReceivePacket(rx_buffer, &pipenum);
-
-    if (count > 0) {
-        dbg_nrf("NRF RX %d bytes", (int)count);
-        rxQuePostMsg(rx_buffer, count);
-    } else {
-        dbg("IRQ but no Rx");
+    while (NRF_IsRxPacket()) {
+        uint8_t pipenum;
+        uint8_t count = NRF_ReceivePacket(rx_buffer, &pipenum);
+        if (count > 0) {
+            dbg_nrf("NRF RX %d bytes", (int) count);
+            rxQuePostMsg(rx_buffer, count);
+        }
+        else {
+            dbg("IRQ but no Rx");
+        }
     }
+
     dbg_nrf("--- end [EXTI]");
 }
 

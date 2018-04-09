@@ -133,6 +133,12 @@ static uint8_t spi(uint8_t tx) {
 #define RD_CONFIG_DISABLE_IRQ_TX_DS 0x20
 #define RD_CONFIG_DISABLE_IRQ_RX_DR 0x40
 
+#define RD_FIFO_STATUS_RX_EMPTY 0x01
+#define RD_FIFO_STATUS_RX_FULL 0x02
+#define RD_FIFO_STATUS_TX_EMPTY 0x10
+#define RD_FIFO_STATUS_TX_FULL 0x20
+#define RD_FIFO_STATUS_TX_REUSE 0x40
+
 // Config register bits (excluding the bottom two that are changed dynamically)
 // enable only Rx IRQ
 #define ModeBits (RD_CONFIG_DISABLE_IRQ_MAX_RT | \
@@ -384,14 +390,21 @@ void NRF_SetChannel(uint8_t Ch)
 uint8_t NRF_ReceivePacket(uint8_t *Packet, uint8_t *PipeNum)
 {
     uint8_t pw = 0, status;
-    if (!NRF_IsRxPacket()) return 0;
+//    if (!NRF_IsRxPacket()) {
+//        dbg("rx queue empty");
+//        return 0;
+//    }
 
-    const uint8_t orig_conf = NRF_ReadRegister(RG_CONFIG);
-    CE(0); // quit Rx mode - go idle
+//    const uint8_t orig_conf = NRF_ReadRegister(RG_CONFIG);
+//    CE(0); // quit Rx mode - go idle
 
     CHIPSELECT {
         status = spi(CMD_RD_RX_PL_WIDTH);
         pw = spi(0);
+    }
+
+    if (pw == 0) {
+        dbg("empty pld");
     }
 
     if (pw > 32) {
@@ -399,6 +412,7 @@ uint8_t NRF_ReceivePacket(uint8_t *Packet, uint8_t *PipeNum)
             spi(CMD_FLUSH_RX);
         }
         pw = 0;
+        dbg("over 32");
     } else {
         // Read the reception pipe number
         *PipeNum = ((status & RD_STATUS_RX_PNO) >> 1);
@@ -409,21 +423,23 @@ uint8_t NRF_ReceivePacket(uint8_t *Packet, uint8_t *PipeNum)
     }
     NRF_WriteRegister(RG_STATUS, RD_STATUS_RX_DR); // Clear the RX_DR interrupt
 
-    if ((orig_conf & RD_CONFIG_PWR_UP) == 0) {
-        dbg_nrf("going back PwrDn");
-        NRF_PowerDown();
-    }
-    else if ((orig_conf & RD_CONFIG_PRIM_RX) == RD_CONFIG_PRIM_RX) {
-        dbg_nrf("going back PwrUp+Rx");
-        NRF_ModeRX();
-    }
+//    if ((orig_conf & RD_CONFIG_PWR_UP) == 0) {
+//        dbg_nrf("going back PwrDn");
+//        NRF_PowerDown();
+//    }
+//    else if ((orig_conf & RD_CONFIG_PRIM_RX) == RD_CONFIG_PRIM_RX) {
+//        dbg_nrf("going back PwrUp+Rx");
+//        NRF_ModeRX();
+//    }
+//    CE(1); // back to rx
     return pw;
 }
 
 bool NRF_IsRxPacket(void)
 {
-    uint8_t ret = NRF_ReadRegister(RG_STATUS) & RD_STATUS_RX_DR;
-    return 0 != ret;
+    return 0 == (NRF_ReadRegister(RG_FIFO_STATUS) & RD_FIFO_STATUS_RX_EMPTY);
+//    uint8_t ret = NRF_ReadRegister(RG_STATUS) & RD_STATUS_RX_DR;
+//    return 0 != ret;
 }
 
 bool NRF_SendPacket(uint8_t PipeNum, const uint8_t *Packet, uint8_t Length)
