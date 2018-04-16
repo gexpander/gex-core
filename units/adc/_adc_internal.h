@@ -57,6 +57,8 @@ struct priv {
     uint8_t dma_chnum; //!< DMA channel number
     DMA_Channel_TypeDef *DMA_CHx; //!< DMA channel instance
 
+    uint8_t channel_nums[18];
+
     // Live config
     float real_frequency;
     uint32_t real_frequency_int;

@@ -122,6 +122,7 @@ error_t UADC_init(Unit *unit)
         priv->nb_channels = 0;
         for (uint8_t i = 0; i <= UADC_MAX_CHANNEL; i++) {
             if (priv->cfg.channels & (1UL << i)) {
+                priv->channel_nums[priv->nb_channels] = (uint8_t) i;
                 priv->nb_channels++;
 
                 do {

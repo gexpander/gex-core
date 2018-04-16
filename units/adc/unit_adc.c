@@ -140,6 +140,7 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                 // count the enabled channels
                 for(int i = 0; i < 32; i++) {
                     if (new_channels & (1<<i)) {
+                        priv->channel_nums[nb_channels] = (uint8_t) i;
                         nb_channels++;
                     }
                 }

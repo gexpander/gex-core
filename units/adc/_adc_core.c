@@ -327,30 +327,41 @@ void UADC_DMA_Handler(void *arg)
  */
 void UADC_ADC_EOS_Handler(void *arg)
 {
-//    GPIOC->BSRR = 0x01;
     Unit *unit = arg;
     struct priv *priv = unit->data;
 
+    const bool can_average = priv->cfg.enable_averaging &&
+                             priv->real_frequency_int < UADC_MAX_FREQ_FOR_AVERAGING;
+
     // Normally
     uint64_t timestamp = 0;
-    if (priv->opmode == ADC_OPMODE_ARMED) timestamp = PTIM_GetMicrotime();
+    if (priv->opmode == ADC_OPMODE_ARMED) {
+        timestamp = PTIM_GetMicrotime();
+    }
 
     LL_ADC_ClearFlag_EOS(priv->ADCx);
+
     if (priv->opmode == ADC_OPMODE_UNINIT) {
         goto exit;
     }
 
-//    GPIOC->BSRR = 0x02;
-    // Wait for the DMA to complete copying the last sample
     uint32_t dmapos = DMA_POS(priv);
+
+    // Wait for the DMA to complete copying the last sample
+    // XXX
+    // experiments revealed this was actually a bug somewhere else and DMA
+    // is quick enough so we don't have to worry about this
+#if 0
     uint32_t err = (dmapos % priv->nb_channels);
     if (err != 0) {
         GPIOC->BSRR = 0x02;
         hw_wait_while(((dmapos = DMA_POS(priv)) % priv->nb_channels) != 0, 10);
         GPIOC->BRR = 0x02;
     }
-//    GPIOC->BRR = 0x02;
+#endif
 
+    // wrap dmapos to be past the last sample, even if outside the buffer
+    // - so we can subtract nb_channels
     uint32_t sample_pos;
     if (dmapos == 0) {
         sample_pos = (uint32_t) (priv->buf_itemcount);
@@ -359,21 +370,26 @@ void UADC_ADC_EOS_Handler(void *arg)
     }
     sample_pos -= priv->nb_channels;
 
-    uint8_t cnt = 0; // index of the sample within the group
-
-    const bool can_average = priv->cfg.enable_averaging && priv->real_frequency_int < UADC_MAX_FREQ_FOR_AVERAGING;
-    const uint32_t channels_mask = priv->channels_mask;
-
     uint16_t val;
     // TODO change this to a pre-computed byte array traversal
 
+#if 1
+    for (uint32_t j = 0; j < priv->nb_channels; j++) {
+        const uint8_t i = priv->channel_nums[j];
+        val = priv->dma_buffer[sample_pos+j];
+
+        if (can_average) {
+            priv->averaging_bins[i] =
+                priv->averaging_bins[i] * (1.0f - priv->avg_factor_as_float) +
+                ((float) val) * priv->avg_factor_as_float;
+        }
+
+        priv->last_samples[i] = val;
+    }
+#else
     for (uint8_t i = 0; i < 18; i++) {
         if (channels_mask & (1 << i)) {
-//            if (cnt == priv->nb_channels-1) {
-//                val = last_sample; // DMA may not have finished copying it yet
-//            } else {
-                val = priv->dma_buffer[sample_pos+cnt];
-//            }
+            val = priv->dma_buffer[sample_pos+cnt];
 
             cnt++;
 
@@ -386,35 +402,44 @@ void UADC_ADC_EOS_Handler(void *arg)
             priv->last_samples[i] = val;
         }
     }
+#endif
 
-    // Triggering condition test
-    if (priv->opmode == ADC_OPMODE_ARMED) {
-        val =  priv->last_samples[priv->trigger_source];
+    switch (priv->opmode) {
+        // Triggering condition test
+        case ADC_OPMODE_ARMED:
+            val =  priv->last_samples[priv->trigger_source];
 
-        if ((priv->trig_prev_level < priv->trig_level) && val >= priv->trig_level && (bool) (priv->trig_edge & 0b01)) {
-            // Rising edge
-            UADC_HandleTrigger(unit, 0b01, timestamp);
-        }
-        else if ((priv->trig_prev_level > priv->trig_level) && val <= priv->trig_level && (bool) (priv->trig_edge & 0b10)) {
-            // Falling edge
-            UADC_HandleTrigger(unit, 0b10, timestamp);
-        }
-        priv->trig_prev_level = val;
-    }
-    // auto-rearm was waiting for the next sample
-    else if (priv->opmode == ADC_OPMODE_REARM_PENDING) {
-        if (!priv->auto_rearm) {
-            // It looks like the flag was cleared by DISARM before we got a new sample.
-            // Let's just switch to IDLE
-            UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
-        } else {
-            // Re-arming for a new trigger
-            UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
-        }
+            if ((priv->trig_prev_level < priv->trig_level) &&
+                val >= priv->trig_level &&
+                (bool) (priv->trig_edge & 0b01)) {
+                // Rising edge
+                UADC_HandleTrigger(unit, 0b01, timestamp);
+            }
+            else if ((priv->trig_prev_level > priv->trig_level) &&
+                     val <= priv->trig_level &&
+                     (bool) (priv->trig_edge & 0b10)) {
+                // Falling edge
+                UADC_HandleTrigger(unit, 0b10, timestamp);
+            }
+            priv->trig_prev_level = val;
+            break;
+
+        // auto-rearm was waiting for the next sample
+        case  ADC_OPMODE_REARM_PENDING:
+            if (!priv->auto_rearm) {
+                // It looks like the flag was cleared by DISARM before we got a new sample.
+                // Let's just switch to IDLE
+                UADC_SwitchMode(unit, ADC_OPMODE_IDLE);
+            } else {
+                // Re-arming for a new trigger
+                UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
+            }
+
+        default:
+            break;
     }
 
 exit:
-//    GPIOC->BRR = 0x01;
     return;
 }
 
