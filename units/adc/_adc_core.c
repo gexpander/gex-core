@@ -4,6 +4,7 @@
 // The core functionality of the ADC unit is defined here.
 //
 
+#include <stm32f072xb.h>
 #include "platform.h"
 #include "unit_base.h"
 #include "unit_adc.h"
@@ -326,6 +327,8 @@ void UADC_DMA_Handler(void *arg)
  */
 void UADC_ADC_EOS_Handler(void *arg)
 {
+    GPIOC->BSRR = 0x01;//TODO remove
+
     Unit *unit = arg;
     struct priv *priv = unit->data;
 
@@ -334,7 +337,9 @@ void UADC_ADC_EOS_Handler(void *arg)
     if (priv->opmode == ADC_OPMODE_ARMED) timestamp = PTIM_GetMicrotime();
 
     LL_ADC_ClearFlag_EOS(priv->ADCx);
-    if (priv->opmode == ADC_OPMODE_UNINIT) return;
+    if (priv->opmode == ADC_OPMODE_UNINIT) {
+        goto exit;
+    }
 
     // Wait for the DMA to complete copying the last sample
     uint32_t dmapos = DMA_POS(priv);
@@ -383,9 +388,8 @@ void UADC_ADC_EOS_Handler(void *arg)
         }
         priv->trig_prev_level = val;
     }
-
     // auto-rearm was waiting for the next sample
-    if (priv->opmode == ADC_OPMODE_REARM_PENDING) {
+    else if (priv->opmode == ADC_OPMODE_REARM_PENDING) {
         if (!priv->auto_rearm) {
             // It looks like the flag was cleared by DISARM before we got a new sample.
             // Let's just switch to IDLE
@@ -395,6 +399,10 @@ void UADC_ADC_EOS_Handler(void *arg)
             UADC_SwitchMode(unit, ADC_OPMODE_ARMED);
         }
     }
+
+exit:
+    GPIOC->BRR = 0x01;//TODO remove
+    return;
 }
 
 /**

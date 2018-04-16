@@ -71,10 +71,6 @@ error_t UDAC_init(Unit *unit)
 
     TRY(rsc_claim(unit, R_DAC1));
 
-    // ensure the peripheral is clean (this may be redundant)
-    __HAL_RCC_DAC1_FORCE_RESET();
-    __HAL_RCC_DAC1_RELEASE_RESET();
-
     hw_periph_clock_enable(DAC1);
     hw_periph_clock_enable(priv->TIMx);
 
@@ -110,6 +106,7 @@ error_t UDAC_init(Unit *unit)
     LL_TIM_SetAutoReload(priv->TIMx, count - 1);
     LL_TIM_EnableARRPreload(priv->TIMx);
     LL_TIM_GenerateEvent_UPDATE(priv->TIMx);
+    LL_TIM_ClearFlag_UPDATE(priv->TIMx); // prevent irq right after enabling
 
     irqd_attach(priv->TIMx, UDAC_HandleIT, unit);
     LL_TIM_EnableIT_UPDATE(priv->TIMx);
@@ -131,7 +128,7 @@ void UDAC_deInit(Unit *unit)
     // de-init peripherals
     if (unit->status == E_SUCCESS ) {
         LL_DAC_DeInit(DAC);
-        LL_TIM_DisableCounter(priv->TIMx);
+        LL_TIM_DeInit(priv->TIMx);
 
         hw_periph_clock_disable(DAC1);
         hw_periph_clock_disable(priv->TIMx);

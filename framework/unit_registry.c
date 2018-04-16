@@ -334,6 +334,7 @@ bool ureg_finalize_all_init(void)
     uint8_t callsign = 1;
     while (li != NULL) {
         Unit *const pUnit = &li->unit;
+        dbg("+ %s \"%s\"", pUnit->driver->name, pUnit->name);
 
         if (pUnit->status == E_SUCCESS) {
             dbg("! Unit seems already loaded, skipping");
