@@ -327,8 +327,7 @@ void UADC_DMA_Handler(void *arg)
  */
 void UADC_ADC_EOS_Handler(void *arg)
 {
-    GPIOC->BSRR = 0x01;//TODO remove
-
+//    GPIOC->BSRR = 0x01;
     Unit *unit = arg;
     struct priv *priv = unit->data;
 
@@ -341,11 +340,16 @@ void UADC_ADC_EOS_Handler(void *arg)
         goto exit;
     }
 
+//    GPIOC->BSRR = 0x02;
     // Wait for the DMA to complete copying the last sample
     uint32_t dmapos = DMA_POS(priv);
-    if ((DMA_POS(priv) % priv->nb_channels) != 0) {
-        hw_wait_while((dmapos = DMA_POS(priv)) % priv->nb_channels != 0, 100); // XXX this could be changed to reading it from the DR instead
+    uint32_t err = (dmapos % priv->nb_channels);
+    if (err != 0) {
+        GPIOC->BSRR = 0x02;
+        hw_wait_while(((dmapos = DMA_POS(priv)) % priv->nb_channels) != 0, 10);
+        GPIOC->BRR = 0x02;
     }
+//    GPIOC->BRR = 0x02;
 
     uint32_t sample_pos;
     if (dmapos == 0) {
@@ -355,14 +359,22 @@ void UADC_ADC_EOS_Handler(void *arg)
     }
     sample_pos -= priv->nb_channels;
 
-    int cnt = 0; // index of the sample within the group
+    uint8_t cnt = 0; // index of the sample within the group
 
-    const bool can_average = priv->real_frequency_int < UADC_MAX_FREQ_FOR_AVERAGING;
+    const bool can_average = priv->cfg.enable_averaging && priv->real_frequency_int < UADC_MAX_FREQ_FOR_AVERAGING;
     const uint32_t channels_mask = priv->channels_mask;
+
+    uint16_t val;
+    // TODO change this to a pre-computed byte array traversal
 
     for (uint8_t i = 0; i < 18; i++) {
         if (channels_mask & (1 << i)) {
-            const uint16_t val = priv->dma_buffer[sample_pos+cnt];
+//            if (cnt == priv->nb_channels-1) {
+//                val = last_sample; // DMA may not have finished copying it yet
+//            } else {
+                val = priv->dma_buffer[sample_pos+cnt];
+//            }
+
             cnt++;
 
             if (can_average) {
@@ -375,8 +387,9 @@ void UADC_ADC_EOS_Handler(void *arg)
         }
     }
 
+    // Triggering condition test
     if (priv->opmode == ADC_OPMODE_ARMED) {
-        const uint16_t val =  priv->last_samples[priv->trigger_source];
+        val =  priv->last_samples[priv->trigger_source];
 
         if ((priv->trig_prev_level < priv->trig_level) && val >= priv->trig_level && (bool) (priv->trig_edge & 0b01)) {
             // Rising edge
@@ -401,7 +414,7 @@ void UADC_ADC_EOS_Handler(void *arg)
     }
 
 exit:
-    GPIOC->BRR = 0x01;//TODO remove
+//    GPIOC->BRR = 0x01;
     return;
 }
 

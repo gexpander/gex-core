@@ -191,8 +191,13 @@ static error_t UADC_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, P
                 return E_BUSY;
             }
 
+            if (! priv->cfg.enable_averaging) {
+                com_respond_str(MSG_ERROR, frame_id, "Averaging disabled");
+                return E_FAILURE;
+            }
+
             if (priv->real_frequency_int > UADC_MAX_FREQ_FOR_AVERAGING) {
-                com_respond_str(MSG_ERROR, frame_id, "Too fast for smoothing");
+                com_respond_str(MSG_ERROR, frame_id, "Too fast for averaging");
                 return E_FAILURE;
             }
 

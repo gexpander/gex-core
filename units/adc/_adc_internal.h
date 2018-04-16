@@ -46,6 +46,7 @@ struct priv {
         uint32_t frequency;   //!< Timer frequency in Hz. Note: not all frequencies can be achieved accurately
         uint32_t buffer_size; //!< Buffer size in bytes (count 2 bytes per channel per measurement) - faster sampling freq needs bigger buffer
         uint16_t averaging_factor;  //!< Exponential averaging factor 0-1000
+        bool enable_averaging;
     } cfg;
 
     // Peripherals

@@ -21,6 +21,7 @@ error_t UADC_preInit(Unit *unit)
     priv->cfg.frequency = 1000;
     priv->cfg.buffer_size = 256; // in half-words
     priv->cfg.averaging_factor = 500; // 0.5
+    priv->cfg.enable_averaging = true;
 
     priv->opmode = ADC_OPMODE_UNINIT;
 
@@ -120,33 +121,36 @@ error_t UADC_init(Unit *unit)
         // Claim and configure all analog pins
         priv->nb_channels = 0;
         for (uint8_t i = 0; i <= UADC_MAX_CHANNEL; i++) {
-            if (priv->cfg.channels & (1 << i)) {
+            if (priv->cfg.channels & (1UL << i)) {
                 priv->nb_channels++;
 
-                char c;
-                uint8_t num;
-                if (i <= 7) {
-                    c = 'A';
-                    num = i;
-                }
-                else if (i <= 9) {
-                    c = 'B';
-                    num = (uint8_t) (i - 8);
-                }
-                else if (i <= 15) {
-                    c = 'C';
-                    num = (uint8_t) (i - 10);
-                } else {
-                    break;
-                }
+                do {
+                    char c;
+                    uint8_t num;
+                    if (i <= 7) {
+                        c = 'A';
+                        num = i;
+                    }
+                    else if (i <= 9) {
+                        c = 'B';
+                        num = (uint8_t) (i - 8);
+                    }
+                    else if (i <= 15) {
+                        c = 'C';
+                        num = (uint8_t) (i - 10);
+                    }
+                    else {
+                        break;
+                    }
 
-                TRY(rsc_claim_pin(unit, c, num));
-                uint32_t ll_pin = hw_pin2ll(num, &suc);
-                GPIO_TypeDef *port = hw_port2periph(c, &suc);
-                assert_param(suc);
+                    TRY(rsc_claim_pin(unit, c, num));
+                    uint32_t ll_pin = hw_pin2ll(num, &suc);
+                    GPIO_TypeDef *port = hw_port2periph(c, &suc);
+                    assert_param(suc);
 
-                LL_GPIO_SetPinPull(port, ll_pin, LL_GPIO_PULL_NO);
-                LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ANALOG);
+                    LL_GPIO_SetPinPull(port, ll_pin, LL_GPIO_PULL_NO);
+                    LL_GPIO_SetPinMode(port, ll_pin, LL_GPIO_MODE_ANALOG);
+                } while (0);
             }
         }
 

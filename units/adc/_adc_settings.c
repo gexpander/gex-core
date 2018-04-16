@@ -23,6 +23,10 @@ void UADC_loadBinary(Unit *unit, PayloadParser *pp)
     priv->cfg.frequency = pp_u32(pp);
     priv->cfg.buffer_size = pp_u32(pp);
     priv->cfg.averaging_factor = pp_u16(pp);
+
+    if (version >= 1) {
+        priv->cfg.enable_averaging = pp_bool(pp);
+    }
 }
 
 /** Write to a binary buffer for storing in Flash */
@@ -30,13 +34,14 @@ void UADC_writeBinary(Unit *unit, PayloadBuilder *pb)
 {
     struct priv *priv = unit->data;
 
-    pb_u8(pb, 0); // version
+    pb_u8(pb, 1); // version
 
     pb_u32(pb, priv->cfg.channels);
     pb_u8(pb, priv->cfg.sample_time);
     pb_u32(pb, priv->cfg.frequency);
     pb_u32(pb, priv->cfg.buffer_size);
     pb_u16(pb, priv->cfg.averaging_factor);
+    pb_bool(pb, priv->cfg.enable_averaging);
 }
 
 // ------------------------------------------------------------------------
@@ -63,6 +68,9 @@ error_t UADC_loadIni(Unit *unit, const char *key, const char *value)
     else if (streq(key, "avg_factor")) {
         priv->cfg.averaging_factor = cfg_u16_parse(value, &suc);
         if (priv->cfg.averaging_factor > 1000) return E_BAD_VALUE;
+    }
+    else if (streq(key, "averaging")) {
+        priv->cfg.enable_averaging = cfg_bool_parse(value, &suc);
     }
     else {
         return E_BAD_KEY;
@@ -98,6 +106,9 @@ void UADC_writeIni(Unit *unit, IniWriter *iw)
     iw_entry_d(iw, "buffer_size", priv->cfg.buffer_size);
 
     iw_cmt_newline(iw);
+    iw_comment(iw, "Enable continuous sampling with averaging");
+    iw_comment(iw, "Caution: This can cause DAC output glitches");
+    iw_entry_s(iw, "averaging", str_yn(priv->cfg.enable_averaging));
     iw_comment(iw, "Exponential averaging coefficient (permil, range 0-1000 ~ 0.000-1.000)");
     iw_comment(iw, "- used formula: y[t]=(1-k)*y[t-1]+k*u[t]");
     iw_comment(iw, "- not available when a capture is running");
