@@ -4,7 +4,6 @@
 // The core functionality of the ADC unit is defined here.
 //
 
-#include <stm32f072xb.h>
 #include "platform.h"
 #include "unit_base.h"
 #include "unit_adc.h"
@@ -72,7 +71,7 @@ static void UADC_JobSendTriggerCaptureHeader(Job *job)
         .unit = unit,
         .type = EVT_CAPT_START,
         .timestamp = job->timestamp,
-        .length = (priv->pretrig_len + 1) * // see below why +1
+        .length = (priv->pretrig_len + ((priv->pretrig_len > 0)?1:0)) * // see below why +1
                       priv->nb_channels *
                       sizeof(uint16_t) +
                   4 /*pretrig len*/ +
@@ -87,8 +86,8 @@ static void UADC_JobSendTriggerCaptureHeader(Job *job)
     priv->stream_frame_id = er.sent_msg_id;
     {
         // preamble
-        uint8_t buf[4];
-        PayloadBuilder pb = pb_start(buf, 4, NULL);
+        uint8_t buf[6];
+        PayloadBuilder pb = pb_start(buf, 6, NULL);
         pb_u32(&pb, priv->pretrig_len);
         pb_u8(&pb, edge);
         pb_u8(&pb, priv->stream_serial++); // This is the serial counter for the first chunk
@@ -371,7 +370,6 @@ void UADC_ADC_EOS_Handler(void *arg)
     sample_pos -= priv->nb_channels;
 
     uint16_t val;
-    // TODO change this to a pre-computed byte array traversal
 
 #if 1
     for (uint32_t j = 0; j < priv->nb_channels; j++) {
