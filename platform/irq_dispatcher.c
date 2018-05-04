@@ -246,7 +246,12 @@ void* irqd_detach(void *periph, IrqCallback callback)
 
         return oldArg;
     } else {
-        trap("Detach IRQ %p() from %p but %p() bound instead", callback, periph, slot->callback);
+        // catch bugs, but ignore an attempt to unbind when not bound
+        if (slot->callback != NULL) {
+            trap("Detach IRQ %p() from %p but %p() bound instead", callback, periph, slot->callback);
+        } else {
+            return NULL; // the arg - none
+        }
     }
 }
 

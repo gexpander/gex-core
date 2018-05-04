@@ -73,6 +73,17 @@ static uint8_t spi(uint8_t tx) {
     return LL_SPI_ReceiveData8(NRF_SPI);
 }
 
+void NRF_Reset(bool enable_reset)
+{
+    if (enable_reset) {
+        // go HIGH - this closes the PMOS
+        LL_GPIO_SetOutputPin(NRF_RST_GPIO_Port, NRF_RST_Pin);
+    } else {
+        // LOW - open PMOS, enable power
+        LL_GPIO_ResetOutputPin(NRF_RST_GPIO_Port, NRF_RST_Pin);
+    }
+}
+
 //-------
 
 /*
@@ -492,7 +503,7 @@ bool NRF_SendPacket(uint8_t PipeNum, const uint8_t *Packet, uint8_t Length)
     return 0 != (st & RD_STATUS_TX_DS); // success
 }
 
-void NRF_Init(uint8_t pSpeed)
+bool NRF_Init(uint8_t pSpeed)
 {
     // Set the required output pins
     NSS(1);
@@ -504,6 +515,10 @@ void NRF_Init(uint8_t pSpeed)
         nrf_pipe_addr[i] = 0;
         nrf_pipe_enabled[i] = 0;
     }
+
+    // this is a test if there's anything present
+    uint8_t awreg = NRF_ReadRegister(RG_SETUP_AW);
+    if (awreg == 0 || awreg > 3) return false;
 
     // clear flags etc
     NRF_PowerDown();
@@ -527,4 +542,6 @@ void NRF_Init(uint8_t pSpeed)
 //    for (int i = 0; i < 6; i++) {
 //        NRF_WriteRegister(RG_RX_PW_P0+i, 32);      // Receive 32 byte packets - XXX this is probably not needed with dynamic length
 //    }
+
+    return true;
 }

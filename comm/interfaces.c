@@ -16,6 +16,7 @@
 #include "iface_usb.h"
 #include "iface_nordic.h"
 
+// those correspond to the ENUM values
 const char * COMPORT_NAMES[] = {
     "NONE",
     "USB",
@@ -23,7 +24,6 @@ const char * COMPORT_NAMES[] = {
     "NRF",
     "LORA",
 };
-
 
 enum ComportSelection gActiveComport = COMPORT_USB; // start with USB so the handlers work correctly initially
 
@@ -86,9 +86,11 @@ void com_claim_resources_for_alt_transfers(void)
         iface_uart_claim_resources();
     }
 
+#if SUPPORT_NRF
     if (SystemSettings.use_comm_nordic) {
         iface_nordic_claim_resources();
     }
+#endif // SUPPORT_NRF
 }
 
 /** Release resources allocated for alternate transfers */
@@ -98,9 +100,11 @@ void com_release_resources_for_alt_transfers(void)
         iface_uart_free_resources();
     }
 
+#if SUPPORT_NRF
     if (SystemSettings.use_comm_nordic) {
         iface_nordic_free_resources();
     }
+#endif // SUPPORT_NRF
 }
 
 
@@ -115,9 +119,11 @@ static bool configure_interface(enum ComportSelection iface)
     else if (gActiveComport == COMPORT_USART) {
         iface_uart_deinit();
     }
+#if SUPPORT_NRF
     else if (gActiveComport == COMPORT_NORDIC) {
         iface_nordic_deinit();
     }
+#endif // SUPPORT_NRF
 
 
     gActiveComport = iface;
@@ -130,9 +136,11 @@ static bool configure_interface(enum ComportSelection iface)
     else if (iface == COMPORT_USART) {
         return iface_uart_init();
     }
+#if SUPPORT_NRF
     else if (iface == COMPORT_NORDIC) {
         return iface_nordic_init();
     }
+#endif // SUPPORT_NRF
 #if 0
     else if (iface == COMPORT_LORA) {
         // Try to configure nordic
