@@ -28,9 +28,11 @@ void TF_WriteImpl(TinyFrame *tf, const uint8_t *buff, uint32_t len)
     else if (gActiveComport == COMPORT_USART) {
         iface_uart_transmit(buff, len);
     }
+#if SUPPORT_NRF
     else if (gActiveComport == COMPORT_NORDIC) {
         iface_nordic_transmit(buff, len);
     }
+#endif // SUPPORT_NRF
     else {
         // TODO other transports
         trap("not implemented.");

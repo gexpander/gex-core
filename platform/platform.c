@@ -27,9 +27,11 @@
 
 void plat_init_resources(void)
 {
+    // we use |= here, even though return values are not booleans - success is 0,
+    // thus any problem results in nonzero and the assert will trip.
     uint32_t rv = 0;
 
-    // enable clock for units we use
+    // periphs available everywhere - enable clock
     hw_periph_clock_enable(DMA1);
 #ifdef DMA2
     hw_periph_clock_enable(DMA2);
@@ -142,6 +144,12 @@ void plat_init_resources(void)
         // USB
         rv |= rsc_claim(&UNIT_SYSTEM, R_PA11);
         rv |= rsc_claim(&UNIT_SYSTEM, R_PA12);
+
+        #if defined(GEX_PLAT_F072_ZERO)
+            // unconnected pins
+            rv |= rsc_claim_range(&UNIT_PLATFORM, R_PC0, R_PC1);
+            rv |= rsc_claim_range(&UNIT_PLATFORM, R_PC4, R_PC9);
+        #endif
     }
 #elif defined(GEX_PLAT_F303_DISCOVERY)
     // Platform STM32F303VCT

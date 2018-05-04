@@ -32,12 +32,20 @@
  * Initialize the NRF module
  *
  * @param pSpeed
+ * @return success (0 if device not detected)
  */
-void NRF_Init(uint8_t pSpeed);
+bool NRF_Init(uint8_t pSpeed);
 
 #define NRF_SPEED_500k 0b00100110
 #define NRF_SPEED_2M 0b00001110
 #define NRF_SPEED_1M 0b00000110
+
+/**
+ * Set the reset pin (this is a PMOS controlling its power)
+ *
+ * @param enable_reset 1 to go into reset, 0 to enter operational state (will need some time to become ready)
+ */
+void NRF_Reset(bool enable_reset);
 
 /**
  * Set reception address

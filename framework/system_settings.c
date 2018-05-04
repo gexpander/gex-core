@@ -196,6 +196,7 @@ void systemsettings_build_ini(IniWriter *iw)
     iw_entry_s(iw, "com-uart", str_yn(SystemSettings.use_comm_uart));
     iw_entry_d(iw, "com-uart-baud", SystemSettings.comm_uart_baud);
 
+#if SUPPORT_NRF
     iw_cmt_newline(iw);
     iw_comment(iw, "nRF24L01+ radio");
     iw_entry_s(iw, "com-nrf", str_yn(SystemSettings.use_comm_nordic));
@@ -212,6 +213,7 @@ void systemsettings_build_ini(IniWriter *iw)
 
     iw_comment(iw, "Node address (1-255)");
     iw_entry(iw, "nrf-address", "%d", (int)SystemSettings.nrf_address);
+#endif // SUPPORT_NRF
 
     // those aren't implement yet, don't tease the user
     // TODO show pin-out, extra settings if applicable
@@ -274,6 +276,7 @@ bool systemsettings_load_ini(const char *restrict key, const char *restrict valu
         if (suc) SystemSettings.comm_uart_baud = baud;
     }
 
+#if SUPPORT_NRF
     if (streq(key, "com-nrf")) {
         bool yn = cfg_bool_parse(value, &suc);
         if (suc) SystemSettings.use_comm_nordic = yn;
@@ -290,6 +293,7 @@ bool systemsettings_load_ini(const char *restrict key, const char *restrict valu
     if (streq(key, "nrf-network")) {
         cfg_hex_parse(&SystemSettings.nrf_network[0], 4, value, &suc);
     }
+#endif // SUPPORT_NRF
 
 #if 0
     if (streq(key, "com-lora")) {
