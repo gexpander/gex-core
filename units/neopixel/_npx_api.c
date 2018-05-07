@@ -32,26 +32,14 @@ error_t UU_Npx_Load(Unit *unit, const uint8_t *packed_rgb, uint32_t nbytes)
 }
 
 /* Load U32, LE or BE */
-static error_t load_u32(Unit *unit, const uint8_t *bytes, uint32_t nbytes, bool bige)
+error_t UU_Npx_Load32(Unit *unit, const uint8_t *bytes, uint32_t nbytes, bool order_bgr, bool zero_before)
 {
     CHECK_TYPE(unit, &UNIT_NEOPIXEL);
 
     struct priv *priv = unit->data;
     if (nbytes != 4*priv->cfg.pixels) return E_BAD_COUNT;
-    ws2812_load_sparse(priv->port, priv->ll_pin, bytes, priv->cfg.pixels, bige);
+    ws2812_load_sparse(priv->port, priv->ll_pin, bytes, priv->cfg.pixels, order_bgr, zero_before);
     return E_SUCCESS;
-}
-
-/* Load U32, LE */
-inline error_t UU_Npx_LoadU32LE(Unit *unit, const uint8_t *bytes, uint32_t nbytes)
-{
-    return load_u32(unit, bytes, nbytes, false);
-}
-
-/* Load U32, BE */
-inline error_t UU_Npx_LoadU32BE(Unit *unit, const uint8_t *bytes, uint32_t nbytes)
-{
-    return load_u32(unit, bytes, nbytes, true);
 }
 
 /* Get the pixel count */

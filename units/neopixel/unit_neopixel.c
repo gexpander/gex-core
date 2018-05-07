@@ -11,9 +11,11 @@
 enum PinCmd_ {
     CMD_CLEAR = 0,
     CMD_LOAD = 1,
-    CMD_LOAD_U32_LE = 2,
-    CMD_LOAD_U32_BE = 3,
-    CMD_GET_LEN = 4,
+    CMD_LOAD_ZRGB = 0x08, // 0,0 - trail zero, bgr
+    CMD_LOAD_ZBGR = 0x09, // 0,1
+    CMD_LOAD_RGBZ = 0x0A, // 1,0
+    CMD_LOAD_BGRZ = 0x0B, // 1,1
+    CMD_GET_LEN = 0x10,
 };
 
 /** Handle a request message */
@@ -32,15 +34,15 @@ static error_t Npx_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command, Pa
             bytes = pp_tail(pp, &len);
             return UU_Npx_Load(unit, bytes, len);
 
-        /** Load sparse (uint32_t) colors, 0x00RRGGBB, little endian. */
-        case CMD_LOAD_U32_LE:
+        /** Load sparse (uint32_t) colors */
+        case CMD_LOAD_ZRGB:
+        case CMD_LOAD_ZBGR:
+        case CMD_LOAD_RGBZ:
+        case CMD_LOAD_BGRZ:
             bytes = pp_tail(pp, &len);
-            return UU_Npx_LoadU32LE(unit, bytes, len);
-
-        /** Load sparse (uint32_t) colors, 0x00RRGGBB, big endian. */
-        case CMD_LOAD_U32_BE:
-            bytes = pp_tail(pp, &len);
-            return UU_Npx_LoadU32BE(unit, bytes, len);
+            bool trail_zero = (bool) (command & 0b10);
+            bool order_bgr = (bool) (command & 0b01);
+            return UU_Npx_Load32(unit, bytes, len, order_bgr, !trail_zero);
 
         /** Get the Neopixel strip length */
         case CMD_GET_LEN:;

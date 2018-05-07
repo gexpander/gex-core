@@ -31,26 +31,15 @@ error_t UU_Npx_Clear(Unit *unit);
 error_t UU_Npx_Load(Unit *unit, const uint8_t *packed_rgb, uint32_t nbytes);
 
 /**
- * Load the strip with sparse (uint32_t) colors 0x00RRGGBB as little endian bytes
- * (B, G, R, 0, ...)
- *
+ * Load from 32-bit numbers
  * @param unit
- * @param bytes - bytes to load
- * @param nbytes - number of bytes, must be count*4
+ * @param bytes
+ * @param nbytes
+ * @param order_bgr
+ * @param zero_before
  * @return success
  */
-error_t UU_Npx_LoadU32LE(Unit *unit, const uint8_t *bytes, uint32_t nbytes);
-
-/**
- * Load the strip with sparse (uint32_t) colors 0x00RRGGBB as big endian bytes
- * (0, R, G, B, ...)
- *
- * @param unit
- * @param bytes - bytes to load
- * @param nbytes - number of bytes, must be count*4
- * @return success
- */
-error_t UU_Npx_LoadU32BE(Unit *unit, const uint8_t *bytes, uint32_t nbytes);
+error_t UU_Npx_Load32(Unit *unit, const uint8_t *bytes, uint32_t nbytes, bool order_bgr, bool zero_before);
 
 /**
  * Get number of pixels on the strip

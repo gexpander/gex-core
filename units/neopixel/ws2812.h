@@ -28,8 +28,10 @@ void ws2812_clear(GPIO_TypeDef *port, uint32_t ll_pin, uint32_t count);
  * @param ll_pin
  * @param rgbs - payload
  * @param count - number of pixels
- * @param bigendian - big endian ordering
+ * @param order_bgr - B,G,R colors, false - R,G,B
+ * @param zero_before - insert padding byte before colors, false - after
  */
-void ws2812_load_sparse(GPIO_TypeDef *port, uint32_t ll_pin, const uint8_t *rgbs, uint32_t count, bool bigendian);
+void ws2812_load_sparse(GPIO_TypeDef *port, uint32_t ll_pin, const uint8_t *rgbs, uint32_t count,
+                        bool order_bgr, bool zero_before);
 
 #endif //WS2812_H

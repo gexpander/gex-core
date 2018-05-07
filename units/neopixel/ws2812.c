@@ -45,13 +45,14 @@ void ws2812_load_raw(GPIO_TypeDef *port, uint32_t ll_pin, const uint8_t *rgbs, u
 }
 
 /** Set many RGBs from uint32 stream */
-void ws2812_load_sparse(GPIO_TypeDef *port, uint32_t ll_pin, const uint8_t *rgbs, uint32_t count, bool bigendian)
+void ws2812_load_sparse(GPIO_TypeDef *port, uint32_t ll_pin, const uint8_t *rgbs, uint32_t count,
+                        bool order_bgr, bool zero_before)
 {
     vPortEnterCritical();
     uint8_t b, g, r;
 	for (uint32_t i = 0; i < count; i++) {
-        if (bigendian) {
-            rgbs++; // skip
+	    if (zero_before) rgbs++; // skip
+        if (order_bgr) {
             b = *rgbs++;
             g = *rgbs++;
             r = *rgbs++;
@@ -59,8 +60,8 @@ void ws2812_load_sparse(GPIO_TypeDef *port, uint32_t ll_pin, const uint8_t *rgbs
             r = *rgbs++;
             g = *rgbs++;
             b = *rgbs++;
-            rgbs++; // skip
         }
+        if (!zero_before) rgbs++; // skip
 
 		ws2812_byte(port, ll_pin, g);
 		ws2812_byte(port, ll_pin, r);
