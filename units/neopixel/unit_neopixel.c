@@ -11,11 +11,11 @@
 enum PinCmd_ {
     CMD_CLEAR = 0,
     CMD_LOAD = 1,
-    CMD_LOAD_ZRGB = 0x08, // 0,0 - trail zero, bgr
-    CMD_LOAD_ZBGR = 0x09, // 0,1
-    CMD_LOAD_RGBZ = 0x0A, // 1,0
-    CMD_LOAD_BGRZ = 0x0B, // 1,1
-    CMD_GET_LEN = 0x10,
+    CMD_LOAD_ZRGB = 4, // 0,0 - trail zero, bgr
+    CMD_LOAD_ZBGR = 5, // 0,1
+    CMD_LOAD_RGBZ = 6, // 1,0
+    CMD_LOAD_BGRZ = 7, // 1,1
+    CMD_GET_LEN = 10,
 };
 
 /** Handle a request message */

@@ -102,13 +102,19 @@ static error_t UUSART_handleRequest(Unit *unit, TF_ID frame_id, uint8_t command,
     uint32_t len;
     const uint8_t *pld;
     switch (command) {
-        /** Write bytes to the USART. Payload consists of the data to send. Waits for completion. */
+        /**
+         * Write bytes to the USART, without waiting for completion.
+         * May wait until there is space in the DMA buffer.
+         */
         case CMD_WRITE:
             pld = pp_tail(pp, &len);
             TRY(UU_USART_Write(unit, pld, len));
             return E_SUCCESS;
 
-        /** Write bytes to the USART, without waiting for completion. */
+        /**
+         * Write bytes to the USART. Payload consists of the data to send.
+         * Waits for completion.
+         */
         case CMD_WRITE_SYNC:
             pld = pp_tail(pp, &len);
             TRY(UU_USART_WriteSync(unit, pld, len));

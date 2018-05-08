@@ -93,8 +93,6 @@ enum PinCmd_ {
     CMD_READ = 11,   // write multiple bytes using a ROM address
 
     CMD_POLL_FOR_1 = 20,
-
-    CMD_TEST = 100,
 };
 
 
