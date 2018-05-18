@@ -5,23 +5,66 @@ GEX_SRC_DIR = \
     User/framework \
     User/platform \
     User/units \
-    User/units/neopixel \
-    User/units/test \
-    User/units/digital_out \
-    User/units/digital_in \
-    User/units/usart \
-    User/units/1wire \
-    User/units/i2c \
-    User/units/spi \
-    User/units/adc \
-    User/units/sipo \
-    User/units/fcap \
-    User/units/touch \
-    User/units/simple_pwm \
-    User/units/dac \
     User/TinyFrame \
     User/CWPack \
     User/tasks
+
+ifeq '$(UNIT_NPX)' '1'
+GEX_SRC_DIR += User/units/neopixel
+endif
+
+ifeq '$(UNIT_TEST)' '1'
+GEX_SRC_DIR += User/units/test
+endif
+
+ifeq '$(UNIT_DO)' '1'    
+GEX_SRC_DIR += User/units/digital_out
+endif
+
+ifeq '$(UNIT_DI)' '1'    
+GEX_SRC_DIR += User/units/digital_in
+endif
+
+ifeq '$(UNIT_USART)' '1'    
+GEX_SRC_DIR += User/units/usart
+endif
+
+ifeq '$(UNIT_1WIRE)' '1'    
+GEX_SRC_DIR += User/units/1wire
+endif
+
+ifeq '$(UNIT_I2C)' '1'    
+GEX_SRC_DIR += User/units/i2c
+endif
+
+ifeq '$(UNIT_SPI)' '1'    
+GEX_SRC_DIR += User/units/spi
+endif
+
+ifeq '$(UNIT_ADC)' '1'    
+GEX_SRC_DIR += User/units/adc
+endif
+
+ifeq '$(UNIT_SIPO)' '1'    
+GEX_SRC_DIR += User/units/sipo
+endif
+
+ifeq '$(UNIT_FCAP)' '1'    
+GEX_SRC_DIR += User/units/fcap
+endif
+
+ifeq '$(UNIT_TOUCH)' '1'    
+GEX_SRC_DIR += User/units/touch
+endif
+
+ifeq '$(UNIT_PWMDIM)' '1'    
+GEX_SRC_DIR += User/units/simple_pwm
+endif
+
+ifeq '$(UNIT_DAC)' '1'    
+GEX_SRC_DIR += User/units/dac
+endif
+    
 
 GEX_SOURCES = \
     User/USB/usb_device.c \
