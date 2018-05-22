@@ -23,6 +23,7 @@ TinyFrame *comm = &tf_;
  */
 static TF_Result lst_ping(TinyFrame *tf, TF_Msg *msg)
 {
+    dbg("Ping!");
     com_respond_snprintf(msg->frame_id, MSG_SUCCESS,
                          "GEX v%s on %s (%s)", GEX_VERSION, GEX_PLATFORM, COMPORT_NAMES[gActiveComport]);
     return TF_STAY;

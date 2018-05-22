@@ -7,7 +7,11 @@
 #ifndef GEX_VERSION_H
 #define GEX_VERSION_H
 
-#define GEX_VERSION "0.3.1"
+#define GEX_VERSION "1.0.0"
+
+// --- 1.0.0 ---
+// * Public release with the thesis
+// * improved nrf support, some cleaning
 
 // --- 0.3.1 ---
 // * Fix ADC triggers
