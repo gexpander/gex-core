@@ -4,8 +4,8 @@
 // Bulk read (providing data for bulk read by the PC)
 //
 
-#ifndef GEX_F072_MSG_BULKREAD_H
-#define GEX_F072_MSG_BULKREAD_H
+#ifndef GEX_CORE_MSG_BULKREAD_H
+#define GEX_CORE_MSG_BULKREAD_H
 
 #ifndef GEX_MESSAGES_H
 #error "Include messages.h instead!"
@@ -45,4 +45,4 @@ struct bulk_read {
 void bulkread_start(TinyFrame *tf, BulkRead *bulk);
 
 
-#endif //GEX_F072_MSG_BULKREAD_H
+#endif //GEX_CORE_MSG_BULKREAD_H

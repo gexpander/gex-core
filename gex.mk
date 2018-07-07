@@ -83,7 +83,8 @@ GEX_C_FILES = \
     GexCore/USB/STM32_USB_Device_Library/Class/MSC_CDC/usbd_msc_cdc.c \
     GexCore/USB/STM32_USB_Device_Library/Core/Src/usbd_core.c \
     GexCore/USB/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c \
-    GexCore/USB/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
+    GexCore/USB/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c \
+    Src/platform_resources.c
 
 GEX_C_INCLUDES = \
     -IGexUnits \

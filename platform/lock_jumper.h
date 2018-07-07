@@ -7,8 +7,6 @@
 #ifndef GEX_LOCK_JUMPER_H
 #define GEX_LOCK_JUMPER_H
 
-#include "plat_compat.h"
-
 /**
  * Init the lock jumper subsystem
  */

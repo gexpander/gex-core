@@ -2,8 +2,8 @@
 // Created by MightyPork on 2018/02/04.
 //
 
-#ifndef GEX_F072_LL_EXTENSION_H
-#define GEX_F072_LL_EXTENSION_H
+#ifndef GEX_CORE_LL_EXTENSION_H
+#define GEX_CORE_LL_EXTENSION_H
 
 #include "platform.h"
 
@@ -57,4 +57,4 @@ static inline void LL_DMA_ClearFlags(DMA_TypeDef *DMAx, uint8_t channel)
 }
 
 
-#endif //GEX_F072_LL_EXTENSION_H
+#endif //GEX_CORE_LL_EXTENSION_H

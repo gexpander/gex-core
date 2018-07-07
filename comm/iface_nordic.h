@@ -2,11 +2,10 @@
 // Created by MightyPork on 2018/04/06.
 //
 
-#ifndef GEX_F072_IFACE_NORDIC_H
-#define GEX_F072_IFACE_NORDIC_H
+#ifndef GEX_CORE_IFACE_NORDIC_H
+#define GEX_CORE_IFACE_NORDIC_H
 
 #include "platform.h"
-
 #if SUPPORT_NRF
 
 void iface_nordic_claim_resources(void);
@@ -21,4 +20,4 @@ void iface_nordic_transmit(const uint8_t *buff, uint32_t len);
 
 #endif // SUPPORT_NRF
 
-#endif //GEX_F072_IFACE_NORDIC_H
+#endif //GEX_CORE_IFACE_NORDIC_H

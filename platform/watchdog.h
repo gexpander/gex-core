@@ -2,8 +2,8 @@
 // Created by MightyPork on 2018/02/27.
 //
 
-#ifndef GEX_F072_WATCHDOG_H
-#define GEX_F072_WATCHDOG_H
+#ifndef GEX_CORE_WATCHDOG_H
+#define GEX_CORE_WATCHDOG_H
 
 /**
  * Initialize the application watchdog
@@ -29,4 +29,4 @@ void wd_resume(void);
  */
 void wd_restart(void);
 
-#endif //GEX_F072_WATCHDOG_H
+#endif //GEX_CORE_WATCHDOG_H

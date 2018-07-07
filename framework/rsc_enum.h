@@ -4,8 +4,8 @@
 // Enum of all defined resources
 //
 
-#ifndef GEX_F072_RSC_ENUM_H
-#define GEX_F072_RSC_ENUM_H
+#ifndef GEX_CORE_RSC_ENUM_H
+#define GEX_CORE_RSC_ENUM_H
 
 // X macro: Resource name,
 #define XX_RESOURCES \
@@ -132,4 +132,4 @@ static inline void rscmap_free(ResourceMap *rscmap, Resource rsc)
 #define RSC_CLAIM(rscmap, rsc)   rscmap_claim(&rscmap, (rsc))
 #define RSC_FREE(rscmap, rsc)    rscmap_free(&rscmap, (rsc))
 
-#endif //GEX_F072_RSC_ENUM_H
+#endif //GEX_CORE_RSC_ENUM_H

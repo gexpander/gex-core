@@ -17,8 +17,15 @@
 
 // FreeRTOS includes
 #include <cmsis_os.h>
+// platform-independent GEX config
+#include "plat_config.h"
 // platform-specific stuff (includes stm32 driver headers)
 #include "plat_compat.h"
+
+#define PLAT_AHB_HZ (PLAT_AHB_MHZ*1000000)
+#define PLAT_APB1_HZ (PLAT_APB1_MHZ*1000000)
+#define PLAT_APB2_HZ (PLAT_APB2_MHZ*1000000)
+
 // assert_param, trap...
 #include "stm32_assert.h"
 // inIRQ etc

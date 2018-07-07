@@ -90,6 +90,7 @@
 #if defined(__ICCARM__) || defined(__CC_ARM) || defined(__GNUC__)
     #include <stdint.h>
     #include "main.h"
+    #include "plat_config.h"
     #include "plat_compat.h"
 extern uint32_t SystemCoreClock;
 #endif
@@ -134,34 +135,11 @@ to exclude the API function. */
 
 ///* Cortex-M specific definitions. */
 
-#if defined(GEX_PLAT_F103_BLUEPILL) || defined(GEX_PLAT_F303_DISCOVERY) \
-    || defined(GEX_PLAT_F407_DISCOVERY)
-    // This is for F103+
-
-    /* The lowest interrupt priority that can be used in a call to a "set priority"
-    function. */
-    #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY   15
-
-    #define configPRIO_BITS         4
-
-    /* The highest interrupt priority that can be used by any interrupt service
-    routine that makes calls to interrupt safe FreeRTOS API functions.  DO NOT CALL
-    INTERRUPT SAFE FREERTOS API FUNCTIONS FROM ANY INTERRUPT THAT HAS A HIGHER
-    PRIORITY THAN THIS! (higher priorities are lower numeric values. */
-    #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 5
-
-    #define configUSE_PORT_OPTIMISED_TASK_SELECTION 1
-#elif defined(STM32F072xB)
-    // This is for F072
-    #define configLIBRARY_LOWEST_INTERRUPT_PRIORITY   3
-    #define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 1
-
-    #define configPRIO_BITS         2
-
-    #define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
-#else
-    #error "BAD PLATFORM!!"
-#endif
+// These are defined in plat_compat.h:
+#define configLIBRARY_LOWEST_INTERRUPT_PRIORITY  PLAT_FREERTOS_LOWEST_INTERRUPT_PRIORITY
+#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY  PLAT_FREERTOS_MAX_SYSCALL_INTERRUPT_PRIORITY
+#define configPRIO_BITS  PLAT_FREERTOS_PRIO_BITS
+#define configUSE_PORT_OPTIMISED_TASK_SELECTION  PLAT_FREERTOS_USE_PORT_OPTIMISED_TASK_SELECTION
 
 /* Interrupt priorities used by the kernel port layer itself.  These are generic
 to all Cortex-M ports, and do not rely on any particular library functions. */

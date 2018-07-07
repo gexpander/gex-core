@@ -5,53 +5,10 @@
 #include "platform.h"
 #include "framework/resources.h"
 #include "debug_uart.h"
-#include "plat_compat.h"
 #include "hw_utils.h"
 #include "framework/system_settings.h"
 
 #if USE_DEBUG_UART
-
-#define DEBUG_USART_BAUD 115200
-
-#if GEX_PLAT_F072_DISCOVERY || GEX_PLAT_F072_HUB || GEX_PLAT_F072_ZERO
-
-    #define DEBUG_USART USART1
-    #define DEBUG_USART_RSC R_USART1
-    #define DEBUG_USART_PORT 'A'
-    #define DEBUG_USART_PIN  9
-    #define DEBUG_USART_AF  1
-    #define DEBUG_USART_PCLK PLAT_APB1_HZ
-
-#elif GEX_PLAT_F103_BLUEPILL
-
-    #define DEBUG_USART USART2
-    #define DEBUG_USART_RSC R_USART2
-    #define DEBUG_USART_PORT 'A'
-    #define DEBUG_USART_PIN  2
-    #define DEBUG_USART_PCLK PLAT_APB1_HZ
-
-#elif GEX_PLAT_F303_DISCOVERY
-
-    #define DEBUG_USART USART3
-    #define DEBUG_USART_RSC R_USART3
-    #define DEBUG_USART_PORT 'D'
-    #define DEBUG_USART_PIN  8
-    #define DEBUG_USART_AF  7
-    #define DEBUG_USART_PCLK PLAT_APB1_HZ
-
-#elif GEX_PLAT_F407_DISCOVERY
-
-    #define DEBUG_USART USART2
-    #define DEBUG_USART_RSC R_USART2
-    #define DEBUG_USART_PORT 'A'
-    #define DEBUG_USART_PIN  2
-    #define DEBUG_USART_AF  7
-    #define DEBUG_USART_PCLK PLAT_APB1_HZ
-
-#else
-    #error "BAD PLATFORM!"
-#endif
-
 
 static bool debug_uart_inited = false;
 static bool debug_uart_preinited = false;

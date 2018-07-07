@@ -4,8 +4,8 @@
 // Provides a trampoline system for redirecting IRQ calls to assigned callbacks.
 //
 
-#ifndef GEX_F072_IRQ_DISPATCHER_H
-#define GEX_F072_IRQ_DISPATCHER_H
+#ifndef GEX_CORE_IRQ_DISPATCHER_H
+#define GEX_CORE_IRQ_DISPATCHER_H
 
 // Dummy peripherals for use with the
 extern void * const EXTIS[16];
@@ -42,4 +42,4 @@ void irqd_attach(void *periph, IrqCallback callback, void *data);
  */
 void* irqd_detach(void *periph, IrqCallback callback);
 
-#endif //GEX_F072_IRQ_DISPATCHER_H
+#endif //GEX_CORE_IRQ_DISPATCHER_H

@@ -84,13 +84,14 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
     __HAL_RCC_USB_CLK_ENABLE();
 
     /* Peripheral interrupt init */
-#if GEX_PLAT_F103_BLUEPILL
+    // TODO convert this to feature flags if possible - avoid tying to particular platforms
+#if GEX_PLAT_F103
     HAL_NVIC_SetPriority(USB_LP_CAN1_RX0_IRQn, 5, 0);
     HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
-#elif STM32F072xB
+#elif GEX_PLAT_F072
     HAL_NVIC_SetPriority(USB_IRQn, 3, 0);
     HAL_NVIC_EnableIRQ(USB_IRQn);
-#elif GEX_PLAT_F303_DISCOVERY
+#elif GEX_PLAT_F303
     // Pins need to be configured here
 
     /**USB GPIO Configuration
@@ -149,11 +150,11 @@ void HAL_PCD_MspDeInit(PCD_HandleTypeDef* pcdHandle)
     __HAL_RCC_USB_CLK_DISABLE();
 
     /* Peripheral interrupt Deinit*/
-#if GEX_PLAT_F103_BLUEPILL
+#if GEX_PLAT_F103
     HAL_NVIC_DisableIRQ(USB_LP_CAN1_RX0_IRQn);
-#elif STM32F072xB
+#elif GEX_PLAT_F072
     HAL_NVIC_DisableIRQ(USB_IRQn);
-#elif GEX_PLAT_F303_DISCOVERY
+#elif GEX_PLAT_F303
     HAL_NVIC_DisableIRQ(USB_LP_CAN_RX0_IRQn);
 #else
   #error "BAD PLATFORM"

@@ -4,8 +4,8 @@
 // Routines for sending TinyFrame responses.
 //
 
-#ifndef GEX_F072_MSG_RESPONSES_H
-#define GEX_F072_MSG_RESPONSES_H
+#ifndef GEX_CORE_MSG_RESPONSES_H
+#define GEX_CORE_MSG_RESPONSES_H
 
 #ifndef GEX_MESSAGES_H
 #error "Include messages.h instead!"
@@ -109,4 +109,4 @@ void com_respond_u16(TF_ID frame_id, uint16_t d);
  */
 void com_respond_u32(TF_ID frame_id, uint32_t d);
 
-#endif //GEX_F072_MSG_RESPONSES_H
+#endif //GEX_CORE_MSG_RESPONSES_H

@@ -8,8 +8,8 @@
 // and interrupts.
 //
 
-#ifndef GEX_F072_TIMEBASE_H
-#define GEX_F072_TIMEBASE_H
+#ifndef GEX_CORE_TIMEBASE_H
+#define GEX_CORE_TIMEBASE_H
 
 #include "platform.h"
 
@@ -58,4 +58,4 @@ static inline uint32_t PTIM_MicroDelayAlign(void)
     return res;
 }
 
-#endif //GEX_F072_TIMEBASE_H
+#endif //GEX_CORE_TIMEBASE_H

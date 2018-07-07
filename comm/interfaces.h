@@ -2,8 +2,8 @@
 // Created by MightyPork on 2018/03/23.
 //
 
-#ifndef GEX_F072_COM_INTERFACES_H
-#define GEX_F072_COM_INTERFACES_H
+#ifndef GEX_CORE_COM_INTERFACES_H
+#define GEX_CORE_COM_INTERFACES_H
 
 #include "platform.h"
 
@@ -34,4 +34,4 @@ void com_release_resources_for_alt_transfers(void);
 /** Flush the rx buffer */
 void com_iface_flush_buffer(void);
 
-#endif //GEX_F072_COM_INTERFACES_H
+#endif //GEX_CORE_COM_INTERFACES_H

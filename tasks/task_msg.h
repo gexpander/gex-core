@@ -5,8 +5,8 @@
 // and TinyFrame message handling
 //
 
-#ifndef GEX_F072_TASK_MSG_H
-#define GEX_F072_TASK_MSG_H
+#ifndef GEX_CORE_TASK_MSG_H
+#define GEX_CORE_TASK_MSG_H
 
 #include "platform.h"
 #include "sched_queue.h"
@@ -39,4 +39,4 @@ void rxQuePostMsg(uint8_t *buf, uint32_t len);
 extern volatile uint32_t msgQueHighWaterMark;
 #endif
 
-#endif //GEX_F072_TASK_MSG_H
+#endif //GEX_CORE_TASK_MSG_H

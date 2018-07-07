@@ -2,8 +2,8 @@
 // Created by MightyPork on 2018/02/23.
 //
 
-#ifndef GEX_F072_CFG_UTILS_H
-#define GEX_F072_CFG_UTILS_H
+#ifndef GEX_CORE_CFG_UTILS_H
+#define GEX_CORE_CFG_UTILS_H
 
 #include "platform.h"
 #include "rsc_enum.h"
@@ -162,4 +162,4 @@ static inline int32_t cfg_i32_parse(const char *value, bool *suc)
     return (int32_t) avr_atoi(value);
 }
 
-#endif //GEX_F072_CFG_UTILS_H
+#endif //GEX_CORE_CFG_UTILS_H

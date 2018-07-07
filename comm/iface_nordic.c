@@ -2,6 +2,9 @@
 // Created by MightyPork on 2018/04/06.
 //
 
+#include "platform.h"
+#if SUPPORT_NRF
+
 #include "iface_nordic.h"
 #include "nrf_pins.h"
 #include "resources.h"
@@ -11,7 +14,6 @@
 #include "system_settings.h"
 #include "utils/hexdump.h"
 
-#if SUPPORT_NRF
 
 extern osSemaphoreId semVcomTxReadyHandle;
 

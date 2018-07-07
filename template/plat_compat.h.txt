@@ -1,0 +1,46 @@
+#ifndef GEX_PLAT_COMPAT_H
+#define GEX_PLAT_COMPAT_H
+
+// string identifying the GEX board
+#define GEX_PLATFORM "Discovery-XYZ"
+#define GEX_PLAT_XYZ 1 // only with the MCU name
+
+// GEX_PLAT_XYZ_BOARD is defined in build.mk to identify particular board layout
+
+#define PLAT_AHB_MHZ  72
+#define PLAT_APB1_MHZ 36
+
+#include ... // all useful from the peripheral library (HAL / LL)
+
+// in bytes
+#define FLASH_SIZE (128*1024)
+// in bytes
+#define SETTINGS_BLOCK_SIZE (2*1024)
+// address where the settings block starts
+#define SETTINGS_FLASH_ADDR (0x08000000 + FLASH_SIZE - SETTINGS_BLOCK_SIZE)
+
+#define PORTS_COUNT       5   // number of available GPIO ports A,B,C,D,E,F...
+#define LOCK_JUMPER_PORT 'A'
+#define LOCK_JUMPER_PIN   2
+
+#define STATUS_LED_PORT 'A'
+#define STATUS_LED_PIN  15
+
+// Feature flags:
+#define PLAT_FLASHBANKS   0        // has the Banks field on the Flash config struct
+#define PLAT_NO_FLOATING_INPUTS 0  // can't have digital inputs with no pull resistor
+#define PLAT_USB_PHYCLOCK 0        // requires special config of phy clock for USB
+#define PLAT_USB_OTGFS    0        // uses the USB OTG IP, needs different config code
+#define PLAT_LOCK_BTN     1        // use a lock button instead of a lock jumper (push to toggle)
+#define PLAT_LOCK_1CLOSED 1        // lock jumper is active (closed / button pressed) in logical 1
+#define PLAT_NO_AFNUM     0        // legacy platform without numbered AF alternatives
+#define PLAT_FULL_XTAL    1        // use two-wire xtal attachment
+#define PLAT_USB_PU_CTL   1        // platform has USB pullup control
+
+// FreeRTOS config
+#define PLAT_FREERTOS_LOWEST_INTERRUPT_PRIORITY          3
+#define PLAT_FREERTOS_MAX_SYSCALL_INTERRUPT_PRIORITY     1
+#define PLAT_FREERTOS_PRIO_BITS                          2
+#define PLAT_FREERTOS_USE_PORT_OPTIMISED_TASK_SELECTION  0
+
+#endif //GEX_PLAT_COMPAT_H

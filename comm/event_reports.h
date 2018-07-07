@@ -2,8 +2,8 @@
 // Created by MightyPork on 2018/01/27.
 //
 
-#ifndef GEX_F072_EVENT_REPORTS_H
-#define GEX_F072_EVENT_REPORTS_H
+#ifndef GEX_CORE_EVENT_REPORTS_H
+#define GEX_CORE_EVENT_REPORTS_H
 
 #ifndef GEX_MESSAGES_H
 #error "Include messages.h instead!"
@@ -31,4 +31,4 @@ void EventReport_Data(const uint8_t *buff, uint16_t len);
 void EventReport_PB(PayloadBuilder *pb);
 void EventReport_End(void);
 
-#endif //GEX_F072_EVENT_REPORTS_H
+#endif //GEX_CORE_EVENT_REPORTS_H

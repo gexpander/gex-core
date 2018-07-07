@@ -2,8 +2,8 @@
 // Created by MightyPork on 2018/04/06.
 //
 
-#ifndef GEX_F072_IFACE_USB_H
-#define GEX_F072_IFACE_USB_H
+#ifndef GEX_CORE_IFACE_USB_H
+#define GEX_CORE_IFACE_USB_H
 
 #include "platform.h"
 
@@ -17,4 +17,4 @@ bool iface_usb_ready(void);
  */
 void iface_usb_transmit(const uint8_t *buff, uint32_t len);
 
-#endif //GEX_F072_IFACE_USB_H
+#endif //GEX_CORE_IFACE_USB_H

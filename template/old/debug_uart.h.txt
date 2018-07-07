@@ -1,0 +1,41 @@
+
+#define DEBUG_USART_BAUD 115200
+
+#if GEX_PLAT_F072
+
+    #define DEBUG_USART USART1
+    #define DEBUG_USART_RSC R_USART1
+    #define DEBUG_USART_PORT 'A'
+    #define DEBUG_USART_PIN  9
+    #define DEBUG_USART_AF  1
+    #define DEBUG_USART_PCLK PLAT_APB1_HZ
+
+#elif GEX_PLAT_F103
+
+    #define DEBUG_USART USART2
+    #define DEBUG_USART_RSC R_USART2
+    #define DEBUG_USART_PORT 'A'
+    #define DEBUG_USART_PIN  2
+    #define DEBUG_USART_PCLK PLAT_APB1_HZ
+
+#elif GEX_PLAT_F303
+
+    #define DEBUG_USART USART3
+    #define DEBUG_USART_RSC R_USART3
+    #define DEBUG_USART_PORT 'D'
+    #define DEBUG_USART_PIN  8
+    #define DEBUG_USART_AF  7
+    #define DEBUG_USART_PCLK PLAT_APB1_HZ
+
+#elif GEX_PLAT_F407
+
+    #define DEBUG_USART USART2
+    #define DEBUG_USART_RSC R_USART2
+    #define DEBUG_USART_PORT 'A'
+    #define DEBUG_USART_PIN  2
+    #define DEBUG_USART_AF  7
+    #define DEBUG_USART_PCLK PLAT_APB1_HZ
+
+#else
+    #error "BAD PLATFORM!"
+#endif

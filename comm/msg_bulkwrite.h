@@ -4,8 +4,8 @@
 // Bulk write (receiving bulk write from the PC)
 //
 
-#ifndef GEX_F072_MSG_BULKWRITE_H
-#define GEX_F072_MSG_BULKWRITE_H
+#ifndef GEX_CORE_MSG_BULKWRITE_H
+#define GEX_CORE_MSG_BULKWRITE_H
 
 #ifndef GEX_MESSAGES_H
 #error "Include messages.h instead!"
@@ -44,4 +44,4 @@ struct bulk_write {
 void bulkwrite_start(TinyFrame *tf, BulkWrite *bulk);
 
 
-#endif //GEX_F072_MSG_BULKWRITE_H
+#endif //GEX_CORE_MSG_BULKWRITE_H

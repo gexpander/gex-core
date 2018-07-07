@@ -3,6 +3,8 @@
 //
 
 #include "platform.h"
+#if SUPPORT_NRF
+
 #include "nrf.h"
 
 /**
@@ -545,3 +547,5 @@ bool NRF_Init(uint8_t pSpeed)
 
     return true;
 }
+
+#endif

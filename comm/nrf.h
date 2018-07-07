@@ -15,11 +15,9 @@
  *
  */
 
-
-#ifndef NORDIC_H_
-#define NORDIC_H_
-
 #include "platform.h"
+#if SUPPORT_NRF
+
 #include "resources.h"
 #include "nrf_pins.h"
 
@@ -160,6 +158,6 @@ void NRF_EnablePipe(uint8_t pipenum);
  */
 void NRF_DisablePipe(uint8_t pipenum);
 
-#endif /* NORDIC_H_ */
+#endif // SUPPORT_NRF
 
 #endif //GEX_NRF_NRF_H
