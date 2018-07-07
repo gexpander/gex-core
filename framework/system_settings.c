@@ -140,11 +140,13 @@ void systemsettings_mco_init(void)
 
 void systemsettings_debug_uart_init_deinit(void)
 {
+#if USE_DEBUG_UART
     if (SystemSettings.enable_debug_uart) {
         DebugUart_Init();
     } else {
         DebugUart_Teardown();
     }
+#endif
 }
 
 /**
