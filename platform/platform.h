@@ -34,7 +34,6 @@
 // GEX version string
 #include "version.h"
 
-
 // ---
 
 /**

@@ -7,23 +7,12 @@
 #include "USB/usb_device.h"
 #include "framework/resources.h"
 #include "framework/unit_registry.h"
-#include "units/digital_out/unit_dout.h"
-
-#include "units/digital_in/unit_din.h"
-#include "units/neopixel/unit_neopixel.h"
-#include "units/i2c/unit_i2c.h"
-#include "units/1wire/unit_1wire.h"
-#include "units/adc/unit_adc.h"
-#include "units/test/unit_test.h"
-#include "units/usart/unit_usart.h"
-#include "units/spi/unit_spi.h"
-#include "units/sipo/unit_sipo.h"
-#include "units/fcap/unit_fcap.h"
-#include "units/touch/unit_touch.h"
-#include "units/simple_pwm/unit_pwmdim.h"
-#include "units/dac/unit_dac.h"
 #include "comm/interfaces.h"
 #include "hw_utils.h"
+
+#include "units_manifest.h"
+
+// TODO split this and the plat_compat files to per-platform ones stored in the platform project
 
 void plat_init_resources(void)
 {
@@ -89,19 +78,8 @@ void plat_init_resources(void)
     __HAL_RCC_GPIOF_CLK_ENABLE();
 
     // Units supported by the platform (known to work correctly)
-    ureg_add_type(&UNIT_DOUT);
-    ureg_add_type(&UNIT_DIN);
-    ureg_add_type(&UNIT_NEOPIXEL);
-    ureg_add_type(&UNIT_I2C);
-    ureg_add_type(&UNIT_SPI);
-    ureg_add_type(&UNIT_USART);
-    ureg_add_type(&UNIT_1WIRE);
-    ureg_add_type(&UNIT_ADC);
-    ureg_add_type(&UNIT_SIPO);
-    ureg_add_type(&UNIT_FCAP);
-    ureg_add_type(&UNIT_TOUCH);
-    ureg_add_type(&UNIT_PWMDIM);
-    ureg_add_type(&UNIT_DAC);
+    // - this is a macro created in the Makefile, registering all enabled units
+    UNITS_REGISTER_CMD
 
     // Free all present resources
     {
