@@ -59,10 +59,9 @@ COMMON_AS_INCLUDES = \
 # Platform-independent, GEX specific
 #####################################################
 
-GEX_UNIT_DIRS = $(foreach x,$(GEX_UNITS), GexUnits/$(x))
-GEX_UNIT_DEFS = $(foreach x,$(GEX_UNITS), -DENABLE_UNIT_$(shell echo $(x) | tr a-z A-Z)=1)
-ENDPAREN = )
-GEX_UNIT_DEFS += -DUNITS_REGISTER_CMD="$(foreach x,$(GEX_UNITS),ureg_add_type(&UNIT_$(shell echo $(x) | tr a-z A-Z));)"
+GEX_UNIT_DIRS := $(foreach x,$(GEX_UNITS), GexUnits/$(x))
+GEX_UNIT_DEFS := $(foreach x,$(GEX_UNITS), -DENABLE_UNIT_$(shell echo $(x) | tr a-z A-Z)=1) \
+                -DUNITS_REGISTER_CMD="$(foreach x,$(GEX_UNITS),ureg_add_type(&UNIT_$(shell echo $(x) | tr a-z A-Z));)"
 
 GEX_C_DIRS = \
     GexCore \
@@ -107,7 +106,7 @@ GEX_C_INCLUDES = \
     -IGexCore/USB/STM32_USB_Device_Library/Class/MSC/Inc \
     -IGexCore/USB/STM32_USB_Device_Library/Class/MSC_CDC
 
-GEX_C_FLAGS = \
+GEX_C_FLAGS := \
     -DGEX_PLAT_$(GEX_PLAT) \
     -D__weak="__attribute__((weak))" \
     -D__packed="__attribute__((__packed__))" \
@@ -171,37 +170,37 @@ TARGET = firmware
 # Specs (determines which stdlib version is included)
 SPECS = nano.specs
 
-C_SOURCES = \
+C_SOURCES := \
     $(COMMON_C_FILES) $(PLAT_C_FILES) $(GEX_C_FILES) \
     $(foreach x,$(COMMON_C_DIRS),$(wildcard $(x)/*.c)) \
     $(foreach x,$(PLAT_C_DIRS),$(wildcard $(x)/*.c)) \
     $(foreach x,$(GEX_C_DIRS),$(wildcard $(x)/*.c)) \
 
-AS_SOURCES = \
+AS_SOURCES := \
     $(COMMON_AS_FILES) $(PLAT_AS_FILES) $(GEX_AS_FILES) 
     $(foreach x,$(COMMON_AS_DIRS),$(wildcard $(x)/*.s)) \
     $(foreach x,$(PLAT_AS_DIRS),$(wildcard $(x)/*.s)) \
     $(foreach x,$(GEX_AS_DIRS),$(wildcard $(x)/*.s))
 
 # mcu
-MCU = $(PLAT_CPU) -mthumb $(PLAT_FPU) $(PLAT_FLOAT-ABI)
+MCU := $(PLAT_CPU) -mthumb $(PLAT_FPU) $(PLAT_FLOAT-ABI)
 
 #######################################
 # binaries
 #######################################
 BINPATH = /usr/bin
 PREFIX = arm-none-eabi-
-CC = $(BINPATH)/$(PREFIX)gcc
-AS = $(BINPATH)/$(PREFIX)gcc -x assembler-with-cpp
-CP = $(BINPATH)/$(PREFIX)objcopy
-AR = $(BINPATH)/$(PREFIX)ar
-SZ = $(BINPATH)/$(PREFIX)size
-HEX = $(CP) -O ihex
-BIN = $(CP) -O binary -S
+CC := $(BINPATH)/$(PREFIX)gcc
+AS := $(BINPATH)/$(PREFIX)gcc -x assembler-with-cpp
+CP := $(BINPATH)/$(PREFIX)objcopy
+AR := $(BINPATH)/$(PREFIX)ar
+SZ := $(BINPATH)/$(PREFIX)size
+HEX := $(CP) -O ihex
+BIN := $(CP) -O binary -S
 
 
 LIBS = -lc -lm -lnosys
-LDFLAGS = \
+LDFLAGS := \
     $(MCU) -specs=$(SPECS) -T$(PLAT_LDSCRIPT) $(LIBS) \
     -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref \
     -Wl,--gc-sections
@@ -211,12 +210,12 @@ ifeq ($(OPT),)
 OPT = -Os
 endif
 
-C_FLAGS = \
+C_FLAGS := \
     $(MCU) $(OPT) \
     $(GEX_C_INCLUDES) $(PLAT_C_INCLUDES) $(COMMON_C_INCLUDES) \
     $(GEX_C_FLAGS) $(PLAT_C_FLAGS) $(COMMON_C_FLAGS)
 
-AS_FLAGS = \
+AS_FLAGS := \
     $(MCU) $(OPT) \
     $(GEX_AS_INCLUDES) $(PLAT_AS_INCLUDES) $(COMMON_AS_INCLUDES) \
     $(GEX_AS_FLAGS) $(PLAT_AS_FLAGS) $(COMMON_AS_FLAGS)
@@ -238,10 +237,10 @@ C_FLAGS += -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)"
 # vpath %.s $(sort $(dir $(AS_SOURCES)))
 
 # list of objects
-OBJECTS = $(addprefix $(BUILD_DIR)/,$(C_SOURCES:.c=.o))
+OBJECTS := $(addprefix $(BUILD_DIR)/,$(C_SOURCES:.c=.o)) \
+           $(addprefix $(BUILD_DIR)/,$(AS_SOURCES:.s=.o))
+
 vpath %.c $(sort $(dir $(C_SOURCES)))
-# list of ASM program objects
-OBJECTS += $(addprefix $(BUILD_DIR)/,$(AS_SOURCES:.s=.o))
 vpath %.s $(sort $(dir $(AS_SOURCES)))
 
 MAKEFILES = Makefile GexCore/gex.mk build.mk
