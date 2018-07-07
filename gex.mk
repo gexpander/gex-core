@@ -222,7 +222,7 @@ AS_FLAGS := \
 
 
 # Generate dependency information
-C_FLAGS += -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)"
+DEPENDENCY_TRACKER = -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)"
 
 
 #######################################
@@ -251,10 +251,10 @@ all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET
 $(BUILD_DIR)/%.o: %.c $(MAKEFILES) | $(BUILD_DIR)
 	@echo -e "\x1b[32mCC\x1b[m $<\n  \x1b[90m-> $@\x1b[m"
 	@mkdir -p `dirname "$(BUILD_DIR)/$(<)"`
-	@$(CC) -c $(C_FLAGS) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(<:.c=.lst) $< -o $@
+	@$(CC) -c $(C_FLAGS) $(DEPENDENCY_TRACKER) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(<:.c=.lst) $< -o $@
 
 $(BUILD_DIR)/%.o: %.s $(MAKEFILES) | $(BUILD_DIR)
-	@$(AS) -c $(C_FLAGS) $< -o $@
+	@$(AS) -c $(C_FLAGS) $(DEPENDENCY_TRACKER) $< -o $@
 
 $(BUILD_DIR)/$(TARGET).elf: $(OBJECTS) $(MAKEFILES)
 	@printf "LD $< -> $@\n"
